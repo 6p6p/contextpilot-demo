@@ -17,6 +17,8 @@ const schema = z.object({
   LLM_API_KEY: z.preprocess(v => v === '' ? undefined : v, z.string().min(1).optional()),
   LLM_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(45000),
   LLM_MAX_TOKENS: z.coerce.number().int().min(16).max(4096).default(1024),
+  MEETING_MAX_TOKENS: z.coerce.number().int().min(1024).max(8192).default(8192),
+  MEETING_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(90000),
   SUPABASE_URL: z.preprocess(v => v === '' ? undefined : v, z.url().optional()),
   SUPABASE_STORAGE_KEY: z.preprocess(v => v === '' ? undefined : v, z.string().min(1).optional()),
   SUPABASE_STORAGE_BUCKET: z.preprocess(v => v === '' ? undefined : v, z.string().regex(/^[a-zA-Z0-9_-]+$/).optional()),

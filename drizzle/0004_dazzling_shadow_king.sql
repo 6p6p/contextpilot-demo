@@ -1,0 +1,1 @@
+ALTER TABLE "meeting_todos" ADD COLUMN "origin" text DEFAULT 'meeting_action' NOT NULL;

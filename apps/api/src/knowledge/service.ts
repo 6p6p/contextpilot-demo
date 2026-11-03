@@ -95,7 +95,7 @@ export function createDocumentService(database: Database, storage: PrivateStorag
     },
   };
 }
-export function startDocumentWorker(service: ReturnType<typeof createDocumentService>) {
+export function startDocumentWorker(service: { processOne(): Promise<boolean> }) {
   let stopped = false;
   let timer: ReturnType<typeof setTimeout>;
   let running: Promise<void> = Promise.resolve();

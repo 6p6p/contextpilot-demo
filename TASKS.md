@@ -1,6 +1,6 @@
 # Development tasks
 
-Phases 1–3 are authorized. Phase 2 accepted at 75e1d08. Phase 3 is in progress; later phases require separate instruction.
+Phases 1–4 are authorized. Phase 3 accepted at 8edb365; Phase 4 business acceptance is verified; local completion commit is identified with git log -1. Advance by feature milestones, not calendar dates. Later phases require separate instruction.
 
 ## Phase 1 — Engineering initialization
 
@@ -66,13 +66,35 @@ Actual acceptance: Supabase Session pooler + user-provided CA; encrypted and cer
 
 Latest acceptance is complete: SiliconFlow BAAI/bge-m3 / 1024 actually verified; no model substitution. Earlier 402 preflight stopped correctly and succeeded after user account/configuration check; exact original account cause not asserted. User approved combined ¥5 budget. Official BAAI/bge-m3 pricing is free; 4 measured DeepSeek calls total 2188 input / 367 output tokens, conservatively about US$0.00110 (overall estimate below ¥0.02; actual account bill not read). All model calls in completed tracked runs returned 200. No automatic model retry. Local-only; no login/public deployment or meeting module. See docs/phase-3-verification.md.
 
+## Phase 4 — meeting analysis and risk todos (verified)
+
+- [x] Read rules/spec/tasks, Phase 3 acceptance and relevant existing code.
+- [x] Confirm existing private Bucket supports PDF + TXT; enforce backend UTF-8/MIME/extension/size limits independently.
+- [x] Add source-numbered structured analysis, exact evidence validation, long-segment merge and unknown-field handling.
+- [x] Add versioned meeting/risk/evidence/todo/draft/confirmation schemas; review and execute non-destructive migrations 0003/0004.
+- [x] Add auto-analysis leased worker and failure states; preserve previous successful results on reanalysis failure.
+- [x] Add content-hash deduplication, stable todo matching, CAS edits and draft-only version confirmation.
+- [x] Add meeting upload/status, facts, risk/evidence, todo editors and draft preview to existing UI.
+- [x] npm run check: 57 unit/API tests plus strict types/build pass.
+- [x] Real PostgreSQL meeting integration: 2 tests pass with explicit stub Storage/LLM, including manual edits, reanalysis and invalid JSON failure.
+- [x] Actual LLM risk case passes after JSON-mode/output-budget fixes; preserve initial format/evidence/truncation failures and publish no partial results.
+- [x] Real no-risk, unknown owner/date, multiple risks/actions, long cross-segment and malicious-input cases pass in separate targeted runs.
+- [x] Existing real PDF RAG: 2 passed; ordinary chat/reload/switch: 1 passed, under the same approved budget.
+- [x] Real audit: 7 private originals/hash matches, 9 exact evidence rows, immutable confirmation snapshot and all drafts not_sent.
+- [x] Update README/SPEC/acceptance record with actual results, fee telemetry limitations and retained OPEN issues.
+- [x] Final credential-free development/production E2E: 1 passed each; strict types/57 tests/build passed.
+- [x] Review staged scope and create local completion commit (identify with git log -1); stop before the next phase.
+
+## Retained OPEN issues
+
+- [ ] Investigate Phase 3's isolated, unreproduced upload HTTP 500. Do not claim resolved.
+- [ ] Evaluate evidence-backed synthesis for RAG; current behavior is primarily verified extractive answering.
+
 ## Later phases — not started
 
 - [ ] External service and deployment-network validation; credentials need approval.
 - [ ] Protected workspace and persistent domain/task foundations.
 - [ ] Protected public deployment (local chat acceptance completed in Phase 2).
-- [ ] PDF knowledge retrieval.
-- [ ] Meeting risks, evidence and todos.
 - [ ] Durable cross-session memory.
 - [ ] Confirmed, deduplicated email sending.
 - [ ] Real web search.

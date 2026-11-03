@@ -18,6 +18,16 @@ describe('LLM adapter (mock transport)', () => {
     expect(JSON.parse(String(options?.body))).toMatchObject({ model: 'test-model', stream: false, messages: [{ role: 'user', content: 'question' }] });
     expect(options?.redirect).toBe('error');
   });
+  it('opts into JSON mode only when explicitly requested for structured analysis', async () => {
+    const transport = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: '{}' } }] })));
+    await createChatModel(env, transport, { jsonMode: true })!.complete([{ role: 'user', content: 'json test' }]);
+    expect(JSON.parse(String(transport.mock.calls[0][1]?.body)).response_format).toEqual({ type: 'json_object' });
+  });
+  it('explicitly rejects truncated structured output without changing ordinary chat', async () => {
+    const transport = () => Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: '{' }, finish_reason: 'length' }] })));
+    await expect(createChatModel(env, transport, { jsonMode: true })!.complete([])).rejects.toMatchObject({ code: 'LLM_OUTPUT_TRUNCATED' });
+    expect((await createChatModel(env, transport)!.complete([])).content).toBe('{');
+  });
   it.each([401, 429, 500])('sanitizes upstream error %s', async status => {
     const model = createChatModel(env, vi.fn<typeof fetch>().mockResolvedValue(new Response('secret upstream body', { status })))!;
     await expect(model.complete([])).rejects.toMatchObject({ statusCode: 502, code: status === 429 ? 'LLM_RATE_LIMITED' : 'LLM_UPSTREAM_ERROR' });

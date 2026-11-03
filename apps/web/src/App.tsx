@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { healthSchema, type Health } from '../../../shared/health';
 import { ChatWorkspace } from './ChatWorkspace';
+import { MeetingPanel } from './MeetingPanel';
 
 export function App() {
   const [health, setHealth] = useState<Health | null>(null);
@@ -33,12 +34,13 @@ export function App() {
       <nav aria-label="工作台模块">
         <span className="nav-current" aria-current="page">工作台概览</span>
         <a className="nav-chat" href="#chat">对话与历史</a>
-        {['知识库文件', '会议与待办', '长期记忆', '演示文稿'].map(name => <span className="nav-future" key={name}>{name}<small>待开发</small></span>)}
+        <a className="nav-chat" href="#meetings">会议与待办</a>
+        {['知识库文件', '长期记忆', '演示文稿'].map(name => <span className="nav-future" key={name}>{name}<small>待开发</small></span>)}
       </nav>
-      <div className="sidebar-foot">单一演示工作区<br />Phase 3 · PDF 知识库</div>
+      <div className="sidebar-foot">单一演示工作区<br />Phase 4 · 会议与行动</div>
     </aside>
     <main>
-      <header><span>CONTEXT → DECISION</span><span className="phase">Phase 3</span></header>
+      <header><span>CONTEXT → DECISION</span><span className="phase">Phase 4</span></header>
       <section className="intro"><p className="eyebrow">CONTEXT PILOT / WORKSPACE</p><h1>让上下文，成为决策的起点。</h1><p>创建会话，与真实模型交流。对话历史保存在 PostgreSQL，支持刷新恢复与会话切换。</p></section>
       <section className="status-card" aria-labelledby="service-title">
         <div><p className="eyebrow">SYSTEM CONNECTION</p><h2 id="service-title">服务连接</h2><p>由浏览器请求真实 Fastify 后端，不使用模拟响应。</p></div>
@@ -50,14 +52,15 @@ export function App() {
         </div>
       </section>
       <ChatWorkspace />
+      <MeetingPanel />
       <section className="roadmap" aria-label="能力规划">
         {[
-          ['01', '会议原文', 'TXT 会议分析 · 风险证据'],
-          ['02', '会议与行动', '风险证据 · 待办 · 邮件确认'],
+          ['01', '长期记忆', '跨会话人物 · 时间 · 主题'],
+          ['02', '邮件发送', '明确确认后真实发送'],
           ['03', '记忆与输出', '跨会话记忆 · 联网搜索 · PPT'],
         ].map(([number, title, description]) => <article key={number}><span className="number">{number}</span><h2>{title}</h2><p>{description}</p><span className="planned">尚未实现</span></article>)}
       </section>
-      <footer>本地开发阶段；尚未启用工作区鉴权。请勿公开部署。会议、长期记忆、搜索、邮件和 PPT 尚未启用。</footer>
+      <footer>本地开发阶段；尚未启用工作区鉴权。请勿公开部署。邮件只准备草稿，不发送；长期记忆、搜索和 PPT 尚未启用。</footer>
     </main>
   </div>;
 }

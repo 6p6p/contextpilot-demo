@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 const production = process.argv[2] === 'production';
 const live = process.argv.includes('--live');
 const ragLive = process.argv.includes('--rag-live');
+const meetingsLive = process.argv.includes('--meetings-live');
 const apiPort = 3101;
 const webPort = 5273;
 if (live) {
@@ -14,6 +15,7 @@ if (live) {
   dotenv.config({ quiet: true });
   if (!process.env.DATABASE_URL || !process.env.LLM_BASE_URL || !process.env.LLM_MODEL || !process.env.LLM_API_KEY) throw new Error('Live E2E requires database and LLM configuration in root .env.');
   if (ragLive && !['SUPABASE_URL', 'SUPABASE_STORAGE_KEY', 'SUPABASE_STORAGE_BUCKET', 'EMBEDDING_BASE_URL', 'EMBEDDING_API_KEY', 'EMBEDDING_MODEL', 'EMBEDDING_DIMENSIONS'].every(key => process.env[key])) throw new Error('Real RAG E2E requires complete private Storage and Embedding configuration.');
+  if (meetingsLive && !['SUPABASE_URL', 'SUPABASE_STORAGE_KEY', 'SUPABASE_STORAGE_BUCKET'].every(key => process.env[key])) throw new Error('Meeting E2E requires private Storage configuration.');
 }
 const children = [];
 const env = {
@@ -65,7 +67,7 @@ try {
   }
   const separator = process.argv.indexOf('--');
   const testArguments = separator >= 0 ? process.argv.slice(separator + 1) : [];
-  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', ragLive ? 'playwright.rag.config.ts' : live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts', ...testArguments]);
+  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', meetingsLive ? 'playwright.meetings.config.ts' : ragLive ? 'playwright.rag.config.ts' : live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts', ...testArguments]);
   const [code] = await once(runner, 'exit');
   process.exitCode = code ?? 1;
 } catch (error) {

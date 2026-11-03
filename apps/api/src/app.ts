@@ -11,6 +11,7 @@ import { createStorage } from './knowledge/storage.js';
 import { createEmbedder } from './knowledge/embedding.js';
 import { registerDocumentRoutes } from './knowledge/routes.js';
 import { createRetriever, createKnowledgeAnswerer } from './knowledge/retrieval.js';
+import { registerMeetingRoutes } from './meetings/routes.js';
 
 export function buildApp(env: Env) {
   const app = Fastify({
@@ -30,6 +31,7 @@ export function buildApp(env: Env) {
   const storage = createStorage(env, cancellableFetch);
   const embedder = createEmbedder(env, cancellableFetch);
   registerDocumentRoutes(app, database, storage, embedder, shutdown.signal);
+  registerMeetingRoutes(app, database, storage, createChatModel({ ...env, LLM_MAX_TOKENS: env.MEETING_MAX_TOKENS, LLM_TIMEOUT_MS: env.MEETING_TIMEOUT_MS }, cancellableFetch, { jsonMode: true }), shutdown.signal);
   registerChatRoutes(app, database, createChatModel(env), database && embedder ? createKnowledgeAnswerer(createRetriever(database, embedder, env.RAG_MIN_SIMILARITY)) : null);
 
   app.get('/api/health', async () => ({

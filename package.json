@@ -19,6 +19,7 @@
     "test:e2e:production": "node scripts/e2e.mjs production",
     "test:e2e:live": "node scripts/e2e.mjs --live",
     "test:e2e:rag": "node scripts/e2e.mjs --live --rag-live",
+    "test:e2e:meetings": "node scripts/e2e.mjs --live --meetings-live",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx apps/api/src/db/migrate.ts",

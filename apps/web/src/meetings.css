@@ -1,0 +1,18 @@
+.meeting-panel { background: white; border: 1px solid #cddfda; border-radius: 12px; margin-top: 24px; padding: 24px; }
+.meeting-panel h2 { font-size: 19px; margin: 0; }
+.meeting-panel h3 { font-size: 16px; margin-top: 25px; }
+.meeting-list { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; max-height: 180px; overflow: auto; }
+.meeting-list button { overflow-wrap: anywhere; text-align: left; }
+.meeting-list button[aria-pressed="true"] { background: #28504e; color: white; }
+.meeting-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 12px 0; font-size: 12px; }
+.meeting-risk, .meeting-todo, .mail-draft { border: 1px solid #dce5e1; border-radius: 8px; padding: 16px; margin: 12px 0; }
+.meeting-risk { border-left: 4px solid #ac7855; }
+.meeting-todo strong { font-size: 14px; overflow-wrap: anywhere; }
+.meeting-todo small { display: block; color: #657775; margin-top: 8px; }
+.meeting-form-row { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-top: 12px; }
+.meeting-panel label { display: block; font-size: 12px; color: #354b46; }
+.meeting-panel input:not([type="file"]), .meeting-panel textarea, .meeting-panel select { display: block; max-width: 100%; border: 1px solid #cbd9d6; border-radius: 5px; padding: 8px; font: inherit; font-size: 13px; margin-top: 6px; }
+.mail-draft input, .mail-draft textarea { width: 100%; margin-bottom: 12px; }
+.meeting-transcript { max-height: 300px; overflow: auto; background: #f5f7f7; padding: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.meeting-panel input:focus-visible, .meeting-panel textarea:focus-visible, .meeting-panel select:focus-visible { outline: 2px solid #49736c; }
+@media (max-width: 580px) { .meeting-panel { padding: 18px; } .meeting-form-row label { width: 100%; } .meeting-form-row input, .meeting-form-row select { width: 100%; } }

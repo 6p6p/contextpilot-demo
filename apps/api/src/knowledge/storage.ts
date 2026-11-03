@@ -3,7 +3,7 @@ import { PublicError } from '../errors.js';
 
 export interface PrivateStorage {
   origin: string; bucket: string;
-  put(key: string, bytes: Buffer): Promise<void>;
+  put(key: string, bytes: Buffer, contentType?: 'application/pdf' | 'text/plain'): Promise<void>;
   get(key: string): Promise<Buffer>;
 }
 export function createStorage(env: Env, transport: typeof fetch = fetch): PrivateStorage | null {
@@ -24,7 +24,7 @@ export function createStorage(env: Env, transport: typeof fetch = fetch): Privat
   }
   const objectPath = (key: string) => `${encodeURIComponent(bucket)}/${key.split('/').map(encodeURIComponent).join('/')}`;
   return { origin, bucket,
-    async put(key, bytes) { await requirePrivate(); const response = await call(`/object/${objectPath(key)}`, { method: 'POST', headers: { 'content-type': 'application/pdf', 'x-upsert': 'false' }, body: new Uint8Array(bytes) }); await response.body?.cancel(); },
+    async put(key, bytes, contentType = 'application/pdf') { await requirePrivate(); const response = await call(`/object/${objectPath(key)}`, { method: 'POST', headers: { 'content-type': contentType, 'x-upsert': 'false' }, body: new Uint8Array(bytes) }); await response.body?.cancel(); },
     async get(key) { await requirePrivate(); const response = await call(`/object/authenticated/${objectPath(key)}`); return Buffer.from(await response.arrayBuffer()); },
   };
 }

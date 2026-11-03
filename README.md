@@ -2,7 +2,9 @@
 
 面向南京信人智能的 AI 外脑实操 Demo。原始需求见 [docs/assignment.txt](docs/assignment.txt)；阶段规范见 [SPEC.md](SPEC.md)，开发状态见 [TASKS.md](TASKS.md)。
 
-**Phase 3 PDF RAG 已通过真实服务验收。** Supabase 私有 Storage、PDF.js、SiliconFlow BAAI/bge-m3 / 1024 维、pgvector 检索及原文引用已验证；原有聊天回归通过。本轮临时云端测试数据已按清单清理，可使用版本化测试 PDF 重新上传演示。长期记忆、会议、搜索、邮件和 PPT 尚未实现。尚未部署、未推送 GitHub。见 [Phase 3 接入说明](docs/phase-3-setup.md)和[真实验收记录](docs/phase-3-verification.md)。
+**Phase 4 会议分析已通过真实服务验收。** UTF-8 TXT 上传至 Supabase 私有 Storage，自动分析会议、生成带行号证据的风险与待办，支持人工编辑、重复上传去重和重新分析。邮件只准备草稿和版本确认，全部保持未发送。真实业务用例分次通过，模型不合规输出的失败记录也保留，详见 [Phase 4 验收记录](docs/phase-4-verification.md)。
+
+Phase 3 PDF RAG 与原有聊天真实回归通过；接入说明见 [Phase 3 配置](docs/phase-3-setup.md)。既有未复现上传 HTTP 500 仍为 OPEN；RAG 目前主要支持可核实摘录式回答，带证据综合归纳仍需评估。长期记忆、联网搜索、真实邮件发送和 PPT 尚未实现。未部署、未推送 GitHub；公开访问前必须完成工作区保护。
 
 ## 环境与启动
 
@@ -82,6 +84,8 @@ docs/assignment.txt   不可修改的原始要求
 | LLM_API_KEY | 未设置 | 后端专用 API Key |
 | LLM_TIMEOUT_MS | 45000 | 模型超时，最大 60000ms |
 | LLM_MAX_TOKENS | 1024 | 单次生成 token 上限 |
+| MEETING_MAX_TOKENS | 8192 | 会议结构化输出独立上限（1024–8192），不改变普通聊天 |
+| MEETING_TIMEOUT_MS | 90000 | 会议模型请求超时，最大 120000ms；不改变普通聊天 |
 | API_PROXY_TARGET | http://127.0.0.1:3001 | 仅开发时 Vite 代理目标，修改后需重启 |
 
 环境变量无效时启动失败；错误不打印凭据值。数据库地址通过格式校验不代表连接成功。DATABASE_URL 禁止查询参数和 fragment；SSL 统一由 DATABASE_SSL/DATABASE_CA_CERT 配置，防止 URI 覆盖证书校验。
@@ -111,4 +115,25 @@ npm run db:generate
 6. 后续经确认接入 LLM、embedding、搜索、邮件。验证地域限制、额度、中文效果、超时和发件域名。邮件必须确认、去重并保存发送记录。
 7. 最终再完成 GitHub 推送、演示脚本、六项功能真实验收材料。本轮不创建资源、不部署或远程推送；模型验收按用户确认的计费预算执行。
 
-模型兼容性、价格、访问稳定性和数据库权限需要本阶段实测。Embedding、对象存储、搜索与邮件凭据不在 Phase 2 范围。
+## 会议 TXT 使用与验收
+
+复用已配置的 DATABASE_URL、LLM_*、SUPABASE_URL、SUPABASE_STORAGE_KEY、SUPABASE_STORAGE_BUCKET（具体 Storage 名称以 .env.example 为准），无需新凭据。Bucket 必须 Private；服务端每次访问检查隐私设置。后端限制 .txt + text/plain、严格 UTF-8、非空且最多 1 MiB / 64000 UTF-16 字符 / 4000 行 / 每行 2000 字符；Bucket 的 50 MB/Any 设置不会放宽应用限制。PDF 仍受原有校验。
+
+1. 审查并执行 `npm run db:migrate`（本阶段 0003/0004 为新增会议领域表的迁移，已在验收库执行）。
+2. `npm run dev`，在现有页面上传 `tests/fixtures/meeting-risk.txt`，等待完成，展开风险证据查看行号。
+3. 修改待办负责人、日期和状态后保存；草稿收件人须自行输入。先保存草稿，再确认当前版本，确认只记录快照，绝不发送。
+4. 相同原始字节重复上传返回原会议，不再调用模型；重新分析保留人工编辑和旧版本。旧草稿需复核保存后才能再次确认。
+
+长文按约 8000 字符、2 行重叠提取，超过一段时额外合并。解析、结构或证据校验失败显示 failed，不发布半成品；无文本、超限或无效编码直接拒绝。模型遗漏和风险语义仍需人工复核，不能仅凭引用存在判断分析正确。
+
+```powershell
+# 离线/Mock 测试、类型检查、构建
+npm run check
+# 真实 PostgreSQL，但 Storage/LLM 是明确的测试替身
+npm run test:integration -- tests/integration/meetings.test.ts
+# 以下会产生真实模型调用，必须先获预算授权；默认不自动重试
+$env:PLAYWRIGHT_CHANNEL='chrome'
+npm run test:e2e:meetings
+```
+
+可复现样本：meeting-risk.txt、meeting-safe.txt、meeting-unknown-injection.txt；长文由 scripts/meeting-fixtures.ts 生成。验收测试保留自己的云端记录供审查，不删除用户数据。实时测试并非默认离线检查的一部分；费用统计范围和失败历史见阶段验收记录。
