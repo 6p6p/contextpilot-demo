@@ -2,14 +2,24 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
+import dotenv from 'dotenv';
 
 const production = process.argv[2] === 'production';
+const live = process.argv.includes('--live');
+const apiPort = 3101;
+const webPort = 5273;
+if (live) {
+  if (process.env.RUN_LIVE_TESTS !== '1') throw new Error('Live E2E requires RUN_LIVE_TESTS=1; real API calls may incur cost.');
+  dotenv.config({ quiet: true });
+  if (!process.env.DATABASE_URL || !process.env.LLM_BASE_URL || !process.env.LLM_MODEL || !process.env.LLM_API_KEY) throw new Error('Live E2E requires database and LLM configuration in root .env.');
+}
 const children = [];
 const env = {
   ...process.env,
   NODE_ENV: production ? 'production' : 'test',
-  PORT: '3001', HOST: '127.0.0.1', DATABASE_URL: '', LOG_LEVEL: 'silent',
-  API_PROXY_TARGET: 'http://127.0.0.1:3001',
+  PORT: String(apiPort), HOST: '127.0.0.1', DATABASE_URL: live ? process.env.DATABASE_URL : '', LOG_LEVEL: 'silent',
+  ...(!live ? { LLM_BASE_URL: '', LLM_MODEL: '', LLM_API_KEY: '' } : {}),
+  API_PROXY_TARGET: `http://127.0.0.1:${apiPort}`,
 };
 
 async function assertPortFree(port) {
@@ -39,17 +49,17 @@ async function waitFor(url, child) {
   throw new Error(`Service startup timed out: ${url}`);
 }
 try {
-  await assertPortFree(3001);
-  if (!production) await assertPortFree(5173);
+  await assertPortFree(apiPort);
+  if (!production) await assertPortFree(webPort);
   const api = start(production
     ? ['dist/server/apps/api/src/server.js']
     : ['--import', 'tsx', 'apps/api/src/server.ts']);
-  await waitFor('http://127.0.0.1:3001/api/health', api);
+  await waitFor(`http://127.0.0.1:${apiPort}/api/health`, api);
   if (!production) {
-    const web = start(['node_modules/vite/bin/vite.js', '--config', 'apps/web/vite.config.ts']);
-    await waitFor('http://127.0.0.1:5173', web);
+    const web = start(['node_modules/vite/bin/vite.js', '--config', 'apps/web/vite.config.ts', '--port', String(webPort)]);
+    await waitFor(`http://127.0.0.1:${webPort}`, web);
   }
-  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', production ? 'playwright.production.config.ts' : 'playwright.config.ts']);
+  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts']);
   const [code] = await once(runner, 'exit');
   process.exitCode = code ?? 1;
 } catch (error) {

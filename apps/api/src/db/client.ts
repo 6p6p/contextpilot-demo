@@ -1,17 +1,29 @@
 import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Env } from '../config/env.js';
+import { readFileSync } from 'node:fs';
+import * as schema from './schema.js';
+
+export function databaseOptions(env: Env) {
+  if (!env.DATABASE_URL) return null;
+  const url = new URL(env.DATABASE_URL);
+  return {
+    host: url.hostname.replace(/^\[|\]$/g, ''), port: Number(url.port || 5432),
+    user: decodeURIComponent(url.username), password: decodeURIComponent(url.password),
+    database: decodeURIComponent(url.pathname.slice(1)),
+    max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000,
+    statement_timeout: 15000,
+    ssl: env.DATABASE_SSL ? {
+      rejectUnauthorized: true,
+      ...(env.DATABASE_CA_CERT ? { ca: readFileSync(env.DATABASE_CA_CERT, 'utf8') } : {}),
+    } : undefined,
+  };
+}
 
 export function createDatabase(env: Env) {
   if (!env.DATABASE_URL) return null;
-  const pool = new pg.Pool({
-    connectionString: env.DATABASE_URL,
-    max: 5,
-    connectionTimeoutMillis: 3000,
-    idleTimeoutMillis: 10000,
-    ssl: env.DATABASE_SSL ? { rejectUnauthorized: true } : undefined,
-  });
-  return { pool, db: drizzle(pool) };
+  const pool = new pg.Pool(databaseOptions(env)!);
+  return { pool, db: drizzle(pool, { schema }) };
 }
 export async function probeDatabase(database: ReturnType<typeof createDatabase>) {
   if (!database) return 'not_configured' as const;

@@ -14,6 +14,8 @@ Act as a senior software engineer and reviewer. Be direct and practical; separat
 - No global installs, paid calls, resource provisioning, deployment or remote Git push without authorization. Avoid destructive commands.
 - Report changed files, actual tests/results, decisions, remaining credentials and task status after each phase. State unverified assumptions explicitly.
 
-## Phase 1 commands
+## Local commands and Phase 2 service acceptance
+
+Only Phase 2 (persistent chat) is authorized beyond Phase 1. Do not implement PDF/RAG, memory extraction or tools. Runtime secret configuration belongs in the repository-root .env; never inspect or echo it. Real-service verification requires the user's confirmation that local configuration is ready and any billable test budget is approved. `npm run check` and default E2E never call external business services. `RUN_LIVE_TESTS=1 npm run test:integration` uses real PostgreSQL with an explicitly stubbed model; `npm run test:e2e:live` uses real database and model and can incur charges. Keep these results separate. Migrations are reviewed additive SQL; no push/reset/drop/truncate or automatic rollback.
 
 Use Node 24 and npm 11. Run commands at the repository root. `npm run check` runs types, unit/API/compatibility tests and both builds. `npm run test:e2e` starts isolated dev servers and exercises the real browser/API boundary. Database connectivity/migrations need separately approved credentials and a PostgreSQL instance supporting vector.

@@ -50,3 +50,23 @@ Text-layer PDF (proposed 10 MB/100 pages), UTF-8 TXT (proposed 1 MB), fixed Chin
 ## Quality gates
 
 API integration tests cover real Fastify routes, missing DB readiness and safe errors. Runtime compatibility tests cover PDF text extraction, PPTX buffer generation and Drizzle vector SQL without network. E2E uses real Vite/API processes, no response interception. Live service acceptance remains separate.
+
+## Phase 2 — approved scope and contract
+
+Phase 2 supersedes the Phase 1 prohibition on chat implementation only. Implement Supabase PostgreSQL connectivity, additive conversation/message migrations, an OpenAI-compatible non-streaming adapter, persistent multi-turn chat, history loading and conversation switching. Do not implement PDF/RAG or other business modules.
+
+Backend configuration: DATABASE_URL, DATABASE_SSL (default true), optional DATABASE_CA_CERT; LLM_BASE_URL, LLM_MODEL, LLM_API_KEY, LLM_TIMEOUT_MS (45000), LLM_MAX_TOKENS (1024). Root .env only. Remote PostgreSQL requires TLS with certificate validation. No SSL query overrides in DATABASE_URL. Password must be percent-encoded once. Session pooler supports local IPv4 when Direct IPv6 is unavailable. No Supabase frontend SDK or API keys required.
+
+- POST /api/conversations `{title?:string}` → 201 `{conversation}`.
+- GET /api/conversations → `{conversations}` (100 most recently updated).
+- GET /api/conversations/:id/messages → `{messages}` (200 most recent, chronological).
+- POST /api/conversations/:id/messages `{clientRequestId:uuid,content:string}` → `{messages}` containing this turn's persisted user/assistant pair. Upstream failure is represented by persisted assistant status=failed and safe errorCode. HTTP 200 does not by itself prove generation succeeded.
+- Missing DB/model → explicit 503; invalid input → 400; missing conversation → 404; busy/conﬂicting request ID → 409. Unexpected database exceptions remain sanitized 500.
+
+Data: conversations(uuid,title,createdAt,updatedAt); messages(uuid,conversationId,clientRequestId,ordinal,role,content,status,errorCode,model,createdAt,updatedAt). UUID keys, restricted FK deletion, unique per-conversation ordinal and request/role. RLS enabled without Data API access policies. Backend uses privileged server connection; single shared local workspace, no tenant/member management.
+
+Generation: lock conversation during short preparation transaction; persist user and pending assistant, release lock, call provider, persist success/failure. No automatic provider retries. Duplicate request ID with same content returns existing rows; changed content conflicts. Reject another active turn in the same conversation. A pending reply older than 90s becomes failed on the next history/send request, enabling recovery after process interruption; it is never automatically regenerated. All records stay in DB. No durable jobs required for this bounded synchronous operation.
+
+Context: up to 20 completed messages and 24000 characters, current conversation only. User input limit 4000 characters. This is persisted chat history, not cross-session fact retrieval. RAG/memory contracts and model adapter are extension seams only; no retrieval or tool execution is present.
+
+Acceptance: real DB connection and pgvector operator; reviewed migration applied; reads from a new connection see writes; real model replies remember a unique marker in a follow-up; refresh and conversation switching retain messages. Offline mocks are separate evidence only. Public deployment remains prohibited until access protection is implemented and approved.

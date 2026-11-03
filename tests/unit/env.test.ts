@@ -3,7 +3,7 @@ import { parseEnv } from '../../apps/api/src/config/env.js';
 
 describe('environment validation', () => {
   it('allows credential-free startup without pretending the database exists', () => {
-    expect(parseEnv({ DATABASE_URL: '' })).toMatchObject({ PORT: 3001, DATABASE_URL: undefined, DATABASE_SSL: false });
+    expect(parseEnv({ DATABASE_URL: '' })).toMatchObject({ PORT: 3001, DATABASE_URL: undefined, DATABASE_SSL: true });
   });
   it.each([{ PORT: '0' }, { PORT: 'abc' }, { DATABASE_URL: 'https://example.com' }, { DATABASE_SSL: 'yes' }])('rejects invalid config %o', input => {
     expect(() => parseEnv(input)).toThrow('Invalid environment fields');

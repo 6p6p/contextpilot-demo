@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { healthSchema, type Health } from '../../../shared/health';
+import { ChatWorkspace } from './ChatWorkspace';
 
 export function App() {
   const [health, setHealth] = useState<Health | null>(null);
@@ -31,13 +32,14 @@ export function App() {
       <div className="workspace-label">南京信人智能 · 实操 Demo</div>
       <nav aria-label="工作台模块">
         <span className="nav-current" aria-current="page">工作台概览</span>
-        {['对话与历史', '知识库文件', '会议与待办', '长期记忆', '演示文稿'].map(name => <span className="nav-future" key={name}>{name}<small>待开发</small></span>)}
+        <a className="nav-chat" href="#chat">对话与历史</a>
+        {['知识库文件', '会议与待办', '长期记忆', '演示文稿'].map(name => <span className="nav-future" key={name}>{name}<small>待开发</small></span>)}
       </nav>
-      <div className="sidebar-foot">单一演示工作区<br />Phase 1 · 工程初始化</div>
+      <div className="sidebar-foot">单一演示工作区<br />Phase 2 · 持久化 AI 对话</div>
     </aside>
     <main>
-      <header><span>CONTEXT → DECISION</span><span className="phase">Phase 1</span></header>
-      <section className="intro"><p className="eyebrow">CONTEXT PILOT / WORKSPACE</p><h1>让上下文，成为决策的起点。</h1><p>统一连接对话、知识与会议。当前完成工程骨架，业务能力将在后续阶段逐项接入并验证。</p></section>
+      <header><span>CONTEXT → DECISION</span><span className="phase">Phase 2</span></header>
+      <section className="intro"><p className="eyebrow">CONTEXT PILOT / WORKSPACE</p><h1>让上下文，成为决策的起点。</h1><p>创建会话，与真实模型交流。对话历史保存在 PostgreSQL，支持刷新恢复与会话切换。</p></section>
       <section className="status-card" aria-labelledby="service-title">
         <div><p className="eyebrow">SYSTEM CONNECTION</p><h2 id="service-title">服务连接</h2><p>由浏览器请求真实 Fastify 后端，不使用模拟响应。</p></div>
         <div className="connection" role="status" aria-live="polite">
@@ -47,14 +49,15 @@ export function App() {
           <button onClick={() => setAttempt(value => value + 1)}>重新检查</button>
         </div>
       </section>
+      <ChatWorkspace />
       <section className="roadmap" aria-label="能力规划">
         {[
-          ['01', '对话与知识', '多轮对话 · PDF 背景知识'],
+          ['01', '知识检索', 'PDF 背景知识 · 原文引用'],
           ['02', '会议与行动', '风险证据 · 待办 · 邮件确认'],
           ['03', '记忆与输出', '跨会话记忆 · 联网搜索 · PPT'],
         ].map(([number, title, description]) => <article key={number}><span className="number">{number}</span><h2>{title}</h2><p>{description}</p><span className="planned">尚未实现</span></article>)}
       </section>
-      <footer>当前仅验证 Web → API 连接。聊天、上传、记忆、搜索、邮件和 PPT 均未启用。</footer>
+      <footer>本地开发阶段；尚未启用工作区鉴权。请勿公开部署。上传、记忆、搜索、邮件和 PPT 尚未启用。</footer>
     </main>
   </div>;
 }

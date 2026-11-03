@@ -26,6 +26,16 @@ describe('real Fastify routes', () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ error: { code: 'NOT_FOUND' }, requestId: expect.any(String) });
   });
+  it('truthfully rejects chat without a database', async () => {
+    const instance = app();
+    const response = await instance.inject('/api/conversations');
+    expect(response.statusCode).toBe(503);
+    expect(response.json().error.code).toBe('DATABASE_NOT_CONFIGURED');
+  });
+  it('rejects invalid chat input before any external call', async () => {
+    const response = await app().inject({ method: 'POST', url: '/api/conversations', payload: { title: '' } });
+    expect(response.statusCode).toBe(400);
+  });
   it('does not expose internal exception text', async () => {
     const instance = app();
     instance.get('/test-error', () => { throw new Error('private implementation detail'); });

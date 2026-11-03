@@ -4,6 +4,9 @@ import { resolve } from 'node:path';
 import { ZodError } from 'zod';
 import type { Env } from './config/env.js';
 import { createDatabase, probeDatabase } from './db/client.js';
+import { registerChatRoutes } from './chat/routes.js';
+import { createChatModel } from './llm/adapter.js';
+import { PublicError } from './errors.js';
 
 export function buildApp(env: Env) {
   const app = Fastify({
@@ -16,6 +19,7 @@ export function buildApp(env: Env) {
   const database = createDatabase(env);
   database?.pool.on('error', () => app.log.error('Idle database connection failed'));
   app.addHook('onClose', async () => { await database?.pool.end(); });
+  registerChatRoutes(app, database, createChatModel(env));
 
   app.get('/api/health', async () => ({
     status: 'ok', service: 'contextpilot-api',
@@ -30,11 +34,11 @@ export function buildApp(env: Env) {
   app.setErrorHandler((error, request, reply) => {
     const invalid = error instanceof ZodError || (error instanceof Error && 'validation' in error);
     const statusCode = error instanceof Error && 'statusCode' in error && typeof error.statusCode === 'number' ? error.statusCode : 500;
-    const status = invalid ? 400 : statusCode >= 400 && statusCode < 500 ? statusCode : 500;
+    const status = error instanceof PublicError ? error.statusCode : invalid ? 400 : statusCode >= 400 && statusCode < 500 ? statusCode : 500;
     if (status === 500) request.log.error({ requestId: request.id }, 'Unhandled request failure');
     return reply.code(status).send({ error: {
-      code: status === 500 ? 'INTERNAL_ERROR' : 'INVALID_REQUEST',
-      message: status === 500 ? 'Internal server error' : 'Invalid request',
+      code: error instanceof PublicError ? error.code : status === 500 ? 'INTERNAL_ERROR' : 'INVALID_REQUEST',
+      message: error instanceof PublicError ? error.message : status === 500 ? 'Internal server error' : 'Invalid request',
     }, requestId: request.id });
   });
   if (env.NODE_ENV === 'production') {

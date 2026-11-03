@@ -2,7 +2,7 @@
 
 面向南京信人智能的 AI 外脑实操 Demo。原始需求见 [docs/assignment.txt](docs/assignment.txt)；阶段规范见 [SPEC.md](SPEC.md)，开发状态见 [TASKS.md](TASKS.md)。
 
-**当前仅 Phase 1 工程骨架。六项业务能力尚未实现。** 页面真实请求 Fastify 健康接口，不模拟聊天、上传、邮件或 PPT。尚未部署、未推送 GitHub。
+**Phase 2 持久化 AI 对话已通过真实服务验收。** Supabase PostgreSQL + pgvector、DeepSeek 多轮对话、刷新恢复和会话切换已验证。PDF/RAG、长期记忆、搜索、邮件、PPT 业务尚未实现。尚未部署、未推送 GitHub。配置步骤见 [Phase 2 接入说明](docs/phase-2-setup.md)，结果见 [Phase 2 验收](docs/phase-2-verification.md)。
 
 ## 环境与启动
 
@@ -39,7 +39,7 @@ npm run build
 npm run test:e2e:production
 ```
 
-Playwright 默认下载至用户缓存。若希望浏览器也保存在项目依赖下，PowerShell 中先执行 `$env:PLAYWRIGHT_BROWSERS_PATH='0'`，然后在同一终端执行上述安装和测试命令。测试自动启动真实 Vite/Fastify 服务，5173 和 3001 端口需空闲；不拦截或伪造 API 响应。浏览器安装不应写入版本库。
+Playwright 默认下载至用户缓存。若希望浏览器也保存在项目依赖下，PowerShell 中先执行 `$env:PLAYWRIGHT_BROWSERS_PATH='0'`，然后在同一终端执行上述安装和测试命令。测试自动启动真实 Vite/Fastify 服务，测试端口 5273 和 3101 需空闲；不干扰开发端口 5173/3001。浏览器安装不应写入版本库。
 
 已有 Chrome 时，可设置 `$env:PLAYWRIGHT_CHANNEL='chrome'` 后直接运行 E2E，无需下载 Chromium。本轮使用此方式验证。
 
@@ -75,14 +75,20 @@ docs/assignment.txt   不可修改的原始要求
 | PORT | 3001 | API 端口，1–65535 |
 | LOG_LEVEL | info | fatal/error/warn/info/debug/trace/silent |
 | DATABASE_URL | 未设置 | postgresql:// 或 postgres:// 连接串；空值表示未配置 |
-| DATABASE_SSL | false | true 时开启 TLS 并验证服务端证书；托管库按供应商要求配置 |
+| DATABASE_SSL | true | 开启 TLS 并验证证书；只允许本机 PostgreSQL 显式关闭 |
+| DATABASE_CA_CERT | 未设置 | 可选 Supabase CA 公共证书本地路径；不会关闭证书校验 |
+| LLM_BASE_URL | 未设置 | 后端 OpenAI-compatible API 前缀，按供应商要求包含 /v1 |
+| LLM_MODEL | 未设置 | 模型名称 |
+| LLM_API_KEY | 未设置 | 后端专用 API Key |
+| LLM_TIMEOUT_MS | 45000 | 模型超时，最大 60000ms |
+| LLM_MAX_TOKENS | 1024 | 单次生成 token 上限 |
 | API_PROXY_TARGET | http://127.0.0.1:3001 | 仅开发时 Vite 代理目标，修改后需重启 |
 
-环境变量无效时启动失败；错误不打印凭据值。数据库地址通过格式校验不代表连接成功。数据库连接串若携带 SSL 参数，其行为遵循 node-postgres，避免与 DATABASE_SSL 混用相冲突的参数。
+环境变量无效时启动失败；错误不打印凭据值。数据库地址通过格式校验不代表连接成功。DATABASE_URL 禁止查询参数和 fragment；SSL 统一由 DATABASE_SSL/DATABASE_CA_CERT 配置，防止 URI 覆盖证书校验。
 
 ## 数据库与迁移
 
-Phase 1 不创建业务表，仅提供连接工厂、真实查询探测和初始化 vector 扩展迁移。需要支持 pgvector 的 PostgreSQL 与扩展创建权限。
+Phase 2 增加 conversations/messages 表；版本化迁移启用 RLS，没有向 Supabase Data API 开放访问策略。后台连接需要拥有相应读写权限，迁移连接需要支持 pgvector 和创建扩展权限。迁移只新增对象，不清空或删除数据。
 
 ```sh
 npm run db:check
@@ -91,9 +97,9 @@ npm run db:migrate
 npm run db:generate
 ```
 
-未配置 DATABASE_URL 时，前两个命令明确失败并返回非零退出码，不伪造成功。`db:migrate` 会修改目标数据库，只能对获授权的数据库执行；不在服务启动时自动迁移。`db:generate` 离线生成迁移，不需要数据库凭据。当前无业务 schema，后续按阶段增加。
+未配置 DATABASE_URL 时，前两个命令明确失败并返回非零退出码，不伪造成功。`db:migrate` 会修改目标数据库，只能对获授权的数据库执行；不在服务启动时自动迁移。`db:generate` 离线生成迁移，不需要数据库凭据。
 
-本轮未提供数据库凭据，因此实际连接、迁移执行和服务端 vector 扩展可用性尚未验证。Drizzle 向量 SQL 兼容性测试不能替代真实数据库验证。
+本次已通过真实连接、客户端 TLS/CA、迁移执行、服务端 vector 运算及真实模型验收。Drizzle SQL 和模型 Mock 测试只属于离线检查，不能替代真实验收；两层结果分别记录。Pooler 上游未报告 SSL，需在公开部署前核实 Supabase SSL enforcement 设置，详见 Phase 2 验收。
 
 ## 公网部署方案（尚未执行）
 
@@ -103,6 +109,6 @@ npm run db:generate
 4. 对目标数据库单独执行已审查迁移；配置连接池、TLS、备份和区域。健康探针用 `/api/health`；数据库部署就绪检查用 `/api/ready`。
 5. 公开业务应用前必须完成演示工作区保护、文件鉴权和调用限额；Phase 1 不能当作已完成的公网 Demo。
 6. 后续经确认接入 LLM、embedding、搜索、邮件。验证地域限制、额度、中文效果、超时和发件域名。邮件必须确认、去重并保存发送记录。
-7. 最终再完成 GitHub 推送、演示脚本、六项功能真实验收材料。本轮不创建资源、不调用付费服务、不部署或远程推送。
+7. 最终再完成 GitHub 推送、演示脚本、六项功能真实验收材料。本轮不创建资源、不部署或远程推送；模型验收按用户确认的计费预算执行。
 
-供应商、价格、访问稳定性、邮箱送达和数据库权限均需后续实测。尚未设置任何 LLM、embedding、对象存储、搜索或邮件凭据，当前不要求这些环境变量。
+模型兼容性、价格、访问稳定性和数据库权限需要本阶段实测。Embedding、对象存储、搜索与邮件凭据不在 Phase 2 范围。
