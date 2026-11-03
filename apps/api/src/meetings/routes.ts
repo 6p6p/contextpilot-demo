@@ -8,8 +8,8 @@ import { PublicError } from '../errors.js';
 import { createMeetingService } from './service.js';
 import { MAX_TXT_BYTES } from './analysis.js';
 
-export function registerMeetingRoutes(app: FastifyInstance, database: Database | null, storage: PrivateStorage | null, model: ChatModel | null, signal: AbortSignal) {
-  const service = database ? createMeetingService(database, storage, model, signal) : null;
+export function registerMeetingRoutes(app: FastifyInstance, database: Database | null, storage: PrivateStorage | null, model: ChatModel | null, signal: AbortSignal, memoryScope?: string) {
+  const service = database ? createMeetingService(database, storage, model, signal, memoryScope) : null;
   const requireService = () => { if (!service) throw new PublicError(503, 'DATABASE_NOT_CONFIGURED', '数据库未配置。'); return service; };
   const id = (params: unknown) => z.object({ id: z.uuid() }).parse(params).id;
   app.removeContentTypeParser('text/plain');

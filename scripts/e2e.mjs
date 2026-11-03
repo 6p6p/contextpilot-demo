@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 const production = process.argv[2] === 'production';
 const live = process.argv.includes('--live');
 const ragLive = process.argv.includes('--rag-live');
+const memoryLive = process.argv.includes('--memory-live');
 const meetingsLive = process.argv.includes('--meetings-live');
 const apiPort = 3101;
 const webPort = 5273;
@@ -53,6 +54,11 @@ async function waitFor(url, child) {
   throw new Error(`Service startup timed out: ${url}`);
 }
 try {
+  if (live) {
+    let existing = false;
+    try { const response = await fetch('http://127.0.0.1:3001/api/health', { signal: AbortSignal.timeout(2000) }); const body = await response.json(); existing = body.service === 'contextpilot-api'; } catch { /* No default development server responding. */ }
+    if (existing) throw new Error('Stop the development API on port 3001 before live acceptance; workers share durable queues.');
+  }
   await assertPortFree(apiPort);
   if (!production) await assertPortFree(webPort);
   const instrumentation = live && process.env.ACCEPTANCE_TRACKING === '1' ? ['--import', './scripts/acceptance-telemetry.mjs'] : [];
@@ -67,7 +73,7 @@ try {
   }
   const separator = process.argv.indexOf('--');
   const testArguments = separator >= 0 ? process.argv.slice(separator + 1) : [];
-  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', meetingsLive ? 'playwright.meetings.config.ts' : ragLive ? 'playwright.rag.config.ts' : live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts', ...testArguments]);
+  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', memoryLive ? 'playwright.memory.config.ts' : meetingsLive ? 'playwright.meetings.config.ts' : ragLive ? 'playwright.rag.config.ts' : live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts', ...testArguments]);
   const [code] = await once(runner, 'exit');
   process.exitCode = code ?? 1;
 } catch (error) {

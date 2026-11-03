@@ -1,3 +1,4 @@
+import { memoryCitationSchema } from './memory.js';
 import { z } from 'zod';
 import { citationSchema } from './documents.js';
 
@@ -8,6 +9,7 @@ export const messageSchema = z.object({
   id: z.uuid(), conversationId: z.uuid(), clientRequestId: z.uuid(), ordinal: z.number(),
   role: z.enum(['user', 'assistant']), content: z.string(), status: z.enum(['completed', 'processing', 'failed']),
   errorCode: z.string().nullable(), model: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
+  memorySources: z.array(memoryCitationSchema).default([]),
   knowledgeMode: z.boolean().default(false), sources: z.array(citationSchema).default([]),
 });
 export const conversationsResponse = z.object({ conversations: z.array(conversationSchema) });

@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { parseEnv } from '../apps/api/src/config/env.js';
 import { createDatabase } from '../apps/api/src/db/client.js';
 
-const path = process.env.ACCEPTANCE_PHASE === '4' ? '.acceptance/phase4-regression.json' : '.acceptance/phase3-live.json';
+const path = process.env.ACCEPTANCE_PHASE === '5' ? '.acceptance/phase5-regression.json' : process.env.ACCEPTANCE_PHASE === '4' ? '.acceptance/phase4-regression.json' : '.acceptance/phase3-live.json';
 const schema = z.object({ runId: z.uuid(), baselineDocuments: z.array(z.uuid()), baselineConversations: z.array(z.uuid()), documents: z.array(z.uuid()), conversations: z.array(z.uuid()), cleaned: z.boolean() });
 async function load() { return schema.parse(JSON.parse(await readFile(path, 'utf8'))); }
 export async function acceptanceFilename(name: string) {

@@ -2,9 +2,11 @@
 
 面向南京信人智能的 AI 外脑实操 Demo。原始需求见 [docs/assignment.txt](docs/assignment.txt)；阶段规范见 [SPEC.md](SPEC.md)，开发状态见 [TASKS.md](TASKS.md)。
 
+**Phase 5 已实现跨会话长期记忆。** 聊天与会议事实持久化，支持新会话召回、原文来源和提取状态查看；真实服务专项结果见 [Phase 5 验收记录](docs/phase-5-verification.md)。
+
 **Phase 4 会议分析已通过真实服务验收。** UTF-8 TXT 上传至 Supabase 私有 Storage，自动分析会议、生成带行号证据的风险与待办，支持人工编辑、重复上传去重和重新分析。邮件只准备草稿和版本确认，全部保持未发送。真实业务用例分次通过，模型不合规输出的失败记录也保留，详见 [Phase 4 验收记录](docs/phase-4-verification.md)。
 
-Phase 3 PDF RAG 与原有聊天真实回归通过；接入说明见 [Phase 3 配置](docs/phase-3-setup.md)。既有未复现上传 HTTP 500 仍为 OPEN；RAG 目前主要支持可核实摘录式回答，带证据综合归纳仍需评估。长期记忆、联网搜索、真实邮件发送和 PPT 尚未实现。未部署、未推送 GitHub；公开访问前必须完成工作区保护。
+Phase 3 PDF RAG 与原有聊天真实回归通过；接入说明见 [Phase 3 配置](docs/phase-3-setup.md)。既有未复现上传 HTTP 500 仍为 OPEN；RAG 目前主要支持可核实摘录式回答，带证据综合归纳仍需评估。长期记忆已实现，真实验收记录见下方；联网搜索、真实邮件发送和 PPT 尚未实现。未部署、未推送 GitHub；公开访问前必须完成工作区保护。
 
 ## 环境与启动
 
@@ -140,4 +142,29 @@ npm run test:e2e:meetings
 
 ## Phase 5 前置工程检查
 
-长期记忆开发已授权，尚未实现或验收。已修复会议/PDF worker 过期清理跨 Storage/Embedding 配置范围修改状态的问题，并通过真实 PostgreSQL 隔离/租约竞争测试（外部服务全部替身）。同配置开发与真实验收进程仍共享队列：真实付费验收前须停止其他 worker，仅保留一个带遥测实例，端口隔离不等于任务隔离。默认 E2E 不连接业务数据库。详见 [Phase 5 前置记录](docs/phase-5-verification.md)。
+前置修复已接受（7341aa9），主体实现与验收继续记录在下方。已修复会议/PDF worker 过期清理跨 Storage/Embedding 配置范围修改状态的问题，并通过真实 PostgreSQL 隔离/租约竞争测试（外部服务全部替身）。同配置开发与真实验收进程仍共享队列：真实付费验收前须停止其他 worker，仅保留一个带遥测实例，端口隔离不等于任务隔离。默认 E2E 不连接业务数据库。详见 [Phase 5 前置记录](docs/phase-5-verification.md)。
+
+## Phase 5 长期记忆
+
+现有聊天会自动为用户消息排队提取人物、时间、地点、主题、事件、决策；会议成功后从已验证分析提取事实。助手推测与风险影响不作为事实写入。先执行已审查的增量迁移 `npm run db:migrate`，再启动服务。沿用后端 LLM 和可选 BGE-M3/pgvector 配置，无新增依赖。服务端 `MEMORY_SCOPE` 默认为 `demo`，测试使用独立值；前端不能设置。当前仍是本地共享单工作区，未实现多用户鉴权，不可公开部署。
+
+在“长期记忆”入口查看事实、原文与任务状态；queued/processing 尚不能召回，failed 不影响原始记录，ready 才已完成提取。新建会话后普通聊天自动检索已保存事实，回答展开来源核对。相对日期和缺失年份保留原文，记录时间不代表发生时间；同名及冲突事实不擅自合并覆盖。引用式回答侧重可靠出处，尚非自由综合归纳。
+
+精确重复事实在同一来源上下文内去重并保留多个出处；语义相近改写不会被自动合并。现有历史资料不会未经请求批量付费提取；旧会议可通过现有重新分析触发。原始证据并不证明陈述本身真实。最新100条事实/任务可在界面查看。
+
+```powershell
+npm run check
+$env:RUN_LIVE_TESTS='1'
+# 真实数据库，模型/Embedding/Storage 为替身
+npm run test:integration -- tests/integration/memory.test.ts
+# 以下必须先获得费用授权；停止其他开发 API worker
+$env:ACCEPTANCE_TRACKING='1'
+$env:ACCEPTANCE_PHASE='5'
+$env:MEMORY_SCOPE='phase5-acceptance-final'
+$env:PLAYWRIGHT_CHANNEL='chrome'
+node scripts/e2e.mjs --live --memory-live -- --grep 'REAL chat/meeting'
+# 单独启动第二个服务进程检查重启持久化，不新增模型请求
+node scripts/e2e.mjs --live --memory-live -- --grep 'RESTART retains'
+```
+
+验收账本在被忽略的 `.acceptance`，不含凭据；它是请求前保守预留，不是账户账单。Phase 5 预算需单独授权，不沿用 Phase 4 授权。详情见 [Phase 5 验收记录](docs/phase-5-verification.md)。

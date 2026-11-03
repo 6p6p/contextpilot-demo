@@ -1,12 +1,13 @@
+import { answerWithMemory, type MemoryService } from '../memory/service.js';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
-import { conversations, messages } from '../db/schema.js';
+import { conversations, messages, memoryJobs } from '../db/schema.js';
 import type { createDatabase } from '../db/client.js';
 import type { ChatModel } from '../llm/adapter.js';
 import { PublicError } from '../errors.js';
 import { buildContext } from './context.js';
 import type { KnowledgeAnswerer } from '../knowledge/retrieval.js';
 
-export function createChatService(database: NonNullable<ReturnType<typeof createDatabase>>, model: ChatModel | null, knowledge?: KnowledgeAnswerer | null) {
+export function createChatService(database: NonNullable<ReturnType<typeof createDatabase>>, model: ChatModel | null, knowledge?: KnowledgeAnswerer | null, memory?: MemoryService | null) {
   const db = database.db;
   const expire = (conversationId: string) => db.update(messages).set({ status: 'failed', errorCode: 'GENERATION_INTERRUPTED', updatedAt: new Date() }).where(and(eq(messages.conversationId, conversationId), eq(messages.status, 'processing'), sql`${messages.createdAt} < now() - (case when ${messages.knowledgeMode} then interval '180 seconds' else interval '90 seconds' end)`));
   async function requireConversation(id: string) {
@@ -45,6 +46,7 @@ export function createChatService(database: NonNullable<ReturnType<typeof create
           { conversationId: id, clientRequestId: input.clientRequestId, ordinal, role: 'user', content: input.content, status: 'completed', knowledgeMode: Boolean(input.knowledgeMode) },
           { conversationId: id, clientRequestId: input.clientRequestId, ordinal: ordinal + 1, role: 'assistant', content: '', status: 'processing', knowledgeMode: Boolean(input.knowledgeMode) },
         ]).returning();
+        if (memory) await tx.insert(memoryJobs).values({ scope: memory.scope, messageId: rows.find(m => m.role === 'user')!.id }).onConflictDoNothing();
         await tx.update(conversations).set({ updatedAt: new Date(), ...(ordinal === 0 && conversation.title === '新对话' ? { title: input.content.slice(0, 40) } : {}) }).where(eq(conversations.id, id));
         return { existing: false as const, rows };
       });
@@ -52,8 +54,9 @@ export function createChatService(database: NonNullable<ReturnType<typeof create
       const assistant = preparation.rows.find(m => m.role === 'assistant')!;
       try {
         const recent = await db.select().from(messages).where(and(eq(messages.conversationId, id), sql`${messages.ordinal} < ${assistant.ordinal}`)).orderBy(desc(messages.ordinal)).limit(40);
-        const result = input.knowledgeMode ? await knowledge!.answer(input.content, model) : { ...await model.complete(buildContext(recent.reverse())), sources: [] };
-        await db.update(messages).set({ content: result.content, model: result.model, sources: result.sources, status: 'completed', updatedAt: new Date() }).where(and(eq(messages.id, assistant.id), eq(messages.status, 'processing')));
+        const candidates = !input.knowledgeMode && memory ? await memory.retrieve(input.content) : [];
+        const result = input.knowledgeMode ? { ...await knowledge!.answer(input.content, model), memorySources: [] } : candidates.length ? await answerWithMemory(input.content, buildContext(recent.reverse()), model, candidates) : { ...await model.complete(buildContext(recent.reverse())), sources: [], memorySources: [] };
+        await db.update(messages).set({ content: result.content, model: result.model, sources: result.sources, memorySources: result.memorySources, status: 'completed', updatedAt: new Date() }).where(and(eq(messages.id, assistant.id), eq(messages.status, 'processing')));
       } catch (error) {
         const code = error instanceof PublicError ? error.code : 'GENERATION_FAILED';
         await db.update(messages).set({ status: 'failed', errorCode: code, updatedAt: new Date() }).where(and(eq(messages.id, assistant.id), eq(messages.status, 'processing')));

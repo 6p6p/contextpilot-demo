@@ -1,3 +1,5 @@
+import { createMemoryService } from './memory/service.js';
+import { startDocumentWorker } from './knowledge/service.js';
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import { resolve } from 'node:path';
@@ -30,9 +32,16 @@ export function buildApp(env: Env) {
   const cancellableFetch: typeof fetch = (input, options) => fetch(input, { ...options, signal: AbortSignal.any([shutdown.signal, ...(options?.signal ? [options.signal] : [])]) });
   const storage = createStorage(env, cancellableFetch);
   const embedder = createEmbedder(env, cancellableFetch);
+  const memory = database ? createMemoryService(database, createChatModel({ ...env, LLM_MAX_TOKENS: 4096 }, cancellableFetch, { jsonMode: true }), embedder, env.MEMORY_SCOPE, shutdown.signal) : null;
+  app.get('/api/memories', async () => { if (!memory) throw new PublicError(503, 'DATABASE_NOT_CONFIGURED', '数据库未配置。'); return memory.list(); });
+  if (memory) {
+    let stop: (() => Promise<void>) | undefined;
+    app.addHook('onReady', async () => { stop = startDocumentWorker(memory); });
+    app.addHook('preClose', async () => { await stop?.(); });
+  }
   registerDocumentRoutes(app, database, storage, embedder, shutdown.signal);
-  registerMeetingRoutes(app, database, storage, createChatModel({ ...env, LLM_MAX_TOKENS: env.MEETING_MAX_TOKENS, LLM_TIMEOUT_MS: env.MEETING_TIMEOUT_MS }, cancellableFetch, { jsonMode: true }), shutdown.signal);
-  registerChatRoutes(app, database, createChatModel(env), database && embedder ? createKnowledgeAnswerer(createRetriever(database, embedder, env.RAG_MIN_SIMILARITY)) : null);
+  registerMeetingRoutes(app, database, storage, createChatModel({ ...env, LLM_MAX_TOKENS: env.MEETING_MAX_TOKENS, LLM_TIMEOUT_MS: env.MEETING_TIMEOUT_MS }, cancellableFetch, { jsonMode: true }), shutdown.signal, memory?.scope);
+  registerChatRoutes(app, database, createChatModel(env), database && embedder ? createKnowledgeAnswerer(createRetriever(database, embedder, env.RAG_MIN_SIMILARITY)) : null, memory);
 
   app.get('/api/health', async () => ({
     status: 'ok', service: 'contextpilot-api',

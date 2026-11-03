@@ -24,6 +24,7 @@ export const messages = pgTable('messages', {
   status: text({ enum: ['completed', 'processing', 'failed'] }).notNull(),
   errorCode: text('error_code'),
   model: text(),
+  memorySources: jsonb('memory_sources').$type<import('../../../../shared/memory.js').MemoryCitation[]>().notNull().default([]),
   knowledgeMode: boolean('knowledge_mode').notNull().default(false),
   sources: jsonb().$type<Citation[]>().notNull().default([]),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -107,3 +108,25 @@ export const emailDraftConfirmations = pgTable('email_draft_confirmations', {
   snapshot: jsonb().$type<{ recipients: string[]; subject: string; body: string; analysisId: string }>().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => [uniqueIndex('draft_confirmation_version_idx').on(t.draftId, t.version)]).enableRLS();
+
+// Phase 5: immutable source jobs and evidence-backed facts, isolated by server-owned scope.
+export const memoryJobs = pgTable('memory_jobs', {
+  id: uuid().primaryKey().defaultRandom(), scope: text().notNull(),
+  messageId: uuid('message_id').references(() => messages.id, { onDelete: 'restrict' }),
+  analysisId: uuid('analysis_id').references(() => meetingAnalyses.id, { onDelete: 'restrict' }),
+  status: text({ enum: ['queued', 'processing', 'ready', 'failed'] }).notNull().default('queued'),
+  attempts: integer().notNull().default(0), leaseToken: uuid('lease_token'), leaseUntil: timestamp('lease_until', { withTimezone: true }),
+  errorCode: text('error_code'), createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => [uniqueIndex('memory_job_message_idx').on(t.scope, t.messageId), uniqueIndex('memory_job_analysis_idx').on(t.scope, t.analysisId),
+  check('memory_job_source_check', sql`(${t.messageId} is null) <> (${t.analysisId} is null)`),
+  check('memory_job_status_check', sql`${t.status} in ('queued','processing','ready','failed')`), index('memory_job_queue_idx').on(t.scope, t.status, t.leaseUntil)]).enableRLS();
+export const memories = pgTable('memories', {
+  id: uuid().primaryKey().defaultRandom(), scope: text().notNull(), sourceGroup: uuid('source_group').notNull(), fingerprint: text().notNull(),
+  kind: text().$type<import('../../../../shared/memory.js').ExtractedMemory['kind']>().notNull(), content: text().notNull(), quote: text().notNull(),
+  sources: jsonb().$type<import('../../../../shared/memory.js').MemoryCitation['sources']>().notNull(),
+  embedding: variableVector(), dimensions: integer(), embeddingSpace: text('embedding_space'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => [uniqueIndex('memory_fact_identity_idx').on(t.scope, t.sourceGroup, t.fingerprint),
+  check('memory_kind_check', sql`${t.kind} in ('person','time','place','topic','event','decision')`),
+  check('memory_vector_check', sql`(${t.embedding} is null and ${t.dimensions} is null and ${t.embeddingSpace} is null) or (${t.embedding} is not null and ${t.dimensions} is not null and ${t.embeddingSpace} is not null and vector_dims(${t.embedding}) = ${t.dimensions} and ${t.dimensions} between 1 and 4096)`),
+  index('memories_scope_idx').on(t.scope)]).enableRLS();

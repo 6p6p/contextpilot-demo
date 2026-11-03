@@ -22,7 +22,7 @@ export function createChatModel(env: Env, transport: typeof fetch = fetch, optio
       }
       const parsed = responseSchema.safeParse(await response.json());
       if (!parsed.success) throw new PublicError(502, 'LLM_INVALID_RESPONSE', '模型未返回有效文本。');
-      if (options.jsonMode && parsed.data.choices[0].finish_reason === 'length') throw new PublicError(502, 'LLM_OUTPUT_TRUNCATED', '会议模型输出达到长度上限，未发布不完整结果；请缩短会议或提高专用上限后人工重跑。');
+      if (options.jsonMode && parsed.data.choices[0].finish_reason === 'length') throw new PublicError(502, 'LLM_OUTPUT_TRUNCATED', '结构化模型输出达到长度上限，未发布不完整结果；请缩短来源或检查专用上限后人工重跑。');
       return { content: parsed.data.choices[0].message.content, model };
     } catch (error) {
       if (error instanceof PublicError) throw error;

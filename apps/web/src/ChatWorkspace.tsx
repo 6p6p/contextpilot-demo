@@ -1,3 +1,4 @@
+import { MemorySources } from './MemoryPanel';
 import { useEffect, useRef, useState } from 'react';
 import { conversationSchema, conversationsResponse, messagesResponse, type Conversation, type ChatMessage } from '../../../shared/chat';
 import './chat.css';
@@ -116,6 +117,8 @@ export function ChatWorkspace() {
         {messages.map(message => <article className={`chat-message ${message.role}`} key={message.id} aria-label={message.role === 'user' ? '用户消息' : 'AI 消息'}>
           <strong>{message.role === 'user' ? '你' : 'ContextPilot'}</strong>
           <div className="message-content">{message.status === 'processing' ? '正在生成回复…' : message.status === 'failed' ? `回复失败（${message.errorCode || 'UNKNOWN'}），原消息已保存。` : message.content}</div>
+          {message.memorySources.length ? <p>本回答使用以下历史记忆：</p> : null}
+          {message.memorySources.map(m => <MemorySources key={m.id} memory={m} />)}
           {message.sources.map((source, i) => <details key={`${source.sourceId}-${i}`} className="citation"><summary>[{i + 1}] {source.filename} · 第 {source.page} 页</summary><blockquote>{source.quote}</blockquote><a href={`/api/documents/${source.documentId}/download`}>下载原始 PDF 核对</a></details>)}
         </article>)}
         {sending ? <p role="status">正在生成并保存回复，请稍候…</p> : null}
@@ -124,7 +127,7 @@ export function ChatWorkspace() {
         <label className="knowledge-toggle"><input type="checkbox" checked={knowledgeMode} onChange={event => setKnowledgeMode(event.target.checked)} disabled={creating || sending} /> 使用 PDF 知识库</label>
         <label htmlFor="chat-input">消息</label>
         <textarea id="chat-input" value={draft} onChange={event => setDraft(event.target.value)} maxLength={4000} rows={3} disabled={!selected || creating || sending || loading || pending} placeholder="输入消息，开始多轮对话…" />
-        <div className="composer-actions"><small>{knowledgeMode ? '仅按当前问题检索全部已就绪 PDF · 回答附原文证据' : '普通对话 · 当前会话上下文 · 不含联网或长期记忆'}</small><button type="submit" disabled={!selected || !draft.trim() || creating || sending || loading || pending}>发送消息</button></div>
+        <div className="composer-actions"><small>{knowledgeMode ? '仅按当前问题检索全部已就绪 PDF · 回答附原文证据' : '普通对话 · 自动召回已就绪历史记忆 · 不含联网'}</small><button type="submit" disabled={!selected || !draft.trim() || creating || sending || loading || pending}>发送消息</button></div>
       </form>
     </div>
   </section></>;

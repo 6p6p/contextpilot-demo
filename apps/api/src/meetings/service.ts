@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { and, asc, desc, eq, lt, or, sql } from 'drizzle-orm';
-import { meetings, meetingAnalyses, meetingRisks, riskEvidence, meetingTodos, emailDrafts, emailDraftConfirmations } from '../db/schema.js';
+import { meetings, meetingAnalyses, meetingRisks, riskEvidence, meetingTodos, emailDrafts, emailDraftConfirmations, memoryJobs } from '../db/schema.js';
 import type { Database } from '../knowledge/service.js';
 import type { PrivateStorage } from '../knowledge/storage.js';
 import type { ChatModel } from '../llm/adapter.js';
@@ -8,7 +8,7 @@ import { PublicError } from '../errors.js';
 import { analyzeTranscript, decodeTranscript, sameAction, taskKey, validDate } from './analysis.js';
 import { draftPatchSchema, todoPatchSchema, type MeetingAction } from '../../../../shared/meetings.js';
 
-export function createMeetingService(database: Database, storage: PrivateStorage | null, model: ChatModel | null, shutdown?: AbortSignal) {
+export function createMeetingService(database: Database, storage: PrivateStorage | null, model: ChatModel | null, shutdown?: AbortSignal, memoryScope?: string) {
   const db = database.db;
   async function requireMeeting(id: string) {
     const [row] = await db.select().from(meetings).where(eq(meetings.id, id));
@@ -112,6 +112,7 @@ export function createMeetingService(database: Database, storage: PrivateStorage
           const [owned] = await tx.select().from(meetings).where(owns).for('update');
           if (!owned) return;
           const [analysis] = await tx.insert(meetingAnalyses).values({ meetingId: claimed.id, version: claimed.requestedVersion, result, model: analysisModel }).returning();
+          if (memoryScope) await tx.insert(memoryJobs).values({ scope: memoryScope, analysisId: analysis.id }).onConflictDoNothing();
           const risks = [];
           for (const risk of result.risks) {
             const [saved] = await tx.insert(meetingRisks).values({ meetingId: claimed.id, analysisId: analysis.id, type: risk.type, level: risk.level, description: risk.description, impact: risk.impact }).returning();
