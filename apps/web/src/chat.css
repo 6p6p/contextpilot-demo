@@ -8,6 +8,18 @@
   overflow: hidden;
 }
 .nav-chat { padding: 13px 11px; color: #d8e4e2; font-size: 13px; text-decoration: none; }
+.knowledge-library { margin-top: 24px; padding: 24px; background: white; border: 1px solid #cddfda; border-radius: 12px; }
+.knowledge-library h2 { font-size: 17px; margin: 0; }
+.upload-label { font-size: 12px; color: #245f50; max-width: 260px; }
+.upload-label input { display: block; max-width: 100%; margin-top: 8px; }
+.document-list { list-style: none; padding: 0; max-height: 280px; overflow: auto; }
+.document-list li { border-top: 1px solid #e0e7e5; padding: 12px 0; display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; overflow-wrap: anywhere; }
+.document-list li p { flex-basis: 100%; margin: 0; }
+.document-list small, .document-list span { color: #657775; }
+.knowledge-toggle { display: flex !important; align-items: center; gap: 6px; padding-bottom: 10px; }
+.citation { margin-top: 12px; font-size: 12px; color: #28504e; overflow-wrap: anywhere; }
+.citation summary { cursor: pointer; }
+.citation blockquote { margin: 10px 0; white-space: pre-wrap; color: #354b46; }
 .conversation-list { padding: 20px; border-right: 1px solid #e0e7e5; background: #f8faf9; min-width: 0; }
 .conversation-list h2, .chat-heading h2 { font-size: 17px; margin: 0 0 16px; }
 .conversation-list ul { list-style: none; padding: 0; margin: 18px 0 0; max-height: 460px; overflow-y: auto; }

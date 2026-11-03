@@ -6,19 +6,21 @@ import dotenv from 'dotenv';
 
 const production = process.argv[2] === 'production';
 const live = process.argv.includes('--live');
+const ragLive = process.argv.includes('--rag-live');
 const apiPort = 3101;
 const webPort = 5273;
 if (live) {
   if (process.env.RUN_LIVE_TESTS !== '1') throw new Error('Live E2E requires RUN_LIVE_TESTS=1; real API calls may incur cost.');
   dotenv.config({ quiet: true });
   if (!process.env.DATABASE_URL || !process.env.LLM_BASE_URL || !process.env.LLM_MODEL || !process.env.LLM_API_KEY) throw new Error('Live E2E requires database and LLM configuration in root .env.');
+  if (ragLive && !['SUPABASE_URL', 'SUPABASE_STORAGE_KEY', 'SUPABASE_STORAGE_BUCKET', 'EMBEDDING_BASE_URL', 'EMBEDDING_API_KEY', 'EMBEDDING_MODEL', 'EMBEDDING_DIMENSIONS'].every(key => process.env[key])) throw new Error('Real RAG E2E requires complete private Storage and Embedding configuration.');
 }
 const children = [];
 const env = {
   ...process.env,
   NODE_ENV: production ? 'production' : 'test',
   PORT: String(apiPort), HOST: '127.0.0.1', DATABASE_URL: live ? process.env.DATABASE_URL : '', LOG_LEVEL: 'silent',
-  ...(!live ? { LLM_BASE_URL: '', LLM_MODEL: '', LLM_API_KEY: '' } : {}),
+  ...(!live ? { LLM_BASE_URL: '', LLM_MODEL: '', LLM_API_KEY: '', SUPABASE_STORAGE_KEY: '', EMBEDDING_API_KEY: '' } : {}),
   API_PROXY_TARGET: `http://127.0.0.1:${apiPort}`,
 };
 
@@ -51,15 +53,19 @@ async function waitFor(url, child) {
 try {
   await assertPortFree(apiPort);
   if (!production) await assertPortFree(webPort);
-  const api = start(production
+  const instrumentation = live && process.env.ACCEPTANCE_TRACKING === '1' ? ['--import', './scripts/acceptance-telemetry.mjs'] : [];
+  const api = start([...instrumentation, ...(production
     ? ['dist/server/apps/api/src/server.js']
-    : ['--import', 'tsx', 'apps/api/src/server.ts']);
+    : ['--import', 'tsx', 'apps/api/src/server.ts'])]);
   await waitFor(`http://127.0.0.1:${apiPort}/api/health`, api);
+  if (live) await waitFor(`http://127.0.0.1:${apiPort}/api/ready`, api);
   if (!production) {
     const web = start(['node_modules/vite/bin/vite.js', '--config', 'apps/web/vite.config.ts', '--port', String(webPort)]);
     await waitFor(`http://127.0.0.1:${webPort}`, web);
   }
-  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts']);
+  const separator = process.argv.indexOf('--');
+  const testArguments = separator >= 0 ? process.argv.slice(separator + 1) : [];
+  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', ragLive ? 'playwright.rag.config.ts' : live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts', ...testArguments]);
   const [code] = await once(runner, 'exit');
   process.exitCode = code ?? 1;
 } catch (error) {
@@ -70,7 +76,7 @@ try {
     if (child.exitCode !== null || child.signalCode !== null) return;
     const stopped = once(child, 'exit');
     child.kill('SIGTERM');
-    const timer = setTimeout(() => child.kill('SIGKILL'), 3000);
+    const timer = setTimeout(() => child.kill('SIGKILL'), 15000);
     try { await stopped; } finally { clearTimeout(timer); }
   }));
 }

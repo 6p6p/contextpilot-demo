@@ -7,9 +7,14 @@ import { createDatabase, probeDatabase } from './db/client.js';
 import { registerChatRoutes } from './chat/routes.js';
 import { createChatModel } from './llm/adapter.js';
 import { PublicError } from './errors.js';
+import { createStorage } from './knowledge/storage.js';
+import { createEmbedder } from './knowledge/embedding.js';
+import { registerDocumentRoutes } from './knowledge/routes.js';
+import { createRetriever, createKnowledgeAnswerer } from './knowledge/retrieval.js';
 
 export function buildApp(env: Env) {
   const app = Fastify({
+    pluginTimeout: 30000,
     logger: env.NODE_ENV === 'test' ? false : {
       level: env.LOG_LEVEL,
       redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'],
@@ -19,7 +24,13 @@ export function buildApp(env: Env) {
   const database = createDatabase(env);
   database?.pool.on('error', () => app.log.error('Idle database connection failed'));
   app.addHook('onClose', async () => { await database?.pool.end(); });
-  registerChatRoutes(app, database, createChatModel(env));
+  const shutdown = new AbortController();
+  app.addHook('preClose', async () => { shutdown.abort(); });
+  const cancellableFetch: typeof fetch = (input, options) => fetch(input, { ...options, signal: AbortSignal.any([shutdown.signal, ...(options?.signal ? [options.signal] : [])]) });
+  const storage = createStorage(env, cancellableFetch);
+  const embedder = createEmbedder(env, cancellableFetch);
+  registerDocumentRoutes(app, database, storage, embedder, shutdown.signal);
+  registerChatRoutes(app, database, createChatModel(env), database && embedder ? createKnowledgeAnswerer(createRetriever(database, embedder, env.RAG_MIN_SIMILARITY)) : null);
 
   app.get('/api/health', async () => ({
     status: 'ok', service: 'contextpilot-api',

@@ -5,9 +5,10 @@ import { createChatService } from './service.js';
 import { PublicError } from '../errors.js';
 import type { createDatabase } from '../db/client.js';
 import type { ChatModel } from '../llm/adapter.js';
+import type { KnowledgeAnswerer } from '../knowledge/retrieval.js';
 
-export function registerChatRoutes(app: FastifyInstance, database: ReturnType<typeof createDatabase>, model: ChatModel | null) {
-  const service = database ? createChatService(database, model) : null;
+export function registerChatRoutes(app: FastifyInstance, database: ReturnType<typeof createDatabase>, model: ChatModel | null, knowledge?: KnowledgeAnswerer | null) {
+  const service = database ? createChatService(database, model, knowledge) : null;
   function requireService() {
     if (!service) throw new PublicError(503, 'DATABASE_NOT_CONFIGURED', '尚未配置数据库。');
     return service;

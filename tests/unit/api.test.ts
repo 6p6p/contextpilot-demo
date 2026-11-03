@@ -36,6 +36,19 @@ describe('real Fastify routes', () => {
     const response = await app().inject({ method: 'POST', url: '/api/conversations', payload: { title: '' } });
     expect(response.statusCode).toBe(400);
   });
+  it('reports missing database for PDF routes without calling Storage', async () => {
+    const instance = app();
+    expect((await instance.inject('/api/documents')).statusCode).toBe(503);
+    const response = await instance.inject({ method: 'POST', url: '/api/documents?filename=test.pdf', headers: { 'content-type': 'application/pdf' }, payload: Buffer.from('%PDF-1.7 synthetic') });
+    expect(response.statusCode).toBe(503);
+  });
+  it('rejects non-PDF content type and oversized uploads before external calls', async () => {
+    const instance = app();
+    const wrong = await instance.inject({ method: 'POST', url: '/api/documents?filename=test.pdf', headers: { 'content-type': 'image/png' }, payload: Buffer.from('not PDF') });
+    expect(wrong.statusCode).toBe(415);
+    const large = await instance.inject({ method: 'POST', url: '/api/documents?filename=test.pdf', headers: { 'content-type': 'application/pdf' }, payload: Buffer.alloc(6 * 1024 * 1024 + 1) });
+    expect(large.statusCode).toBe(413);
+  });
   it('does not expose internal exception text', async () => {
     const instance = app();
     instance.get('/test-error', () => { throw new Error('private implementation detail'); });

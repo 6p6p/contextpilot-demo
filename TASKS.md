@@ -1,6 +1,6 @@
 # Development tasks
 
-Phase 1 and Phase 2 are authorized. Phase 2 is in progress; later phases require separate instruction.
+Phases 1–3 are authorized. Phase 2 accepted at 75e1d08. Phase 3 is in progress; later phases require separate instruction.
 
 ## Phase 1 — Engineering initialization
 
@@ -36,6 +36,35 @@ Verified: typecheck, 14 unit/API/compatibility tests, both builds, real Chrome d
 - [x] Record actual service results and create local Git commit after acceptance passes (identify with `git log -1`).
 
 Actual acceptance: Supabase Session pooler + user-provided CA; encrypted and certificate-authorized client TLS verified; pgvector operation passes; additive migration executed successfully. Real PostgreSQL tests pass (2, stub model), and real DeepSeek browser acceptance passes (1, no model/database mocks). Acceptance fixes covered a language-sensitive marker assertion and conversation creation/list-loading races. Five model calls total across manual test runs; official pricing checked, per-call output capped at 1024 tokens, estimated cost below approved ¥1, exact billed amount not independently checked. No automatic retries. Pooler-to-Postgres SSL is not reported by pg_stat_ssl; local TLS socket is separately verified. No cloud SSL setting was changed. No raw credentials were inspected or printed. See docs/phase-2-verification.md.
+
+## Phase 3 — PDF RAG (verified)
+
+- [x] Read rules/spec/tasks and existing chat/database implementation.
+- [x] Implement backend-only private Supabase Storage adapter; refuse public buckets.
+- [x] Implement PDF size/MIME/header validation, durable uploaded/processing/ready/failed states and source download.
+- [x] Implement PDF.js page extraction, 800-character chunks / 120 overlap with page/offset provenance; no OCR.
+- [x] Implement independent configurable Embedding adapter, strict dimensions and model-space isolation.
+- [x] Implement pgvector exact cosine retrieval, multi-document candidates and evidence-gated existing chat integration.
+- [x] Generate/review/apply additive migration 0002; no destructive operations.
+- [x] Implement lease-based single-worker recovery and atomic chunk publication.
+- [x] Add upload/list/status UI, PDF-mode checkbox and persistent filename/page/quote display.
+- [x] Generate 3 reproducible synthetic PDFs and visually verify all 5 pages.
+- [x] Final npm run check: 45 tests, strict typecheck and both builds pass.
+- [x] Real PostgreSQL integration: 5 tests passed; Storage/Embedding/LLM explicitly stubbed in this layer.
+- [x] Default development/production E2E: 1 test each passes with real local API, external service credentials isolated.
+- [x] User confirms Storage/Embedding configuration and authorizes Phase 3 real API calls; selected SiliconFlow BAAI/bge-m3, configured dimensions 1024.
+- [x] Real Supabase private bucket metadata, upload/download SHA-256 match; this run's uniquely named probe object deleted successfully.
+- [x] After user account check, exactly one minimal Chinese preflight returned HTTP 200 / 1024 finite nonzero dimensions / 11 tokens, no retry.
+- [x] Real stored vector audit: 8 real chunks, configured and actual dimensions both 1024; 2 persisted citations verified against source records.
+- [x] True RAG E2E passed: two-document facts, file/page citations, original download hashes, reload and insufficient evidence (47.6s).
+- [x] Real blank/corrupt PDF failure states passed (18.2s); no chunks published for failed files.
+- [x] Real normal-chat/reload/switch regression passed (22.3s).
+- [x] Added and passed real-DB/stub-external shutdown cancellation and lease-resume regression (8.94s).
+- [x] Final npm run check and development/production E2E pass after lifecycle fixes.
+- [x] Cleaned this run's 6 Storage objects, 7 document rows, 10 chunks, 8 messages and 3 conversations; all baseline document/conversation IDs retained.
+- [x] Record verified model/dimensions/results; create local commit after acceptance (identify with git log -1).
+
+Latest acceptance is complete: SiliconFlow BAAI/bge-m3 / 1024 actually verified; no model substitution. Earlier 402 preflight stopped correctly and succeeded after user account/configuration check; exact original account cause not asserted. User approved combined ¥5 budget. Official BAAI/bge-m3 pricing is free; 4 measured DeepSeek calls total 2188 input / 367 output tokens, conservatively about US$0.00110 (overall estimate below ¥0.02; actual account bill not read). All model calls in completed tracked runs returned 200. No automatic model retry. Local-only; no login/public deployment or meeting module. See docs/phase-3-verification.md.
 
 ## Later phases — not started
 

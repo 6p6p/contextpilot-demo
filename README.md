@@ -2,7 +2,7 @@
 
 面向南京信人智能的 AI 外脑实操 Demo。原始需求见 [docs/assignment.txt](docs/assignment.txt)；阶段规范见 [SPEC.md](SPEC.md)，开发状态见 [TASKS.md](TASKS.md)。
 
-**Phase 2 持久化 AI 对话已通过真实服务验收。** Supabase PostgreSQL + pgvector、DeepSeek 多轮对话、刷新恢复和会话切换已验证。PDF/RAG、长期记忆、搜索、邮件、PPT 业务尚未实现。尚未部署、未推送 GitHub。配置步骤见 [Phase 2 接入说明](docs/phase-2-setup.md)，结果见 [Phase 2 验收](docs/phase-2-verification.md)。
+**Phase 3 PDF RAG 已通过真实服务验收。** Supabase 私有 Storage、PDF.js、SiliconFlow BAAI/bge-m3 / 1024 维、pgvector 检索及原文引用已验证；原有聊天回归通过。本轮临时云端测试数据已按清单清理，可使用版本化测试 PDF 重新上传演示。长期记忆、会议、搜索、邮件和 PPT 尚未实现。尚未部署、未推送 GitHub。见 [Phase 3 接入说明](docs/phase-3-setup.md)和[真实验收记录](docs/phase-3-verification.md)。
 
 ## 环境与启动
 

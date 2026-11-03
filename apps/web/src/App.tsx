@@ -35,10 +35,10 @@ export function App() {
         <a className="nav-chat" href="#chat">对话与历史</a>
         {['知识库文件', '会议与待办', '长期记忆', '演示文稿'].map(name => <span className="nav-future" key={name}>{name}<small>待开发</small></span>)}
       </nav>
-      <div className="sidebar-foot">单一演示工作区<br />Phase 2 · 持久化 AI 对话</div>
+      <div className="sidebar-foot">单一演示工作区<br />Phase 3 · PDF 知识库</div>
     </aside>
     <main>
-      <header><span>CONTEXT → DECISION</span><span className="phase">Phase 2</span></header>
+      <header><span>CONTEXT → DECISION</span><span className="phase">Phase 3</span></header>
       <section className="intro"><p className="eyebrow">CONTEXT PILOT / WORKSPACE</p><h1>让上下文，成为决策的起点。</h1><p>创建会话，与真实模型交流。对话历史保存在 PostgreSQL，支持刷新恢复与会话切换。</p></section>
       <section className="status-card" aria-labelledby="service-title">
         <div><p className="eyebrow">SYSTEM CONNECTION</p><h2 id="service-title">服务连接</h2><p>由浏览器请求真实 Fastify 后端，不使用模拟响应。</p></div>
@@ -52,12 +52,12 @@ export function App() {
       <ChatWorkspace />
       <section className="roadmap" aria-label="能力规划">
         {[
-          ['01', '知识检索', 'PDF 背景知识 · 原文引用'],
+          ['01', '会议原文', 'TXT 会议分析 · 风险证据'],
           ['02', '会议与行动', '风险证据 · 待办 · 邮件确认'],
           ['03', '记忆与输出', '跨会话记忆 · 联网搜索 · PPT'],
         ].map(([number, title, description]) => <article key={number}><span className="number">{number}</span><h2>{title}</h2><p>{description}</p><span className="planned">尚未实现</span></article>)}
       </section>
-      <footer>本地开发阶段；尚未启用工作区鉴权。请勿公开部署。上传、记忆、搜索、邮件和 PPT 尚未启用。</footer>
+      <footer>本地开发阶段；尚未启用工作区鉴权。请勿公开部署。会议、长期记忆、搜索、邮件和 PPT 尚未启用。</footer>
     </main>
   </div>;
 }
