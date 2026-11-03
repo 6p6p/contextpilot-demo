@@ -1,0 +1,51 @@
+{
+  "name": "contextpilot-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "tsx watch apps/api/src/server.ts",
+    "dev:web": "vite --config apps/web/vite.config.ts",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.server.json --noEmit",
+    "build": "tsc -p tsconfig.server.json && vite build --config apps/web/vite.config.ts",
+    "start": "node dist/server/apps/api/src/server.js",
+    "test": "vitest run",
+    "test:e2e": "node scripts/e2e.mjs",
+    "test:e2e:production": "node scripts/e2e.mjs production",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx apps/api/src/db/migrate.ts",
+    "db:check": "tsx apps/api/src/db/check.ts",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "@fastify/static": "10.1.8",
+    "dotenv": "18.0.9",
+    "drizzle-orm": "0.45.4",
+    "fastify": "5.12.8",
+    "pdfjs-dist": "6.5.438",
+    "pg": "8.23.1",
+    "pptxgenjs": "4.0.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "concurrently": "10.0.6",
+    "drizzle-kit": "0.31.11",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.1.0"
+  }
+}
