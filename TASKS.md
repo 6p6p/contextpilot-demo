@@ -1,6 +1,6 @@
 # Development tasks
 
-Phases 1–4 are authorized. Phase 3 accepted at 8edb365; Phase 4 business acceptance is verified; local completion commit is identified with git log -1. Advance by feature milestones, not calendar dates. Later phases require separate instruction.
+Phases 1–5 are authorized; Phase 5 begins with a bounded engineering review. Phase 3 accepted at 8edb365; Phase 4 business acceptance is verified; local completion commit is identified with git log -1. Advance by feature milestones, not calendar dates. Later phases require separate instruction.
 
 ## Phase 1 — Engineering initialization
 
@@ -100,3 +100,15 @@ Latest acceptance is complete: SiliconFlow BAAI/bge-m3 / 1024 actually verified;
 - [ ] Real web search.
 - [ ] Chat-driven PPTX generation/download.
 - [ ] Six-capability public acceptance, GitHub delivery and demo materials.
+
+## Phase 5 — long-term memory (in progress)
+
+- [x] Review Phase 4 claim atomicity, lease fencing, process isolation and three historical failures.
+- [x] Scope meeting/PDF expired-job cleanup to the same configuration boundary as claiming.
+- [x] Real PostgreSQL isolation/concurrent-pool takeover regression: 2 passed (external providers stubbed); npm run check: 57 passed plus types/build.
+- [ ] Review prerequisite fix before memory implementation milestone.
+- [ ] Implement provenance-preserving extraction, deduplication, durable memory, semantic recall and existing chat/UI integration.
+- [ ] Review additive migration and obtain separate paid-call budget; run distinct mock/database/live acceptance.
+- [ ] Commit completed memory milestone only after all required gates pass.
+
+Evidence and limitations: docs/phase-5-verification.md. Phase 3 upload HTTP 500 remains OPEN.

@@ -89,8 +89,10 @@ export function createMeetingService(database: Database, storage: PrivateStorage
     async processOne() {
       if (!storage || !model || shutdown?.aborted) return false;
       const now = new Date();
-      await db.update(meetings).set({ status: 'failed', errorCode: 'MEETING_UPLOAD_INTERRUPTED', errorMessage: '上传中断，原始文件未确认保存。' }).where(and(eq(meetings.status, 'uploaded'), eq(meetings.storageReady, false), lt(meetings.createdAt, new Date(Date.now() - 300000))));
-      await db.update(meetings).set({ status: 'failed', errorCode: 'MEETING_INTERRUPTED', errorMessage: '多次分析中断，已停止自动恢复。' }).where(and(eq(meetings.status, 'processing'), lt(meetings.leaseUntil, now), sql`${meetings.attempts} >= 2`));
+      // Cleanup must use the same service boundary as task claiming.
+      const scope = and(eq(meetings.storageOrigin, storage.origin), eq(meetings.storageBucket, storage.bucket));
+      await db.update(meetings).set({ status: 'failed', errorCode: 'MEETING_UPLOAD_INTERRUPTED', errorMessage: '上传中断，原始文件未确认保存。' }).where(and(scope, eq(meetings.status, 'uploaded'), eq(meetings.storageReady, false), lt(meetings.createdAt, new Date(Date.now() - 300000))));
+      await db.update(meetings).set({ status: 'failed', errorCode: 'MEETING_INTERRUPTED', errorMessage: '多次分析中断，已停止自动恢复。' }).where(and(scope, eq(meetings.status, 'processing'), lt(meetings.leaseUntil, now), sql`${meetings.attempts} >= 2`));
       const claimed = await db.transaction(async tx => {
         const [row] = await tx.select().from(meetings).where(and(eq(meetings.storageReady, true), eq(meetings.storageOrigin, storage.origin), eq(meetings.storageBucket, storage.bucket), sql`${meetings.attempts} < 2`, or(eq(meetings.status, 'uploaded'), and(eq(meetings.status, 'processing'), lt(meetings.leaseUntil, now))))).orderBy(meetings.createdAt).limit(1).for('update', { skipLocked: true });
         if (!row) return null;

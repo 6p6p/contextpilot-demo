@@ -137,3 +137,7 @@ npm run test:e2e:meetings
 ```
 
 可复现样本：meeting-risk.txt、meeting-safe.txt、meeting-unknown-injection.txt；长文由 scripts/meeting-fixtures.ts 生成。验收测试保留自己的云端记录供审查，不删除用户数据。实时测试并非默认离线检查的一部分；费用统计范围和失败历史见阶段验收记录。
+
+## Phase 5 前置工程检查
+
+长期记忆开发已授权，尚未实现或验收。已修复会议/PDF worker 过期清理跨 Storage/Embedding 配置范围修改状态的问题，并通过真实 PostgreSQL 隔离/租约竞争测试（外部服务全部替身）。同配置开发与真实验收进程仍共享队列：真实付费验收前须停止其他 worker，仅保留一个带遥测实例，端口隔离不等于任务隔离。默认 E2E 不连接业务数据库。详见 [Phase 5 前置记录](docs/phase-5-verification.md)。

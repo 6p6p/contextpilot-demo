@@ -53,8 +53,10 @@ export function createDocumentService(database: Database, storage: PrivateStorag
     async processOne() {
       if (!storage || !embedder) return false;
       const now = new Date();
-      await db.update(documents).set({ status: 'failed', errorCode: 'UPLOAD_INTERRUPTED', errorMessage: '上传中断，未确认保存成功。', updatedAt: now }).where(and(eq(documents.status, 'uploaded'), eq(documents.storageReady, false), lt(documents.createdAt, new Date(Date.now() - 300000))));
-      await db.update(documents).set({ status: 'failed', errorCode: 'PROCESSING_INTERRUPTED', errorMessage: '多次处理中断，停止自动恢复。', updatedAt: now }).where(and(eq(documents.status, 'processing'), lt(documents.leaseUntil, now), sql`${documents.attempts} >= 2`));
+      // Cleanup must use the same service boundary as task claiming.
+      const scope = and(eq(documents.storageOrigin, storage.origin), eq(documents.storageBucket, storage.bucket), eq(documents.embeddingSpace, embedder.space));
+      await db.update(documents).set({ status: 'failed', errorCode: 'UPLOAD_INTERRUPTED', errorMessage: '上传中断，未确认保存成功。', updatedAt: now }).where(and(scope, eq(documents.status, 'uploaded'), eq(documents.storageReady, false), lt(documents.createdAt, new Date(Date.now() - 300000))));
+      await db.update(documents).set({ status: 'failed', errorCode: 'PROCESSING_INTERRUPTED', errorMessage: '多次处理中断，停止自动恢复。', updatedAt: now }).where(and(scope, eq(documents.status, 'processing'), lt(documents.leaseUntil, now), sql`${documents.attempts} >= 2`));
       const claimed = await db.transaction(async tx => {
         const [row] = await tx.select().from(documents).where(and(
           eq(documents.storageReady, true), eq(documents.embeddingSpace, embedder.space),

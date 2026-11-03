@@ -104,3 +104,7 @@ API: GET/POST /api/meetings, GET /api/meetings/:id, GET /api/meetings/:id/transc
 Live budget is ¥5 combined. Opt-in instrumentation reserves conservative text token/output cost before each request, aggregates reservations across acceptance processes and stops before budget exhaustion. Any failed provider response stops further instrumented calls; no automatic provider retries. Instrumentation only covers requests made by the instrumented acceptance process; another running local worker can claim durable jobs, so its partial ledger is not a complete account bill. Unit/API, real-DB/stub-external and actual provider/browser acceptance remain separate.
 
 Carry-forward OPEN issues: Phase 3 isolated upload HTTP 500 is not reproduced or declared fixed; RAG remains verifiable extractive answering, and evidence-backed synthesis requires later evaluation. Public workspace protection is still required before deployment.
+
+## Phase 5 prerequisite review
+
+Phase 5 long-term memory is authorized by the user, superseding the Phase 4 exclusion for this new phase. Before memory implementation, expired-job cleanup now uses the same Storage/embedding configuration boundary as claiming. Claim and publish use database row locks and lease tokens; lease recovery may repeat external calls. Same-configuration API processes share a queue regardless of port/NODE_ENV; live acceptance requires one observable worker instance. No new task framework or migration in this prerequisite milestone. See docs/phase-5-verification.md; memory acceptance is still pending.
