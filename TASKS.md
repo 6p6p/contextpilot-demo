@@ -158,7 +158,7 @@ Phase 7 real acceptance completed after baseline d85dde3; feature milestones onl
 - [x] Offline and realDB/stub checks; retain failed attempts and fixes separately.
 - [x] Final review/checks passed; create local completion commit (identify via git log -1), then stop before PPT.
 
-## Phase 8 — AI PowerPoint Generation（云端与自动化验收通过，原生软件待人工）
+## Phase 8 — AI PowerPoint Generation（已正式关闭）
 
 保持 TypeScript 模块化单体、PptxGenJS4.0.1、现有任务 Worker/PostgreSQL/私有 Supabase Storage。聊天明确生成指令触发；支持中文16:9商务模板，总页数5–10（含封面/参考资料，默认7）。两阶段：有界来源检索与Zod结构化规划 → 确定性渲染；不执行模型代码，不缩小字体掩盖溢出。
 
@@ -172,9 +172,32 @@ Phase 7 real acceptance completed after baseline d85dde3; feature milestones onl
 
 测试：npm run check通过143项单元/API/兼容性测试、类型检查与构建；PPT真实数据库/外部替身10项通过，发布4项专项复跑通过；其余模块21项初跑19通过2项连接超时，邮件/会议7项单独复跑全通过。默认开发/生产E2E各1通过；真实只读鉴权/四文件下载/进程重启E2E1通过。来源持久化审计4任务/32份所用快照通过。四份实际PPTX独立包/布局校验0问题。模型/Embedding/搜索本轮0调用，邮件未发送，EMAIL_DELIVERY_ENABLED=false。
 
-人工验收：用PowerPoint/WPS打开本地A/B/C/D（5/10/5/10），确认无修复提示；逐页检查中文字体、标题/表格换行、遮挡与备注引用。重点复核B7、D9已删除陈述及C/D人工负责人/日期。原生打开仍PENDING，程序结构或PNG检查不等于该项通过。Phase3偶发上传HTTP500继续OPEN。等待用户最终审查，不进入Phase9、不推送、不部署。
+人工验收：用PowerPoint/WPS打开本地A/B/C/D（5/10/5/10），确认无修复提示；逐页检查中文字体、标题/表格换行、遮挡与备注引用。重点复核B7、D9已删除陈述及C/D人工负责人/日期。用户已确认PowerPoint/WPS原生打开通过，Phase8正式关闭；程序检查不替代这一用户确认。Phase3偶发上传HTTP500降为观察项；Phase9按用户新授权推进。
 
 - [x] B/D安全发布及四份云端一致性、鉴权、重启验收。
 - [x] 类型/构建/单元、数据库及适用E2E检查。
-- [ ] PowerPoint/WPS原生打开：等待用户人工确认。
-- [ ] 用户最终审查；不自动进入Phase9。
+- [x] PowerPoint/WPS原生打开：用户已确认通过。
+- [x] 用户最终审查通过，Phase8关闭；用户已批准Phase9准备。
+
+## Phase 9 — Railway Demo 本地部署准备（已完成，未上线）
+
+本轮新增Railway费用授权US$0；不创建Project/Service、不升级/绑卡、不推送/连接GitHub触发部署、不开放公网。取消独立Phase9A，不做生产级审计/复杂压测/历史故障专项。Phase8已由用户确认云端、自动化及PowerPoint/WPS原生打开通过并正式关闭。
+
+实现：DEMO_ACCESS_KEY全站后端HMAC口令门禁（包含AI、上传、下载和其他业务API），HttpOnly/SameSiteStrict/生产Secure Cookie，登录与共享请求/写/上传次数限制，所有模型/搜索/向量实例共用尝试/分钟/并发及体积限制。旧PPT凭据不能绕过全站验证；全站会话可直接使用PPT。前端仅在登录后挂载业务工作台，不存储口令。生产/非回环地址缺口令或生产误开邮件会失败启动。
+
+railway.json使用Railpack仓库根构建npm ci --include=dev && npm run build，直接node dist/server/apps/api/src/server.js启动，单副本，Fastify托管SPA/API及现有模块Worker轮询；HOST生产默认0.0.0.0，PORT使用平台值。/api/health为存活200，/api/ready仅数据库可达才200，其他情况503；响应x-request-id、基础日志不含query/Cookie/Authorization。业务数据和文件继续在Supabase，无生产.acceptance/临时目录依赖，无新数据库/Volume/Redis/独立Worker服务或SQL迁移。
+
+构建后npm run deploy:check做只读配置presence检查（不证明凭据有效）；npm run db:status只SELECT迁移hash/时间，无自动迁移。此前已验收0008；本轮不读取真实.env/数据库/Storage，不把历史结果冒充本轮云端验证。
+
+验证：Node24.15.0/npm11.12.1，npm run check通过155项测试/类型检查/两个构建；开发和生产Chrome E2E各1通过；npm run test:production:smoke通过配置齐备/缺失、3种启动拒绝、数据库未配置/不可达、编译SPA、鉴权/429、日志脱敏及关闭。API未授权上传/下载/AI请求401，文件超限413；生产E2E深链/刷新/退出和移动端检查通过。无真实业务API、数据库/Storage调用、资源新增或费用。
+
+当前无PATH可用Railway CLI，也无原账号关联配置；新增railway.json不是已创建项目。账号/是否有可复用Service未验证。若控制台确认无可复用，下一轮需另行授权一个Project/Node Service。Free方案是否足够当前Demo待实际验证；不能把免费credit当稳定长期承诺。后续账号、GitHub连接、变量、费用和验收步骤见[Railway部署说明](docs/railway-deployment.md)；本轮证据与分级问题见[Phase9准备验收](docs/phase-9-verification.md)。
+
+Phase3上传HTTP500降为观察项，不阻塞；历史数据库连接超时只在实际复发时排查，不引入重试框架。EMAIL_DELIVERY_ENABLED=false，真实发送仍需单独授权。进程内调用限额重启会重置，不是账单硬上限；Cookie统一失效可轮换共享口令，不增加多用户/RBAC。
+
+本地准备测试通过后本地提交，停止等待审查。真实Railway部署、实际Supabase连接/文件读写、平台Worker重启/六功能、公网网址与费用验证均未执行，需要下一轮明确授权。
+- [x] 全站门禁、限额、生产配置、只读预检与部署说明。
+- [x] check155测试、开发/生产E2E与本地编译启动检查。
+- [x] Phase8用户原生软件确认已记录，正式关闭。
+- [ ] 用户审查本地准备commit；另行授权Railway/GitHub/公网操作。
+- [ ] 账号Free/网络/余额、实际资源/服务变量和云端六功能验收。

@@ -32,6 +32,7 @@ if (live) {
 const children = [];
 const env = {
   ...process.env,
+  DEMO_ACCESS_KEY: production ? 'synthetic-production-e2e-access-1234567890' : '',
   PPT_ACCESS_KEY: presentationLive ? process.env.PPT_ACCESS_KEY : '',
   DOTENV_CONFIG_PATH: live || emailStub ? (process.env.DOTENV_CONFIG_PATH || '.env') : '.acceptance/disabled-offline.env',
   ...(presentationLive ? {PPT_SCOPE:process.env.PPT_ACCEPTANCE_SCOPE||'phase8-acceptance',MEMORY_SCOPE:'phase8-acceptance'} : {}),
@@ -55,7 +56,7 @@ function start(args) {
   // No shell/npm/watch wrappers: each service is one directly owned Node process.
   const child = spawn(process.execPath, args, { env, stdio: ['ignore','pipe','pipe'], windowsHide: true });
   // Playwright request errors can contain cookie headers. Redact before any output reaches logs.
-  const secrets=['PPT_ACCESS_KEY','LLM_API_KEY','EMBEDDING_API_KEY','SUPABASE_STORAGE_KEY','RESEND_API_KEY','TAVILY_API_KEY','DATABASE_URL'].map(k=>env[k]).filter(Boolean);
+  const secrets=['DEMO_ACCESS_KEY','PPT_ACCESS_KEY','LLM_API_KEY','EMBEDDING_API_KEY','SUPABASE_STORAGE_KEY','RESEND_API_KEY','TAVILY_API_KEY','DATABASE_URL'].map(k=>env[k]).filter(Boolean);
   relayRedacted(child.stdout,process.stdout,secrets);relayRedacted(child.stderr,process.stderr,secrets);
   children.push(child);
   return child;

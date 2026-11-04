@@ -24,6 +24,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx apps/api/src/db/migrate.ts",
     "db:check": "tsx apps/api/src/db/check.ts",
+    "db:status": "node dist/server/apps/api/src/db/status.js",
+    "test:production:smoke": "node scripts/production-smoke.mjs",
+    "deploy:check": "node dist/server/apps/api/src/config/check-deployment.js",
     "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {

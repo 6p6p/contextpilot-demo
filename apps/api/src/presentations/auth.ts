@@ -2,12 +2,14 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { Env } from '../config/env.js';
+import {hasDemoAccess} from '../demo/access.js';
 import { PublicError } from '../errors.js';
 const digest=(s:string)=>createHash('sha256').update(s).digest();
 export function createPresentationAuth(env:Env) {
   const signature=(s:string)=>createHmac('sha256',env.PPT_ACCESS_KEY!).update(`ppt:${env.PPT_SCOPE}:${s}`).digest('base64url');
   return {
     require(request:Pick<FastifyRequest,'headers'>) {
+      if(hasDemoAccess(env,request))return;
       if(!env.PPT_ACCESS_KEY)throw new PublicError(503,'PPT_ACCESS_NOT_CONFIGURED','请配置后端 PPT_ACCESS_KEY 后解锁 PPT。');
       const cookie=(request.headers.cookie??'').split(';').map(s=>s.trim()).find(s=>s.startsWith('cp_ppt='))?.slice(7)??'';
       const [expires,nonce,tag]=cookie.split('.');

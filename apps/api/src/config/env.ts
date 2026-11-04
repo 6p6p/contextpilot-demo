@@ -5,6 +5,13 @@ const optionalDatabaseUrl = z.preprocess(
   z.url().refine(value => /^postgres(?:ql)?:\/\//.test(value)).optional(),
 );
 const schema = z.object({
+  DEMO_ACCESS_KEY: z.preprocess(v=>v===''?undefined:v,z.string().min(32).max(128).optional()),
+  DEMO_API_PER_MINUTE:z.coerce.number().int().min(1).max(1000).default(300),
+  DEMO_WRITES_PER_MINUTE:z.coerce.number().int().min(1).max(100).default(20),
+  DEMO_UPLOADS_PER_HOUR:z.coerce.number().int().min(1).max(100).default(5),
+  DEMO_MODEL_CALLS:z.coerce.number().int().min(1).max(1000).default(100),
+  DEMO_EMBEDDING_CALLS:z.coerce.number().int().min(1).max(2000).default(200),
+  DEMO_SEARCH_CALLS:z.coerce.number().int().min(1).max(100).default(20),
   PPT_ACCESS_KEY: z.preprocess(v => v === '' ? undefined : v, z.string().min(32).max(128).optional()),
   PPT_SCOPE: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/).default('demo'),
   PPT_MAX_TOKENS: z.coerce.number().int().min(2048).max(8192).default(8192),
@@ -52,6 +59,12 @@ export function parseEnv(source: NodeJS.ProcessEnv) {
     // Report field names only: validation errors must never echo credentials.
     throw new Error(`Invalid environment fields: ${result.error.issues.map(issue => issue.path.join('.')).join(', ')}`);
   }
+  if(result.data.NODE_ENV==='production'){
+    if(!result.data.DEMO_ACCESS_KEY)throw new Error('Production requires DEMO_ACCESS_KEY');
+    if(result.data.EMAIL_DELIVERY_ENABLED)throw new Error('Demo production requires EMAIL_DELIVERY_ENABLED=false');
+    if(!source.HOST)result.data.HOST='0.0.0.0';
+  }
+  if(!['127.0.0.1','localhost','::1'].includes(result.data.HOST)&&!result.data.DEMO_ACCESS_KEY)throw new Error('Non-loopback HOST requires DEMO_ACCESS_KEY');
   if (result.data.DATABASE_URL) {
     const url = new URL(result.data.DATABASE_URL);
     if (url.search || url.hash) throw new Error('DATABASE_URL must not contain query parameters or fragments; encode password and configure TLS separately');

@@ -1,4 +1,6 @@
 import { createPresentationAuth } from './presentations/auth.js';
+import {registerDemoAccess} from './demo/access.js';
+import {createDemoTransport} from './demo/limits.js';
 import { createPresentationService } from './presentations/service.js';
 import { createPresentationSources } from './presentations/sources.js';
 import { registerPresentationRoutes } from './presentations/routes.js';
@@ -29,16 +31,19 @@ export function buildApp(env: Env, overrides: { emailProvider?: EmailProvider | 
     pluginTimeout: 30000,
     logger: env.NODE_ENV === 'test' ? false : {
       level: env.LOG_LEVEL,
+      serializers:{req:(request)=>({method:request.method,url:request.url?.split('?')[0]})},
       redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'],
     },
     bodyLimit: 1024 * 1024,
   });
+  app.addHook('onRequest',async(request,reply)=>{reply.header('x-request-id',request.id);});
+  registerDemoAccess(app,env);
   const database = createDatabase(env);
   database?.pool.on('error', () => app.log.error('Idle database connection failed'));
   app.addHook('onClose', async () => { await database?.pool.end(); });
   const shutdown = new AbortController();
   app.addHook('preClose', async () => { shutdown.abort(); });
-  const cancellableFetch: typeof fetch = (input, options) => fetch(input, { ...options, signal: AbortSignal.any([shutdown.signal, ...(options?.signal ? [options.signal] : [])]) });
+  const cancellableFetch=createDemoTransport(env,(input,options)=>fetch(input,{...options,signal:AbortSignal.any([shutdown.signal,...(options?.signal?[options.signal]:[])])}));
   const storage = createStorage(env, cancellableFetch);
   const embedder = createEmbedder(env, cancellableFetch);
   const memory = database ? createMemoryService(database, createChatModel({ ...env, LLM_MAX_TOKENS: 4096 }, cancellableFetch, { jsonMode: true }), embedder, env.MEMORY_SCOPE, shutdown.signal) : null;
@@ -55,8 +60,8 @@ export function buildApp(env: Env, overrides: { emailProvider?: EmailProvider | 
   const retrieve=database&&embedder?createRetriever(database,embedder,env.RAG_MIN_SIMILARITY):null;
   const pptAuth=createPresentationAuth(env);
   const presentations=database?createPresentationService(database,storage,createChatModel({...env,LLM_TIMEOUT_MS:60000},cancellableFetch),createPresentationSources(database,retrieve,memory,search),env,shutdown.signal):null;
-  registerPresentationRoutes(app,presentations,pptAuth,Boolean(env.PPT_ACCESS_KEY));
-  registerChatRoutes(app, database, createChatModel(env), retrieve ? createKnowledgeAnswerer(retrieve) : null, memory, search, presentations,pptAuth);
+  registerPresentationRoutes(app,presentations,pptAuth,Boolean(env.PPT_ACCESS_KEY||env.DEMO_ACCESS_KEY));
+  registerChatRoutes(app, database, createChatModel(env,cancellableFetch), retrieve ? createKnowledgeAnswerer(retrieve) : null, memory, search, presentations,pptAuth);
 
   app.get('/api/health', async () => ({
     status: 'ok', service: 'contextpilot-api',

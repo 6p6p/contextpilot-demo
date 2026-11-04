@@ -52,8 +52,8 @@ it('never slices long lines; rejects mid-sentence quotes that match the original
 });
 it('redacts split cookie/auth headers, known secrets and unterminated final lines',async()=>{
  const input=new PassThrough();let out='';const output=new Writable({write(c,_e,cb){out+=c.toString();cb();}});relayRedacted(input,output,['FAKE-KEY']);
- const ended=once(input,'end');input.write('Error\ncoo');input.write('kie: cp_ppt=FAKE-COOKIE\nAuthorization: Bearer FAKE-AUTH\n');input.end('FAKE-KEY cp_ppt=FAKE-LAST');await ended;
- for(const v of ['FAKE-COOKIE','FAKE-AUTH','FAKE-KEY','FAKE-LAST'])expect(out).not.toContain(v);expect(out).toContain('[REDACTED]');
+ const ended=once(input,'end');input.write('Error\ncoo');input.write('kie: cp_ppt=FAKE-COOKIE\nAuthorization: Bearer FAKE-AUTH\n');input.end('FAKE-KEY cp_ppt=FAKE-LAST cp_demo=FAKE-DEMO');await ended;
+ for(const v of ['FAKE-COOKIE','FAKE-AUTH','FAKE-KEY','FAKE-LAST','FAKE-DEMO'])expect(out).not.toContain(v);expect(out).toContain('[REDACTED]');
 });
 it('old acceptance-scope session cannot authorize the current scope',async()=>{
  const env=parseEnv({PPT_ACCESS_KEY:'synthetic-test-only-12345678901234567890',PPT_SCOPE:'phase8-acceptance'});

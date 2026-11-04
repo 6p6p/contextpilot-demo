@@ -88,10 +88,12 @@ describe('PPT real Fastify authentication boundary (no DB/providers)',()=>{
  });
  it('missing key fails closed, rate limits bad login, production cookie is Secure',async()=>{
    expect(()=>createPresentationAuth(parseEnv({})).require({headers:{}})).toThrow();
-   const app=buildApp({...env,NODE_ENV:'production',LOG_LEVEL:'silent'});try{
-     const valid=await app.inject({method:'POST',url:'/api/presentation-session',payload:{accessKey:env.PPT_ACCESS_KEY}});expect(String(valid.headers['set-cookie'])).toContain('Secure');
-     for(let i=0;i<5;i++)expect((await app.inject({method:'POST',url:'/api/presentation-session',payload:{accessKey:'wrong'}})).statusCode).toBe(401);
-     expect((await app.inject({method:'POST',url:'/api/presentation-session',payload:{accessKey:'wrong'}})).statusCode).toBe(429);
+   const demoKey='synthetic-production-test-password-123456';
+   const app=buildApp({...env,NODE_ENV:'production',LOG_LEVEL:'silent',DEMO_ACCESS_KEY:demoKey});try{
+     const login=await app.inject({method:'POST',url:'/api/demo-session',payload:{accessKey:demoKey}});const cookie=String(login.headers['set-cookie']).split(';')[0];
+     const valid=await app.inject({method:'POST',url:'/api/presentation-session',headers:{cookie},payload:{accessKey:env.PPT_ACCESS_KEY}});expect(String(valid.headers['set-cookie'])).toContain('Secure');
+     for(let i=0;i<5;i++)expect((await app.inject({method:'POST',url:'/api/presentation-session',headers:{cookie},payload:{accessKey:'wrong'}})).statusCode).toBe(401);
+     expect((await app.inject({method:'POST',url:'/api/presentation-session',headers:{cookie},payload:{accessKey:'wrong'}})).statusCode).toBe(429);
    }finally{await app.close();}
  });
 });

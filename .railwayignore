@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.git/
+.acceptance/
+test-results/
+playwright-report/
+node_modules/
+.npm-cache/
+dist/
+certs/
+*.log

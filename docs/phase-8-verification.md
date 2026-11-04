@@ -1,6 +1,6 @@
 # Phase 8 verification
 
-Current status: authorized cloud publication and automated acceptance PASSED; PowerPoint/WPS native opening PENDING HUMAN ACCEPTANCE. See FINAL acceptance section at end. Earlier sections retain chronological failures and prior authorization boundaries. Baseline bbe1b5c.
+Current status: Phase8 CLOSED. User confirmed cloud, automated and actual PowerPoint/WPS native opening acceptance. Earlier sections retain chronological failures and prior authorization boundaries; see final user confirmation. Baseline bbe1b5c.
 
 ## Changed structure and decisions
 
@@ -190,3 +190,7 @@ Known safety boundary: on a failed publication, a valid old file remains the cur
 Manual remaining: PowerPoint/WPS actual opening never performed. User must open local .acceptance/phase8-live/A-general-5.pptx, B-pdf-10.pptx, C-meeting-5.pptx, D-combined-10.pptx; verify no repair dialog,5/10/5/10,16:9, Chinese glyphs/fonts, title/table/date wrapping, no overlap, B7/D9 removals, saved owner/date/risk and source notes. A long title/C date wrap are editorial review points. Do not infer native compatibility from ZIP/XML/PNG checks. Keep this PENDING until user confirmation. Local startup to see accepted scope: process-only PPT_SCOPE=phase8-acceptance-v2, MEMORY_SCOPE=phase8-acceptance, npm run dev, unlock using existing secret (never print/share). No new generation without budget authorization.
 
 Stop after local Git commit and user review. EMAIL_DELIVERY_ENABLED=false, no actual email, no push/deploy, Phase3 intermittent uploadHTTP500 OPEN. No other business records/files modified by publication; DB regression fixtures use isolated scopes/STUB storage and remain separate evidence.
+
+## User final confirmation — Phase8 CLOSED
+
+User explicitly confirmed cloud, automation and actual PowerPoint/WPS native opening acceptance passed and formally closed Phase8. Earlier PENDING native-opening gates are historical and superseded by this confirmation, not claimed as agent-performed native inspection. Phase9 Railway Demo preparation authorized in a separate milestone. Phase3 intermittent unreproduced upload500 is now an observation, not a deployment blocker; historical DB connection timeouts retained without speculative infrastructure changes. Email delivery remains disabled.

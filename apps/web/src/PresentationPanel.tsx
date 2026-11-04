@@ -5,6 +5,8 @@ const labels={queued:'等待规划',planning:'正在规划',rendering:'正在生
 export function PresentationPanel({context,onChange,refresh}:Props) {
   const [expanded,setExpanded]=useState(false);const newest=useRef<string|null>(null);
   const [key,setKey]=useState('');const [unlocked,setUnlocked]=useState(false);const [error,setError]=useState('');const [busy,setBusy]=useState(false);
+  const [demoAccess,setDemoAccess]=useState(false);
+  useEffect(()=>{const c=new AbortController();void fetch('/api/demo-session',{signal:c.signal}).then(r=>r.json()).then(d=>{if(!c.signal.aborted)setDemoAccess(Boolean(d.required&&d.authenticated));}).catch(()=>{});return()=>c.abort();},[]);
   const [jobs,setJobs]=useState<PresentationJob[]>([]);const [meetings,setMeetings]=useState<{id:string;filename:string}[]>([]);const [revision,setRevision]=useState(0);
   async function api(path:string,options?:RequestInit){const response=await fetch(`/api${path}`,options);const data=await response.json();if(!response.ok)throw new Error(data.error?.message??'PPT 请求失败');return data;}
   useEffect(()=>{const id=jobs[0]?.id;if(id&&id!==newest.current){newest.current=id;setExpanded(true);}},[jobs]);
@@ -16,7 +18,7 @@ export function PresentationPanel({context,onChange,refresh}:Props) {
   async function unlock(event:React.FormEvent){event.preventDefault();setBusy(true);try{await api('/presentation-session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({accessKey:key})});setKey('');setRevision(v=>v+1);}catch(cause){setError(cause instanceof Error?cause.message:'解锁失败');}finally{setBusy(false);}}
   async function retry(id:string){setBusy(true);try{await api(`/presentations/${id}/retry`,{method:'POST'});setRevision(v=>v+1);}catch(cause){setError(cause instanceof Error?cause.message:'重试失败');}finally{setBusy(false);}}
   return <section className="presentation-panel" aria-label="PPT 资料与下载"><details open={expanded} onToggle={event=>setExpanded(event.currentTarget.open)}><summary>PPT 资料与下载 · 在聊天中明确输入“生成 5 页 PPT”</summary>
-    {!unlocked?<form onSubmit={e=>{void unlock(e);}}><label>PPT 访问口令<input type="password" aria-label="PPT 访问口令" value={key} maxLength={128} autoComplete="off" onChange={e=>setKey(e.target.value)}/></label><button disabled={busy||key.length<32}>解锁 PPT</button></form>:<p>已解锁 PPT 生成与下载 <button type="button" onClick={()=>{void api('/presentation-session',{method:'DELETE'}).then(()=>{setUnlocked(false);setJobs([]);});}}>锁定</button></p>}
+    {demoAccess?<p>PPT 使用当前 Demo 访问权限。</p>:!unlocked?<form onSubmit={e=>{void unlock(e);}}><label>PPT 访问口令<input type="password" aria-label="PPT 访问口令" value={key} maxLength={128} autoComplete="off" onChange={e=>setKey(e.target.value)}/></label><button disabled={busy||key.length<32}>解锁 PPT</button></form>:<p>已解锁 PPT 生成与下载 <button type="button" onClick={()=>{void api('/presentation-session',{method:'DELETE'}).then(()=>{setUnlocked(false);setJobs([]);});}}>锁定</button></p>}
     {error?<p role="alert">{error}</p>:null}
     <p>总计 5–10 页，含封面及参考资料。来源不足会标明缺口，不补造进度、负责人或数据。</p>
     <label>PPT 引用会议<select aria-label="PPT 引用会议" value={context.meetingId??''} onChange={e=>onChange({...context,meetingId:e.target.value||null})}><option value="">不引用会议（提及“这次会议”时必须选择）</option>{meetings.map(m=><option key={m.id} value={m.id}>{m.filename}</option>)}</select></label>
