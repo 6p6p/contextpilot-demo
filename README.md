@@ -2,11 +2,13 @@
 
 面向南京信人智能的 AI 外脑实操 Demo。原始需求见 [docs/assignment.txt](docs/assignment.txt)；阶段规范见 [SPEC.md](SPEC.md)，开发状态见 [TASKS.md](TASKS.md)。
 
+**Phase 6 真实邮件发送验收通过。** 获授权的两封测试邮件均已由 Resend 报告 delivered，并由用户逐封确认收到；同一草稿两版本分别唯一发送，重复/并发提交没有增加外部发送次数。发送开关已恢复 false，详见 [Phase 6 验收记录](docs/phase-6-verification.md)。
+
 **Phase 5 已实现跨会话长期记忆。** 聊天与会议事实持久化，支持新会话召回、原文来源和提取状态查看；真实服务专项结果见 [Phase 5 验收记录](docs/phase-5-verification.md)。
 
 **Phase 4 会议分析已通过真实服务验收。** UTF-8 TXT 上传至 Supabase 私有 Storage，自动分析会议、生成带行号证据的风险与待办，支持人工编辑、重复上传去重和重新分析。邮件只准备草稿和版本确认，全部保持未发送。真实业务用例分次通过，模型不合规输出的失败记录也保留，详见 [Phase 4 验收记录](docs/phase-4-verification.md)。
 
-Phase 3 PDF RAG 与原有聊天真实回归通过；接入说明见 [Phase 3 配置](docs/phase-3-setup.md)。既有未复现上传 HTTP 500 仍为 OPEN；RAG 目前主要支持可核实摘录式回答，带证据综合归纳仍需评估。长期记忆已实现，真实验收记录见下方；联网搜索、真实邮件发送和 PPT 尚未实现。未部署、未推送 GitHub；公开访问前必须完成工作区保护。
+Phase 3 PDF RAG 与原有聊天真实回归通过；接入说明见 [Phase 3 配置](docs/phase-3-setup.md)。既有未复现上传 HTTP 500 仍为 OPEN；RAG 目前主要支持可核实摘录式回答，带证据综合归纳仍需评估。长期记忆已实现，真实验收记录见下方；邮件发送实现与验收边界见下方 Phase 6；联网搜索和 PPT 尚未实现。未部署、未推送 GitHub；公开访问前必须完成工作区保护。
 
 ## 环境与启动
 
@@ -168,3 +170,37 @@ node scripts/e2e.mjs --live --memory-live -- --grep 'RESTART retains'
 ```
 
 验收账本在被忽略的 `.acceptance`，不含凭据；它是请求前保守预留，不是账户账单。Phase 5 预算需单独授权，不沿用 Phase 4 授权。详情见 [Phase 5 验收记录](docs/phase-5-verification.md)。
+
+## Phase 6 邮件配置与权限边界
+
+复用现有会议草稿：编辑保存 → 确认当前版本（不发送）→ 展开冻结版本预览 → 勾选确认 → 单独点击“确认发送邮件”。服务端同时校验白名单、确认快照、草稿版本及会议分析状态。AI、记忆、PDF/TXT 无发送权限。
+
+邮件由轻量适配器调用固定版本 Resend 官方SDK 6.37.0（Node >=20，已在 Node24 验证）。`email_deliveries` 保存冻结内容、供应商ID、错误码和追踪/时间，唯一约束永久阻止同一草稿版本重复入队；稳定 Idempotency Key 提供供应商侧24小时窗口内的额外保护。进入 processing 后不重新领取，超时/中断记 unknown 并阻止编辑绕过重发。HTTP接受不是送达；用户显式点击状态核查，通过只读Resend接口更新 delivered/failed。delivered 只表明供应商报告对端邮件服务器接受，不保证收件箱位置。
+
+在仓库根 `.env` 自行配置，勿把密钥发到聊天或前端：
+
+| 变量 | 配置 |
+|---|---|
+| EMAIL_DELIVERY_ENABLED | 默认false；仅在真实发送明确获批后改true |
+| RESEND_API_KEY | 后端Resend密钥；发送、邮件状态读取，verified模式还需域名读取权限 |
+| EMAIL_FROM | 纯邮箱地址；测试可用onboarding@resend.dev，自有域名模式必须匹配已验证域名 |
+| EMAIL_ALLOWED_RECIPIENTS | 精确邮箱白名单，以英文逗号分隔，最多10个；不支持域名通配符 |
+| EMAIL_MODE | test 或 verified |
+| EMAIL_TEST_ACCOUNT_ADDRESS | test模式必填，为Resend账号注册邮箱，白名单只能含此邮箱 |
+| RESEND_DOMAIN_ID | verified模式必填，对应已验证且允许sending的域名ID |
+| EMAIL_SCOPE | 默认demo，隔离邮件worker与历史读取；切换不会绕过草稿版本的永久去重 |
+
+自有发件域名需要在Resend Domains添加并按控制台设置DNS后验证。`resend.dev`受限测试只能发到账号自己的邮箱；不能假设任意白名单地址都被Resend允许。当前账号已通过邮件读取及两封受限onboarding真实发信验收；自有域名、其他收件人及额外额度/生产审批不在本次验证范围。发往Resend模拟地址只验证供应商模拟事件，不是用户收件箱真实送达；本实现test模式刻意仅允许账号自身邮箱。
+
+控制台操作：确认账号注册邮箱、剩余额度和发送限制；为本Demo创建合适权限的后端密钥；选择受限测试或已验证的自有发件域名。不要购买新域名或升级付费资源。先保持发送开关false，完成配置后告知配置完成并明确批准发送的封数与收件人范围。计划最多2封真实测试，均仅发往用户控制且在白名单内的地址；验证同版本重复提交只发1封、修改后重新确认新版本、供应商状态与收件人实际核对。该计划已获批并完成，两封均实际收件；后续任何新发信须另获授权，当前发送开关保持false。
+
+```powershell
+npm run check
+# 真实数据库，邮件供应商/其他业务服务均为替身；无真实发信
+$env:RUN_LIVE_TESTS='1'
+npm run test:integration
+$env:PLAYWRIGHT_CHANNEL='chrome'
+node scripts/e2e.mjs --email-stub
+```
+
+`--email-stub` 使用单独测试入口、真实PostgreSQL与替身EmailProvider，不能证明Resend已配置或真实投递。普通E2E和聊天/RAG等live启动脚本强制禁用邮件，不会因测试启动领取真实发送任务。没有mock供应商的环境变量开关或生产HTTP测试路由。详情见 [Phase 6 验收记录](docs/phase-6-verification.md)。

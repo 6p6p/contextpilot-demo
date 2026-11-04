@@ -1,3 +1,6 @@
+import type { EmailProvider } from './email/provider.js';
+import { registerEmailRoutes } from './email/routes.js';
+import { createResendProvider } from './email/provider.js';
 import { createMemoryService } from './memory/service.js';
 import { startDocumentWorker } from './knowledge/service.js';
 import Fastify from 'fastify';
@@ -15,7 +18,8 @@ import { registerDocumentRoutes } from './knowledge/routes.js';
 import { createRetriever, createKnowledgeAnswerer } from './knowledge/retrieval.js';
 import { registerMeetingRoutes } from './meetings/routes.js';
 
-export function buildApp(env: Env) {
+// In-process dependency injection for isolated tests; no HTTP/env mock-provider switch.
+export function buildApp(env: Env, overrides: { emailProvider?: EmailProvider | null } = {}) {
   const app = Fastify({
     pluginTimeout: 30000,
     logger: env.NODE_ENV === 'test' ? false : {
@@ -39,6 +43,7 @@ export function buildApp(env: Env) {
     app.addHook('onReady', async () => { stop = startDocumentWorker(memory); });
     app.addHook('preClose', async () => { await stop?.(); });
   }
+  registerEmailRoutes(app, database, overrides.emailProvider === undefined ? createResendProvider(env) : overrides.emailProvider, env, shutdown.signal);
   registerDocumentRoutes(app, database, storage, embedder, shutdown.signal);
   registerMeetingRoutes(app, database, storage, createChatModel({ ...env, LLM_MAX_TOKENS: env.MEETING_MAX_TOKENS, LLM_TIMEOUT_MS: env.MEETING_TIMEOUT_MS }, cancellableFetch, { jsonMode: true }), shutdown.signal, memory?.scope);
   registerChatRoutes(app, database, createChatModel(env), database && embedder ? createKnowledgeAnswerer(createRetriever(database, embedder, env.RAG_MIN_SIMILARITY)) : null, memory);

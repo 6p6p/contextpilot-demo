@@ -45,7 +45,7 @@ test('real risky meeting, evidence, manual edits, deduplication and draft-only c
   await page.getByRole('button', { name: '复核并保存草稿' }).click();
   await expect(page.getByRole('button', { name: '确认此版本（不发送）' })).toBeEnabled();
   await page.getByRole('button', { name: '确认此版本（不发送）' }).click();
-  await expect(page.getByRole('region', { name: '会议邮件草稿' })).toContainText('此版本已确认，未发送');
+  await expect(page.getByRole('region', { name: '会议邮件草稿' })).toContainText('此版本已确认；发送情况以历史为准');
   const duplicate = await upload(request, 'duplicate.txt', text);
   expect(duplicate.duplicate).toBe(true); expect(duplicate.meeting.id).toBe(id);
   const before = meetingDetailSchema.parse(await (await request.get(`/api/meetings/${id}`)).json());

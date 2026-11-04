@@ -6,6 +6,14 @@ const optionalDatabaseUrl = z.preprocess(
 );
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  EMAIL_DELIVERY_ENABLED: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
+  EMAIL_SCOPE: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/).default('demo'),
+  RESEND_API_KEY: z.preprocess(v => v === '' ? undefined : v, z.string().min(1).optional()),
+  EMAIL_FROM: z.preprocess(v => v === '' ? undefined : v, z.email().optional()),
+  EMAIL_ALLOWED_RECIPIENTS: z.string().default('').transform(v => v.split(',').map(s => s.trim()).filter(Boolean)).pipe(z.array(z.email()).max(10)),
+  EMAIL_MODE: z.enum(['test', 'verified']).default('test'),
+  EMAIL_TEST_ACCOUNT_ADDRESS: z.preprocess(v => v === '' ? undefined : v, z.email().optional()),
+  RESEND_DOMAIN_ID: z.preprocess(v => v === '' ? undefined : v, z.uuid().optional()),
   MEMORY_SCOPE: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/).default('demo'),
   HOST: z.string().min(1).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),

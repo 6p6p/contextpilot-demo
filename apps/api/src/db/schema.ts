@@ -130,3 +130,22 @@ export const memories = pgTable('memories', {
   check('memory_kind_check', sql`${t.kind} in ('person','time','place','topic','event','decision')`),
   check('memory_vector_check', sql`(${t.embedding} is null and ${t.dimensions} is null and ${t.embeddingSpace} is null) or (${t.embedding} is not null and ${t.dimensions} is not null and ${t.embeddingSpace} is not null and vector_dims(${t.embedding}) = ${t.dimensions} and ${t.dimensions} between 1 and 4096)`),
   index('memories_scope_idx').on(t.scope)]).enableRLS();
+
+// Email send identity is permanent across scopes and provider idempotency expiry.
+export const emailDeliveries = pgTable('email_deliveries', {
+  id: uuid().primaryKey().defaultRandom(), scope: text().notNull(), configIdentity: text('config_identity').notNull(),
+  draftId: uuid('draft_id').notNull().references(() => emailDrafts.id, { onDelete: 'restrict' }),
+  confirmationId: uuid('confirmation_id').notNull().references(() => emailDraftConfirmations.id, { onDelete: 'restrict' }),
+  version: integer().notNull(), analysisId: uuid('analysis_id').notNull().references(() => meetingAnalyses.id, { onDelete: 'restrict' }),
+  sender: text().notNull(), recipients: jsonb().$type<string[]>().notNull(), subject: text().notNull(), body: text().notNull(),
+  payloadHash: text('payload_hash').notNull(), idempotencyKey: text('idempotency_key').notNull().unique(),
+  status: text({ enum: ['queued', 'processing', 'accepted', 'delivered', 'failed', 'unknown'] }).notNull().default('queued'),
+  leaseToken: uuid('lease_token'), leaseUntil: timestamp('lease_until', { withTimezone: true }),
+  providerMessageId: text('provider_message_id'), providerRequestId: text('provider_request_id'), providerEvent: text('provider_event'),
+  errorCode: text('error_code'), requestId: text('request_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  attemptedAt: timestamp('attempted_at', { withTimezone: true }), acceptedAt: timestamp('accepted_at', { withTimezone: true }), checkedAt: timestamp('checked_at', { withTimezone: true }),
+}, t => [uniqueIndex('email_delivery_draft_version_idx').on(t.draftId, t.version),
+  check('email_delivery_status_check', sql`${t.status} in ('queued','processing','accepted','delivered','failed','unknown')`),
+  check('email_delivery_version_check', sql`${t.version} > 0`),
+  index('email_delivery_queue_idx').on(t.scope, t.configIdentity, t.status, t.leaseUntil)]).enableRLS();

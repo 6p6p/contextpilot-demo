@@ -1,6 +1,6 @@
 # Development tasks
 
-Phases 1–5 are authorized; Phase 5 begins with a bounded engineering review. Phase 3 accepted at 8edb365; Phase 4 accepted at ccc3c53; its prerequisite worker cleanup fix accepted at 7341aa9. Advance by feature milestones, not calendar dates. Later phases require separate instruction.
+Phases 1–6 are authorized; Phase 6 real sending requires separate explicit approval; Phase 5 begins with a bounded engineering review. Phase 3 accepted at 8edb365; Phase 4 accepted at ccc3c53; its prerequisite worker cleanup fix accepted at 7341aa9. Advance by feature milestones, not calendar dates. Later phases require separate instruction.
 
 ## Phase 1 — Engineering initialization
 
@@ -95,7 +95,7 @@ Latest acceptance is complete: SiliconFlow BAAI/bge-m3 / 1024 actually verified;
 - [ ] External service and deployment-network validation; credentials need approval.
 - [ ] Protected workspace and persistent domain/task foundations.
 - [ ] Protected public deployment (local chat acceptance completed in Phase 2).
-- [ ] Confirmed, deduplicated email sending.
+- [x] Confirmed, deduplicated email sending: Phase6 restricted real acceptance verified; future sends require separate authorization.
 - [ ] Real web search.
 - [ ] Chat-driven PPTX generation/download.
 - [ ] Six-capability public acceptance, GitHub delivery and demo materials.
@@ -114,3 +114,26 @@ Latest acceptance is complete: SiliconFlow BAAI/bge-m3 / 1024 actually verified;
 - [x] All targeted acceptance gates passed; review scope and create local Phase 5 completion commit (identify via git log -1), then stop.
 
 Evidence and limitations: docs/phase-5-verification.md. Phase 3 upload HTTP 500 remains OPEN.
+
+## Phase 6 — Email Delivery (verified)
+
+- [x] Read existing rules/spec/tasks/Phase5 and draft/worker/schema code; check official Resend API/SDK restrictions.
+- [x] Add pinned official Resend SDK6.37.0, minimal adapter, backend sender/key/allowlist and disabled-by-default gate.
+- [x] Implement separately confirmed send enqueue, immutable snapshot, global draft/version uniqueness, provider key and no blind retry after dispatch.
+- [x] Add processing/accepted/delivered/failed/unknown states, tracking and read-only status lookup; UI preview/confirmation/history/manual-check guidance.
+- [x] Review additive migration0006 and execute after separate DB-only authorization.
+- [x] Offline73 tests/types/build and first real-DB/stub-provider4-test suite pass.
+- [x] Expanded DB suite: 19 distinct tests pass across runs (initial 17/19, two connection-timeout cases passed on targeted rerun); browser+realDB+stub4 passed. Failures retained.
+- [x] User configured Resend and authorized <=2 restricted real emails; corrected initial401/read preflight200.
+- [x] Exactly2 actual sends, both database/provider delivered and user-confirmed receipt; version/duplicate/concurrency checks passed.
+- [x] Final audit: two persisted delivered records, both user receipts, root sending disabled; complete checks/local commit then stop. No push/deployment/search/PPT.
+
+Phase3 upload HTTP500 remains OPEN. Details: docs/phase-6-verification.md.
+
+Phase6受限真实验收预检：用户已配置并授权最多2封、逐封确认；dotenv/发件人/单收件人限制校验通过，但Resend只读邮件查询HTTP401，已在发信前停止。实际发送0，根.env开关false，等待用户核实Key与读取权限。无真实MessageID/投递证据，不提交完成commit。
+
+Phase6受限验收更新：重新只读预检HTTP200；第一封真实邮件POST一次HTTP200，Resend ID 01a1a5b7-4a15-7e6a-8d27-a9aab90e5dbf，数据库accepted/供应商sent。并发确认/提交及再次提交均同一记录，外部发送1次。隔离进程关闭、根.env开关false；等待用户收件确认后才发第二封新版本。未提交Phase6。
+
+Phase6逐封验收：用户已确认第1封收件；第1封状态刷新delivered。第2封同一草稿v2已发送，旧确认/未确认发送均409；重复并发确认/提交仅1次外部发送。第2封MessageID 01a1a5b9-9c42-73c4-b777-b6278d27c646，数据库/供应商delivered。累计2/2封，发送关闭；等待第2封收件确认后最终提交。
+
+Phase6 final: user confirmed second receipt. New-connection DB audit verifies v1/v2 both delivered with recorded Resend IDs, exactly2 outbound requests total, EMAIL_DELIVERY_ENABLED=false. All real acceptance gates passed; create local completion commit and stop. Earlier pending/failed entries above are historical records, not current blockers.

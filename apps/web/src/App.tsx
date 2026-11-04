@@ -39,10 +39,10 @@ export function App() {
         <a className="nav-chat" href="#meetings">会议与待办</a>
         {['知识库文件', '演示文稿'].map(name => <span className="nav-future" key={name}>{name}<small>待开发</small></span>)}
       </nav>
-      <div className="sidebar-foot">单一演示工作区<br />Phase 5 · 长期记忆</div>
+      <div className="sidebar-foot">单一演示工作区<br />Phase 6 · 长期记忆</div>
     </aside>
     <main>
-      <header><span>CONTEXT → DECISION</span><span className="phase">Phase 5</span></header>
+      <header><span>CONTEXT → DECISION</span><span className="phase">Phase 6</span></header>
       <section className="intro"><p className="eyebrow">CONTEXT PILOT / WORKSPACE</p><h1>让上下文，成为决策的起点。</h1><p>创建会话，与真实模型交流。对话历史保存在 PostgreSQL，支持刷新恢复与会话切换。</p></section>
       <section className="status-card" aria-labelledby="service-title">
         <div><p className="eyebrow">SYSTEM CONNECTION</p><h2 id="service-title">服务连接</h2><p>由浏览器请求真实 Fastify 后端，不使用模拟响应。</p></div>
@@ -58,11 +58,10 @@ export function App() {
       <MemoryPanel />
       <section className="roadmap" aria-label="能力规划">
         {[
-          ['02', '邮件发送', '明确确认后真实发送'],
           ['03', '记忆与输出', '跨会话记忆 · 联网搜索 · PPT'],
         ].map(([number, title, description]) => <article key={number}><span className="number">{number}</span><h2>{title}</h2><p>{description}</p><span className="planned">尚未实现</span></article>)}
       </section>
-      <footer>本地开发阶段；尚未启用工作区鉴权。请勿公开部署。邮件只准备草稿，不发送；搜索和 PPT 尚未启用。</footer>
+      <footer>本地开发阶段；尚未启用工作区鉴权。请勿公开部署。真实邮件须配置并由用户单独确认；搜索和 PPT 尚未启用。</footer>
     </main>
   </div>;
 }

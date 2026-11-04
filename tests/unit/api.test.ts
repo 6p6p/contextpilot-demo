@@ -42,11 +42,12 @@ describe('real Fastify routes', () => {
     const response = await instance.inject({ method: 'POST', url: '/api/documents?filename=test.pdf', headers: { 'content-type': 'application/pdf' }, payload: Buffer.from('%PDF-1.7 synthetic') });
     expect(response.statusCode).toBe(503);
   });
-  it('keeps meeting routes truthful and exposes no email send operation', async () => {
+  it('keeps meeting and email routes truthful without configuration', async () => {
     const instance = app();
     expect((await instance.inject('/api/meetings')).statusCode).toBe(503);
     expect((await instance.inject({ method: 'POST', url: '/api/meetings?filename=test.txt', headers: { 'content-type': 'text/plain' }, payload: '测试会议' })).statusCode).toBe(503);
-    expect((await instance.inject({ method: 'POST', url: '/api/email-drafts/00000000-0000-4000-8000-000000000001/send' })).statusCode).toBe(404);
+    expect((await instance.inject({ method: 'POST', url: '/api/email-drafts/00000000-0000-4000-8000-000000000001/send', payload: { version: 1, confirmSend: true } })).statusCode).toBe(503);
+    expect((await instance.inject('/api/email/config')).json()).toMatchObject({ enabled: false, configured: false });
   });
   it('rejects non-PDF content type and oversized uploads before external calls', async () => {
     const instance = app();

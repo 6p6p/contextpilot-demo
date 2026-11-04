@@ -5,6 +5,12 @@ import { setTimeout as delay } from 'node:timers/promises';
 import dotenv from 'dotenv';
 
 const production = process.argv[2] === 'production';
+const emailStub = process.argv.includes('--email-stub');
+if (emailStub) {
+  if (process.env.RUN_LIVE_TESTS !== '1') throw new Error('Email stub browser test requires authorized real DB and RUN_LIVE_TESTS=1');
+  dotenv.config({ quiet: true });
+  if (!process.env.DATABASE_URL) throw new Error('Database required for email stub browser test');
+}
 const live = process.argv.includes('--live');
 const ragLive = process.argv.includes('--rag-live');
 const memoryLive = process.argv.includes('--memory-live');
@@ -21,8 +27,9 @@ if (live) {
 const children = [];
 const env = {
   ...process.env,
+  EMAIL_DELIVERY_ENABLED: 'false', RESEND_API_KEY: '',
   NODE_ENV: production ? 'production' : 'test',
-  PORT: String(apiPort), HOST: '127.0.0.1', DATABASE_URL: live ? process.env.DATABASE_URL : '', LOG_LEVEL: 'silent',
+  PORT: String(apiPort), HOST: '127.0.0.1', DATABASE_URL: live || emailStub ? process.env.DATABASE_URL : '', LOG_LEVEL: 'silent',
   ...(!live ? { LLM_BASE_URL: '', LLM_MODEL: '', LLM_API_KEY: '', SUPABASE_STORAGE_KEY: '', EMBEDDING_API_KEY: '' } : {}),
   API_PROXY_TARGET: `http://127.0.0.1:${apiPort}`,
 };
@@ -64,7 +71,7 @@ try {
   const instrumentation = live && process.env.ACCEPTANCE_TRACKING === '1' ? ['--import', './scripts/acceptance-telemetry.mjs'] : [];
   const api = start([...instrumentation, ...(production
     ? ['dist/server/apps/api/src/server.js']
-    : ['--import', 'tsx', 'apps/api/src/server.ts'])]);
+    : ['--import', 'tsx', emailStub ? 'tests/support/email-server.ts' : 'apps/api/src/server.ts'])]);
   await waitFor(`http://127.0.0.1:${apiPort}/api/health`, api);
   if (live) await waitFor(`http://127.0.0.1:${apiPort}/api/ready`, api);
   if (!production) {
@@ -73,7 +80,7 @@ try {
   }
   const separator = process.argv.indexOf('--');
   const testArguments = separator >= 0 ? process.argv.slice(separator + 1) : [];
-  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', memoryLive ? 'playwright.memory.config.ts' : meetingsLive ? 'playwright.meetings.config.ts' : ragLive ? 'playwright.rag.config.ts' : live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts', ...testArguments]);
+  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', emailStub ? 'playwright.email-stub.config.ts' : memoryLive ? 'playwright.memory.config.ts' : meetingsLive ? 'playwright.meetings.config.ts' : ragLive ? 'playwright.rag.config.ts' : live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts', ...testArguments]);
   const [code] = await once(runner, 'exit');
   process.exitCode = code ?? 1;
 } catch (error) {

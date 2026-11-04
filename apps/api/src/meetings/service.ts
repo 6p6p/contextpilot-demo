@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { and, asc, desc, eq, lt, or, sql } from 'drizzle-orm';
-import { meetings, meetingAnalyses, meetingRisks, riskEvidence, meetingTodos, emailDrafts, emailDraftConfirmations, memoryJobs } from '../db/schema.js';
+import { meetings, meetingAnalyses, meetingRisks, riskEvidence, meetingTodos, emailDrafts, emailDraftConfirmations, memoryJobs, emailDeliveries } from '../db/schema.js';
 import type { Database } from '../knowledge/service.js';
 import type { PrivateStorage } from '../knowledge/storage.js';
 import type { ChatModel } from '../llm/adapter.js';
@@ -22,10 +22,11 @@ export function createMeetingService(database: Database, storage: PrivateStorage
     const evidence = risks.length ? await db.select().from(riskEvidence).where(sql`${riskEvidence.riskId} in (select id from meeting_risks where analysis_id = ${row.currentAnalysisId})`) : [];
     const todos = await db.select().from(meetingTodos).where(eq(meetingTodos.meetingId, id)).orderBy(asc(meetingTodos.updatedAt));
     const [draft] = await db.select().from(emailDrafts).where(eq(emailDrafts.meetingId, id));
+    const [delivery] = draft ? await db.select({ status: emailDeliveries.status }).from(emailDeliveries).where(and(eq(emailDeliveries.draftId, draft.id), eq(emailDeliveries.version, draft.version))).limit(1) : [];
     // Explicit projection: never expose bucket, object key or credentials.
     return { meeting: { id: row.id, filename: row.filename, status: row.status, lineCount: row.lineCount, requestedVersion: row.requestedVersion, currentAnalysisId: row.currentAnalysisId, errorCode: row.errorCode, errorMessage: row.errorMessage },
       analysis: analyses.find(a => a.id === row.currentAnalysisId) ?? null, versions: analyses.map(a => ({ id: a.id, version: a.version, createdAt: a.createdAt })),
-      risks: risks.map(risk => ({ ...risk, evidence: evidence.filter(e => e.riskId === risk.id) })), todos, draft: draft ? { ...draft, stale: draft.analysisId !== row.currentAnalysisId } : null };
+      risks: risks.map(risk => ({ ...risk, evidence: evidence.filter(e => e.riskId === risk.id) })), todos, draft: draft ? { ...draft, deliveryState: delivery?.status ?? 'not_sent', stale: draft.analysisId !== row.currentAnalysisId } : null };
   }
   return {
     detail,
@@ -65,10 +66,14 @@ export function createMeetingService(database: Database, storage: PrivateStorage
     async updateDraft(id: string, input: unknown) {
       const patch = draftPatchSchema.parse(input);
       return db.transaction(async tx => {
+        const [ref] = await tx.select({ meetingId: emailDrafts.meetingId }).from(emailDrafts).where(eq(emailDrafts.id, id));
+        if (!ref) throw new PublicError(404, 'DRAFT_NOT_FOUND', '草稿不存在。');
+        const [meeting] = await tx.select().from(meetings).where(eq(meetings.id, ref.meetingId)).for('update');
         const [draft] = await tx.select().from(emailDrafts).where(eq(emailDrafts.id, id)).for('update');
         if (!draft || draft.version !== patch.version) throw new PublicError(409, 'DRAFT_VERSION_CONFLICT', '草稿版本已变化，请刷新。');
-        const meeting = await requireMeeting(draft.meetingId);
         if (!meeting.currentAnalysisId || meeting.status !== 'ready') throw new PublicError(409, 'MEETING_NOT_READY', '请等待会议分析完成。');
+        const [active] = await tx.select({ id: emailDeliveries.id }).from(emailDeliveries).where(and(eq(emailDeliveries.draftId, id), sql`${emailDeliveries.status} in ('queued','processing','unknown')`)).limit(1);
+        if (active) throw new PublicError(409, 'EMAIL_PREVIOUS_UNRESOLVED', '此草稿已有待发送、处理中或未知发送，内容已冻结；请先核查发送结果。');
         const risks = await tx.select({ id: meetingRisks.id }).from(meetingRisks).where(eq(meetingRisks.analysisId, meeting.currentAnalysisId));
         const todos = await tx.select({ id: meetingTodos.id }).from(meetingTodos).where(eq(meetingTodos.meetingId, meeting.id));
         return (await tx.update(emailDrafts).set({ recipients: patch.recipients, subject: patch.subject, body: patch.body, version: draft.version + 1, state: 'draft', userEdited: true, analysisId: meeting.currentAnalysisId, riskIds: risks.map(r => r.id), todoIds: todos.map(t => t.id), updatedAt: new Date() }).where(eq(emailDrafts.id, id)).returning())[0];
@@ -76,14 +81,16 @@ export function createMeetingService(database: Database, storage: PrivateStorage
     },
     async confirmDraft(id: string, version: number) {
       return db.transaction(async tx => {
+        const [ref] = await tx.select({ meetingId: emailDrafts.meetingId }).from(emailDrafts).where(eq(emailDrafts.id, id));
+        if (!ref) throw new PublicError(404, 'DRAFT_NOT_FOUND', '草稿不存在。');
+        const [meeting] = await tx.select().from(meetings).where(eq(meetings.id, ref.meetingId)).for('update');
         const [draft] = await tx.select().from(emailDrafts).where(eq(emailDrafts.id, id)).for('update');
         if (!draft || draft.version !== version) throw new PublicError(409, 'DRAFT_VERSION_CONFLICT', '确认版本已变化。');
-        const meeting = await requireMeeting(draft.meetingId);
         if (meeting.status !== 'ready' || meeting.currentAnalysisId !== draft.analysisId) throw new PublicError(409, 'DRAFT_ANALYSIS_STALE', '会议分析已变化，需人工复核保存草稿后再确认。');
         if (!draft.recipients.length) throw new PublicError(400, 'RECIPIENT_REQUIRED', '请由用户明确填写收件邮箱并保存。');
         await tx.insert(emailDraftConfirmations).values({ draftId: id, version, snapshot: { recipients: draft.recipients, subject: draft.subject, body: draft.body, analysisId: draft.analysisId } }).onConflictDoNothing();
         const [confirmed] = await tx.update(emailDrafts).set({ state: 'confirmed', updatedAt: new Date() }).where(eq(emailDrafts.id, id)).returning();
-        return { draft: confirmed, sent: false, message: '版本确认已保存。本阶段不会发送邮件。' };
+        return { draft: confirmed, sent: false, message: '版本确认已保存，尚未创建发送任务；真实发送需要单独明确确认。' };
       });
     },
     async processOne() {
@@ -143,7 +150,7 @@ export function createMeetingService(database: Database, storage: PrivateStorage
           // No address inference or outbound mail tool. Existing edited drafts are never overwritten.
           if (risks.length) await tx.insert(emailDrafts).values({ meetingId: claimed.id, analysisId: analysis.id, riskIds: risks.map(r => r.id), todoIds: todos.map(t => t.id), recipients: [],
             subject: `会议风险跟进：${result.topic?.value ?? claimed.filename}`,
-            body: `请复核以下潜在风险与待办（AI 分析，需人工确认）：\n\n${risks.map((r, i) => `${i + 1}. [${r.level}] ${r.description}\n潜在影响：${r.impact}\n依据：${r.evidence.map(e => `L${e.startLine}–${e.endLine} ${e.quote}`).join('\n')}`).join('\n\n')}\n\n待办：\n${todos.map(t => `${t.task}；负责人：${t.owner ?? '未知'}；截止日期：${t.dueDate ?? '未知'}`).join('\n')}\n\n本阶段仅准备草稿，不发送邮件。`,
+            body: `请复核以下潜在风险与待办（AI 分析，需人工确认）：\n\n${risks.map((r, i) => `${i + 1}. [${r.level}] ${r.description}\n潜在影响：${r.impact}\n依据：${r.evidence.map(e => `L${e.startLine}–${e.endLine} ${e.quote}`).join('\n')}`).join('\n\n')}\n\n待办：\n${todos.map(t => `${t.task}；负责人：${t.owner ?? '未知'}；截止日期：${t.dueDate ?? '未知'}`).join('\n')}\n\n本草稿由AI准备，真实发送必须人工复核并单独确认。`,
           }).onConflictDoNothing({ target: emailDrafts.meetingId });
           await tx.update(meetings).set({ status: 'ready', currentAnalysisId: analysis.id, errorCode: null, errorMessage: null, leaseUntil: null, updatedAt: new Date() }).where(owns);
         });

@@ -1,3 +1,4 @@
+import { EmailDeliveryPanel } from './EmailDeliveryPanel';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { meetingDetailSchema, type MeetingDetail, type Evidence } from '../../../shared/meetings';
@@ -48,11 +49,12 @@ function DraftEditor({ draft, reload, onError }: { draft: NonNullable<MeetingDet
     } catch (error) { onError(error instanceof Error ? error.message : '草稿操作失败。'); }
     finally { setBusy(false); }
   }
-  return <section className="mail-draft" aria-label="会议邮件草稿"><h3>邮件草稿 · v{draft.version}</h3><p>仅准备与版本确认，不发送邮件。{draft.state === 'confirmed' ? '此版本已确认，未发送。' : '待人工复核。'}</p>{draft.stale ? <p className="chat-error">分析版本已变化，请复核内容并保存后再确认。</p> : null}
+  return <section className="mail-draft" aria-label="会议邮件草稿"><h3>邮件草稿 · v{draft.version}</h3><p>版本确认本身不发送邮件，需在下方单独确认真实发送。{draft.state === 'confirmed' ? '此版本已确认；发送情况以历史为准。' : '待人工复核。'}</p>{draft.stale ? <p className="chat-error">分析版本已变化，请复核内容并保存后再确认。</p> : null}
     <label>收件人（由用户明确指定）<input aria-label="草稿收件人" value={recipients} onChange={e => setRecipients(e.target.value)} placeholder="多个邮箱用逗号分隔" /></label>
     <label>主题<input aria-label="草稿主题" value={subject} onChange={e => setSubject(e.target.value)} /></label>
     <label>正文<textarea aria-label="草稿正文" rows={9} value={body} onChange={e => setBody(e.target.value)} /></label>
     <div className="meeting-actions"><button disabled={busy} onClick={() => { void save(false); }}>复核并保存草稿</button><button disabled={busy || dirty || draft.stale || !draft.recipients.length} onClick={() => { void save(true); }}>确认此版本（不发送）</button></div>
+    <EmailDeliveryPanel draft={draft} dirty={dirty} />
   </section>;
 }
 export function MeetingPanel() {
@@ -103,7 +105,7 @@ export function MeetingPanel() {
   }
   const result = detail?.analysis?.result;
   return <section id="meetings" className="meeting-panel" aria-label="会议分析与风险待办"><div className="chat-heading"><h2>会议分析与风险待办</h2><label className="upload-label">{uploading ? '上传中…' : '上传会议 TXT'}<input ref={input} aria-label="上传会议 TXT" type="file" accept=".txt,text/plain" disabled={uploading} onChange={e => { const file = e.target.files?.[0]; if (file) void upload(file); }} /></label></div>
-    <p>UTF-8 TXT · 1 MiB / 64000 字符上限 · 风险均需原文证据 · 邮件仅草稿，不发送</p>
+    <p>UTF-8 TXT · 1 MiB / 64000 字符上限 · 风险均需原文证据 · 邮件须人工确认版本并单独确认发送</p>
     {error ? <p role="alert" className="chat-error">{error}</p> : null}
     <ul className="meeting-list">{list.map(row => <li key={row.id}><button data-meeting-id={row.id} aria-pressed={row.id === selected} onClick={() => { setSelected(row.id); setError(''); }}>{row.filename} · {labels[row.status]}</button></li>)}</ul>
     {detail ? <div data-selected-meeting={detail.meeting.id}><div className="meeting-actions"><strong>{labels[detail.meeting.status]} · {detail.meeting.lineCount} 行 · 已保留 {detail.versions.length} 个分析版本</strong><button disabled={restarting || detail.meeting.status === 'processing' || detail.meeting.status === 'uploaded'} onClick={() => { void reanalyze(); }}>重新分析（保留人工编辑）</button><button onClick={() => { void api(`/meetings/${selected}/transcript`).then(data => setTranscript(data.transcript)).catch(() => setError('原文加载失败。')); }}>查看带行号原文</button></div>
