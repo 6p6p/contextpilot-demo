@@ -1,3 +1,7 @@
+import { createPresentationAuth } from './presentations/auth.js';
+import { createPresentationService } from './presentations/service.js';
+import { createPresentationSources } from './presentations/sources.js';
+import { registerPresentationRoutes } from './presentations/routes.js';
 import { createSearchProvider } from './search/service.js';
 import type { EmailProvider } from './email/provider.js';
 import { registerEmailRoutes } from './email/routes.js';
@@ -47,7 +51,12 @@ export function buildApp(env: Env, overrides: { emailProvider?: EmailProvider | 
   registerEmailRoutes(app, database, overrides.emailProvider === undefined ? createResendProvider(env) : overrides.emailProvider, env, shutdown.signal);
   registerDocumentRoutes(app, database, storage, embedder, shutdown.signal);
   registerMeetingRoutes(app, database, storage, createChatModel({ ...env, LLM_MAX_TOKENS: env.MEETING_MAX_TOKENS, LLM_TIMEOUT_MS: env.MEETING_TIMEOUT_MS }, cancellableFetch, { jsonMode: true }), shutdown.signal, memory?.scope);
-  registerChatRoutes(app, database, createChatModel(env), database && embedder ? createKnowledgeAnswerer(createRetriever(database, embedder, env.RAG_MIN_SIMILARITY)) : null, memory, createSearchProvider(env, cancellableFetch));
+  const search=createSearchProvider(env,cancellableFetch);
+  const retrieve=database&&embedder?createRetriever(database,embedder,env.RAG_MIN_SIMILARITY):null;
+  const pptAuth=createPresentationAuth(env);
+  const presentations=database?createPresentationService(database,storage,createChatModel({...env,LLM_TIMEOUT_MS:60000},cancellableFetch),createPresentationSources(database,retrieve,memory,search),env,shutdown.signal):null;
+  registerPresentationRoutes(app,presentations,pptAuth,Boolean(env.PPT_ACCESS_KEY));
+  registerChatRoutes(app, database, createChatModel(env), retrieve ? createKnowledgeAnswerer(retrieve) : null, memory, search, presentations,pptAuth);
 
   app.get('/api/health', async () => ({
     status: 'ok', service: 'contextpilot-api',

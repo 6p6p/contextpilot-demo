@@ -10,6 +10,10 @@ test('workspace displays health from the actual backend', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText('让上下文');
   await expect(page.getByRole('status')).toContainText('后端已连接');
   await expect(page.getByRole('status')).toContainText('数据库未配置');
+  await page.getByText('PPT 资料与下载 · 在聊天中明确输入').click();
+  await expect(page.getByLabel('PPT 访问口令')).toBeVisible();
+  await expect(page.getByRole('button', {name:'解锁 PPT',exact:true})).toBeDisabled();
+  await page.getByText('PPT 资料与下载 · 在聊天中明确输入').click();
   await expect(page.getByLabel('联网搜索模式')).toHaveValue('auto');
   await page.getByLabel('联网搜索模式').selectOption('off');
   await expect(page.getByLabel('联网搜索模式')).toHaveValue('off');

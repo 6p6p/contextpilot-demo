@@ -151,3 +151,26 @@ export const emailDeliveries = pgTable('email_deliveries', {
   check('email_delivery_status_check', sql`${t.status} in ('queued','processing','accepted','delivered','failed','unknown')`),
   check('email_delivery_version_check', sql`${t.version} > 0`),
   index('email_delivery_queue_idx').on(t.scope, t.configIdentity, t.status, t.leaseUntil)]).enableRLS();
+
+// One durable PPT job per persisted assistant message. Output intent exists before Storage upload.
+export const presentationJobs = pgTable('presentation_jobs', {
+  id: uuid().primaryKey().defaultRandom(), scope: text().notNull(),
+  assistantMessageId: uuid('assistant_message_id').notNull().references(()=>messages.id,{onDelete:'restrict'}),
+  conversationId: uuid('conversation_id').notNull().references(()=>conversations.id,{onDelete:'restrict'}),
+  request: text().notNull(), requestHash: text('request_hash').notNull(),
+  context: jsonb().$type<import('../../../../shared/presentations.js').PresentationContext & {knowledgeMode:boolean; searchMode:import('../../../../shared/search.js').SearchMode;artifactPublication?:import('../presentations/publication.js').Publication; planningOutput?:string;planningHistory?: {sources?:import('../../../../shared/presentations.js').PptSource[]|null;output?:string;plan:import('../../../../shared/presentations.js').PptPlan|null;sha256:string|null;errorCode:string|null;recordedAt:string}[]}>().notNull(),
+  topic: text().notNull(), pageCount: integer('page_count').notNull(),
+  status: text({enum:['queued','planning','rendering','ready','failed']}).notNull().default('queued'),
+  sources: jsonb().$type<import('../../../../shared/presentations.js').PptSource[] | null>(),
+  plan: jsonb().$type<import('../../../../shared/presentations.js').PptPlan | null>(),
+  objectKey: text('object_key').notNull(), storageOrigin: text('storage_origin').notNull(), storageBucket:text('storage_bucket').notNull(),
+  filename: text().notNull(), size: integer(), sha256: text(),
+  attempts: integer().notNull().default(0), retries: integer().notNull().default(0), leaseToken: uuid('lease_token'), leaseUntil: timestamp('lease_until',{withTimezone:true}),
+  errorCode: text('error_code'), errorMessage: text('error_message'),
+  createdAt: timestamp('created_at',{withTimezone:true}).notNull().defaultNow(), updatedAt: timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[uniqueIndex('presentation_message_idx').on(t.assistantMessageId),uniqueIndex('presentation_object_idx').on(t.objectKey),
+  index('presentation_queue_idx').on(t.scope,t.status,t.leaseUntil),
+  check('presentation_page_count_check',sql`${t.pageCount} between 5 and 10`),
+  check('presentation_attempts_check',sql`${t.attempts} between 0 and 2 and ${t.retries} between 0 and 1`),
+  check('presentation_status_check',sql`${t.status} in ('queued','planning','rendering','ready','failed')`),
+]).enableRLS();

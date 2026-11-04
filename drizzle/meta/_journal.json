@@ -57,6 +57,13 @@
       "when": 1793782474862,
       "tag": "0007_furry_bill_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793786094155,
+      "tag": "0008_deep_paladin",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,5 @@
+import { PresentationPanel } from './PresentationPanel';
+import type { PresentationContext } from '../../../shared/presentations';
 import { MemorySources } from './MemoryPanel';
 import { useEffect, useRef, useState } from 'react';
 import { conversationSchema, conversationsResponse, messagesResponse, type Conversation, type ChatMessage } from '../../../shared/chat';
@@ -22,6 +24,7 @@ export function ChatWorkspace() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [presentationContext,setPresentationContext]=useState<PresentationContext>({meetingId:null,useMemory:false,webQuery:null});
   const [searchMode, setSearchMode] = useState<'auto' | 'required' | 'off'>('auto');
   const [knowledgeMode, setKnowledgeMode] = useState(false);
   const [refresh, setRefresh] = useState(0);
@@ -89,7 +92,7 @@ export function ChatWorkspace() {
     try {
       const result = messagesResponse.parse(await request(`/conversations/${id}/messages`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content: draft.trim(), clientRequestId: crypto.randomUUID(), knowledgeMode, searchMode }),
+        body: JSON.stringify({ content: draft.trim(), clientRequestId: crypto.randomUUID(), knowledgeMode, searchMode, presentationContext }),
       }));
       if (selection.current === id) {
         setMessages(current => [...current.filter(m => !result.messages.some(row => row.id === m.id)), ...result.messages].sort((a, b) => a.ordinal - b.ordinal));
@@ -112,6 +115,7 @@ export function ChatWorkspace() {
     <div className="chat-panel">
       <div className="chat-heading"><h2>AI 对话</h2><button disabled={sending || creating} onClick={() => setRefresh(value => value + 1)}>重新加载历史</button></div>
       {error ? <p className="chat-error" role="alert">{error}</p> : null}
+      <PresentationPanel context={presentationContext} onChange={setPresentationContext} refresh={refresh}/>
       <div className="chat-messages" aria-label="聊天消息" aria-busy={loading || sending || pending}>
         {loading ? <p>正在加载历史…</p> : null}
         {!loading && selected && !messages.length ? <p>发送第一条消息。历史保存在云端数据库中。</p> : null}

@@ -1,3 +1,4 @@
+import {relayRedacted} from "./redact-output.mjs";
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
@@ -12,6 +13,8 @@ if (emailStub) {
   if (!process.env.DATABASE_URL) throw new Error('Database required for email stub browser test');
 }
 const live = process.argv.includes('--live');
+const presentationLive=process.argv.includes('--presentation-live');
+if(presentationLive&&(!live||process.env.ACCEPTANCE_PHASE!=='8'||process.env.ACCEPTANCE_TRACKING!=='1'))throw new Error('PPT live requires Phase8 tracking and authorization');
 const searchLive = process.argv.includes('--search-live');
 if (searchLive && (!live || process.env.ACCEPTANCE_PHASE !== '7' || process.env.ACCEPTANCE_TRACKING !== '1')) throw new Error('Search live requires Phase7 tracking and live authorization');
 const ragLive = process.argv.includes('--rag-live');
@@ -29,7 +32,10 @@ if (live) {
 const children = [];
 const env = {
   ...process.env,
-  TAVILY_API_KEY: searchLive ? process.env.TAVILY_API_KEY : '',
+  PPT_ACCESS_KEY: presentationLive ? process.env.PPT_ACCESS_KEY : '',
+  DOTENV_CONFIG_PATH: live || emailStub ? (process.env.DOTENV_CONFIG_PATH || '.env') : '.acceptance/disabled-offline.env',
+  ...(presentationLive ? {PPT_SCOPE:process.env.PPT_ACCEPTANCE_SCOPE||'phase8-acceptance',MEMORY_SCOPE:'phase8-acceptance'} : {}),
+  TAVILY_API_KEY: searchLive || presentationLive ? process.env.TAVILY_API_KEY : '',
   ...(searchLive ? { SEARCH_MAX_CALLS: '5', MEMORY_SCOPE: 'phase7-live-20261104' } : {}),
   EMAIL_DELIVERY_ENABLED: 'false', RESEND_API_KEY: '',
   NODE_ENV: production ? 'production' : 'test',
@@ -47,7 +53,10 @@ async function assertPortFree(port) {
 }
 function start(args) {
   // No shell/npm/watch wrappers: each service is one directly owned Node process.
-  const child = spawn(process.execPath, args, { env, stdio: 'inherit', windowsHide: true });
+  const child = spawn(process.execPath, args, { env, stdio: ['ignore','pipe','pipe'], windowsHide: true });
+  // Playwright request errors can contain cookie headers. Redact before any output reaches logs.
+  const secrets=['PPT_ACCESS_KEY','LLM_API_KEY','EMBEDDING_API_KEY','SUPABASE_STORAGE_KEY','RESEND_API_KEY','TAVILY_API_KEY','DATABASE_URL'].map(k=>env[k]).filter(Boolean);
+  relayRedacted(child.stdout,process.stdout,secrets);relayRedacted(child.stderr,process.stderr,secrets);
   children.push(child);
   return child;
 }
@@ -84,7 +93,7 @@ try {
   }
   const separator = process.argv.indexOf('--');
   const testArguments = separator >= 0 ? process.argv.slice(separator + 1) : [];
-  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', searchLive ? 'playwright.search.config.ts' : emailStub ? 'playwright.email-stub.config.ts' : memoryLive ? 'playwright.memory.config.ts' : meetingsLive ? 'playwright.meetings.config.ts' : ragLive ? 'playwright.rag.config.ts' : live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts', ...testArguments]);
+  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', presentationLive ? 'playwright.presentation.config.ts' : searchLive ? 'playwright.search.config.ts' : emailStub ? 'playwright.email-stub.config.ts' : memoryLive ? 'playwright.memory.config.ts' : meetingsLive ? 'playwright.meetings.config.ts' : ragLive ? 'playwright.rag.config.ts' : live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts', ...testArguments]);
   const [code] = await once(runner, 'exit');
   process.exitCode = code ?? 1;
 } catch (error) {

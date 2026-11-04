@@ -1,0 +1,22 @@
+// Real DB/Storage download acceptance. No task workers or generative providers.
+import 'dotenv/config';
+import Fastify from 'fastify';
+import {parseEnv} from '../../apps/api/src/config/env.js';
+import {createDatabase} from '../../apps/api/src/db/client.js';
+import {createStorage} from '../../apps/api/src/knowledge/storage.js';
+import {createPresentationService} from '../../apps/api/src/presentations/service.js';
+import {createPresentationAuth} from '../../apps/api/src/presentations/auth.js';
+import {registerPresentationRoutes} from '../../apps/api/src/presentations/routes.js';
+import {PublicError} from '../../apps/api/src/errors.js';
+const env=parseEnv({...process.env,PPT_SCOPE:'phase8-acceptance-v2',EMAIL_DELIVERY_ENABLED:'false'});
+const native=fetch;globalThis.fetch=async(input,init)=>{const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url);if(url.origin!==new URL(env.SUPABASE_URL!).origin||!url.pathname.startsWith('/storage/v1/')||(init?.method??'GET')!=='GET')throw new Error('Read-only acceptance transport blocked');return native(input,init);};
+const db=createDatabase(env)!;const app=Fastify({logger:false});
+const unavailable={async complete():Promise<never>{throw new Error('No model calls permitted');}};
+const service=createPresentationService(db,createStorage(env),unavailable,async()=>{throw new Error('No source collection permitted');},env);
+app.addHook('onRequest',async(req,reply)=>{if(req.method!=='GET'&&req.url!=='/api/presentation-session')return reply.code(405).send({error:'Read-only acceptance'});});
+registerPresentationRoutes(app,service,createPresentationAuth(env),false);
+app.get('/api/health',async()=>({ready:true}));
+app.setErrorHandler((error,_req,reply)=>reply.code(error instanceof Error&&'statusCode'in error?Number(error.statusCode):500).send({error:error instanceof PublicError?error.code:'Sanitized acceptance error'}));
+app.addHook('onClose',async()=>{await db.pool.end();});
+process.once('SIGTERM',()=>{void app.close();});
+await app.listen({host:'127.0.0.1',port:5273});

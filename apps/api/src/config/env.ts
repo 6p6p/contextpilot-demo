@@ -5,6 +5,9 @@ const optionalDatabaseUrl = z.preprocess(
   z.url().refine(value => /^postgres(?:ql)?:\/\//.test(value)).optional(),
 );
 const schema = z.object({
+  PPT_ACCESS_KEY: z.preprocess(v => v === '' ? undefined : v, z.string().min(32).max(128).optional()),
+  PPT_SCOPE: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/).default('demo'),
+  PPT_MAX_TOKENS: z.coerce.number().int().min(2048).max(8192).default(8192),
   TAVILY_API_KEY: z.preprocess(v => v === '' ? undefined : v, z.string().min(1).optional()),
   TAVILY_BASE_URL: z.url().default('https://api.tavily.com'),
   SEARCH_TIMEOUT_MS: z.coerce.number().int().min(1000).max(15000).default(10000),

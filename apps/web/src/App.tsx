@@ -39,10 +39,10 @@ export function App() {
         <a className="nav-chat" href="#meetings">会议与待办</a>
         {['知识库文件', '演示文稿'].map(name => <span className="nav-future" key={name}>{name}<small>待开发</small></span>)}
       </nav>
-      <div className="sidebar-foot">单一演示工作区<br />Phase 6 · 长期记忆</div>
+      <div className="sidebar-foot">单一演示工作区<br />Phase 8 · PPT 汇报</div>
     </aside>
     <main>
-      <header><span>CONTEXT → DECISION</span><span className="phase">Phase 6</span></header>
+      <header><span>CONTEXT → DECISION</span><span className="phase">Phase 8</span></header>
       <section className="intro"><p className="eyebrow">CONTEXT PILOT / WORKSPACE</p><h1>让上下文，成为决策的起点。</h1><p>创建会话，与真实模型交流。对话历史保存在 PostgreSQL，支持刷新恢复与会话切换。</p></section>
       <section className="status-card" aria-labelledby="service-title">
         <div><p className="eyebrow">SYSTEM CONNECTION</p><h2 id="service-title">服务连接</h2><p>由浏览器请求真实 Fastify 后端，不使用模拟响应。</p></div>

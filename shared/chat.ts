@@ -1,10 +1,11 @@
+import { presentationContextSchema } from './presentations.js';
 import { searchModeSchema, webSourceSchema } from './search.js';
 import { memoryCitationSchema } from './memory.js';
 import { z } from 'zod';
 import { citationSchema } from './documents.js';
 
 export const createConversationSchema = z.object({ title: z.string().trim().min(1).max(100).default('新对话') });
-export const sendMessageSchema = z.object({ clientRequestId: z.uuid(), content: z.string().trim().min(1).max(4000), knowledgeMode: z.boolean().default(false), searchMode: searchModeSchema.default('auto') });
+export const sendMessageSchema = z.object({ clientRequestId: z.uuid(), content: z.string().trim().min(1).max(4000), knowledgeMode: z.boolean().default(false), searchMode: searchModeSchema.default('auto'), presentationContext: presentationContextSchema.optional() });
 export const conversationSchema = z.object({ id: z.uuid(), title: z.string(), createdAt: z.string(), updatedAt: z.string() });
 export const messageSchema = z.object({
   id: z.uuid(), conversationId: z.uuid(), clientRequestId: z.uuid(), ordinal: z.number(),

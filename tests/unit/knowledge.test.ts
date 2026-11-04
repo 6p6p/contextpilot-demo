@@ -86,3 +86,11 @@ describe('private Storage policy (MOCK transport)', () => {
     expect(transport).toHaveBeenCalledTimes(1);
   });
 });
+
+it('Storage lookup recognizes only explicit legacy not_found, not arbitrary HTTP400 (MOCK)',async()=>{
+ const env=parseEnv({SUPABASE_URL:'https://project.example',SUPABASE_STORAGE_KEY:'placeholder',SUPABASE_STORAGE_BUCKET:'private'});
+ for(const [body,missing] of [[{statusCode:'404',error:'not_found'},true],[{statusCode:'400',error:'InvalidRequest'},false]] as const){
+  const transport=vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('{"public":false}')).mockResolvedValueOnce(new Response(JSON.stringify(body),{status:400}));
+  const result=createStorage(env,transport)!.find!('presentations/test.pptx');if(missing)expect(await result).toBeNull();else await expect(result).rejects.toMatchObject({code:'STORAGE_UNAVAILABLE'});
+ }
+});
