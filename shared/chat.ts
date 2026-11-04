@@ -1,14 +1,16 @@
+import { searchModeSchema, webSourceSchema } from './search.js';
 import { memoryCitationSchema } from './memory.js';
 import { z } from 'zod';
 import { citationSchema } from './documents.js';
 
 export const createConversationSchema = z.object({ title: z.string().trim().min(1).max(100).default('新对话') });
-export const sendMessageSchema = z.object({ clientRequestId: z.uuid(), content: z.string().trim().min(1).max(4000), knowledgeMode: z.boolean().default(false) });
+export const sendMessageSchema = z.object({ clientRequestId: z.uuid(), content: z.string().trim().min(1).max(4000), knowledgeMode: z.boolean().default(false), searchMode: searchModeSchema.default('auto') });
 export const conversationSchema = z.object({ id: z.uuid(), title: z.string(), createdAt: z.string(), updatedAt: z.string() });
 export const messageSchema = z.object({
   id: z.uuid(), conversationId: z.uuid(), clientRequestId: z.uuid(), ordinal: z.number(),
   role: z.enum(['user', 'assistant']), content: z.string(), status: z.enum(['completed', 'processing', 'failed']),
   errorCode: z.string().nullable(), model: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
+  searchMode: searchModeSchema.default('off'), webSources: z.array(webSourceSchema).default([]),
   memorySources: z.array(memoryCitationSchema).default([]),
   knowledgeMode: z.boolean().default(false), sources: z.array(citationSchema).default([]),
 });

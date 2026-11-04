@@ -58,3 +58,13 @@ describe('bounded multi-turn context', () => {
     expect(context.at(-1)?.content).toBe('99');
   });
 });
+
+// Search overrides are request-local; ordinary chat configuration is retained.
+it('search JSON/non-thinking/output options apply to one DeepSeek request only', async () => {
+  const transport = vi.fn<typeof fetch>().mockImplementation(async () => new Response(JSON.stringify({ choices: [{ message: { content: '{}' }, finish_reason: 'stop' }] })));
+  const model = createChatModel(parseEnv({ LLM_BASE_URL: 'https://api.deepseek.com', LLM_MODEL: 'deepseek-flash', LLM_API_KEY: 'placeholder' }), transport)!;
+  await model.complete([], { jsonMode: true, maxTokens: 4096, disableThinking: true });
+  expect(JSON.parse(String(transport.mock.calls[0][1]?.body))).toMatchObject({ max_tokens: 4096, response_format: { type: 'json_object' }, thinking: { type: 'disabled' } });
+  await model.complete([]);
+  const normal = JSON.parse(String(transport.mock.calls[1][1]?.body)); expect(normal.max_tokens).toBe(1024); expect(normal.thinking).toBeUndefined(); expect(normal.response_format).toBeUndefined();
+});

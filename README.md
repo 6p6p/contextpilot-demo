@@ -8,7 +8,7 @@
 
 **Phase 4 会议分析已通过真实服务验收。** UTF-8 TXT 上传至 Supabase 私有 Storage，自动分析会议、生成带行号证据的风险与待办，支持人工编辑、重复上传去重和重新分析。邮件只准备草稿和版本确认，全部保持未发送。真实业务用例分次通过，模型不合规输出的失败记录也保留，详见 [Phase 4 验收记录](docs/phase-4-verification.md)。
 
-Phase 3 PDF RAG 与原有聊天真实回归通过；接入说明见 [Phase 3 配置](docs/phase-3-setup.md)。既有未复现上传 HTTP 500 仍为 OPEN；RAG 目前主要支持可核实摘录式回答，带证据综合归纳仍需评估。长期记忆已实现，真实验收记录见下方；邮件发送实现与验收边界见下方 Phase 6；联网搜索和 PPT 尚未实现。未部署、未推送 GitHub；公开访问前必须完成工作区保护。
+Phase 3 PDF RAG 与原有聊天真实回归通过；接入说明见 [Phase 3 配置](docs/phase-3-setup.md)。既有未复现上传 HTTP 500 仍为 OPEN；RAG 目前主要支持可核实摘录式回答，带证据综合归纳仍需评估。长期记忆已实现，真实验收记录见下方；邮件发送实现与验收边界见下方 Phase 6；联网搜索真实验收通过；PPT 尚未实现。未部署、未推送 GitHub；公开访问前必须完成工作区保护。
 
 ## 环境与启动
 
@@ -204,3 +204,17 @@ node scripts/e2e.mjs --email-stub
 ```
 
 `--email-stub` 使用单独测试入口、真实PostgreSQL与替身EmailProvider，不能证明Resend已配置或真实投递。普通E2E和聊天/RAG等live启动脚本强制禁用邮件，不会因测试启动领取真实发送任务。没有mock供应商的环境变量开关或生产HTTP测试路由。详情见 [Phase 6 验收记录](docs/phase-6-verification.md)。
+
+## Phase 7 — Web Search & Tool Integration (verified)
+
+Phase 7 real acceptance completed after baseline d85dde3; feature milestones only. Details and retained failures: [verification](docs/phase-7-verification.md).
+
+- Backend-only Tavily adapter; no new dependency/framework. Configure `TAVILY_API_KEY`, `TAVILY_BASE_URL=https://api.tavily.com`, `SEARCH_TIMEOUT_MS=10000` (1000–15000), `SEARCH_MAX_RESULTS=5` (1–5), `SEARCH_MAX_CALLS=20` (1–100). Missing key fails explicitly. Additive migration 0007 applied and column defaults/pgvector compatibility verified.
+- Chat `searchMode=auto|required|off`, new requests default auto; historical messages default off. Auto uses Chinese/English freshness/news/price/weather keywords. Required searches, off never searches; explicit freshness questions with off report inability to confirm current facts. Keyword detection is imperfect; use required for implicit freshness questions.
+- One basic search per selected turn, no retry, no raw-page fetch or Tavily answer. Per-process attempted-call cap resets on restart; it is not a durable billing quota. Persisted request dedup prevents replay from searching again. Snippets bounded to 5 × 1600 characters. Search evidence uses request-local JSON/non-thinking mode (DeepSeek host only), max4096 output tokens; ordinary chat settings stay unchanged.
+- External search receives only the normalized standalone current question <=200 characters, with conservative private-context/sensitive-pattern rejection. No conversation history, PDF/meeting text or memory retrieval data is sent to Tavily. Screening cannot detect all undisclosed private facts; enter only public questions. No model query rewriting.
+- Model selects evidence; server checks actual source IDs/exact quotes. Only verified quotations are used in answers; conflicting source claims stay separately attributed. All returned result metadata is retained, including unselected results labeled “仅检索”; selected evidence is “已引用”. A source may have multiple quotation cards. Title/URL/snippet/query time/optional provider publication date persist in messages.web_sources. Missing dates remain null. This is extractive answering; relevance and factual truth still require review, not free-form synthesis.
+- Existing PDF and memory paths remain; PDF+search uses separate sections. Failures do not claim successful current information. UI provides mode, pending state, failure codes, links and citation history; stage feedback is combined, not streamed. Web data has no action executor or email privileges.
+- Actual acceptance: 5 Tavily Basic calls (all HTTP200),18 DeepSeek calls,6 BGE-M3 calls; search counts include preflight and first failed model-output flow. Conservative total estimate ~CNY0.53; cumulative pre-request reservation CNY1.390012 < approved3. Account invoice not read.
+- Required/auto search, ordinary/off zero-search, replay dedup, accessible Node.js sources, exact evidence, refresh/restart and complete result metadata passed. Chat/RAG/meeting/cross-conversation memory live regressions passed through generation and persisted evidence audits. Offline103 tests/types/build; full realDB/stub20 passed, expanded search suite2 passed (one repeated, one additional case). Default browser dev/prod results are recorded in verification.
+- Real429/quota exhaustion/timeout/empty/malicious-data cases are isolated mocks; realDB failure persistence is separately stubbed. Do not exhaust actual quotas for testing. No new email, Resend/root config change, secret disclosure, provisioning, deployment, remote push or PPT. Phase3 upload HTTP500 and evidence-backed RAG synthesis evaluation remain OPEN.

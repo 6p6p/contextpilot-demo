@@ -24,6 +24,8 @@ export const messages = pgTable('messages', {
   status: text({ enum: ['completed', 'processing', 'failed'] }).notNull(),
   errorCode: text('error_code'),
   model: text(),
+  searchMode: text('search_mode', { enum: ['auto', 'required', 'off'] }).notNull().default('off'),
+  webSources: jsonb('web_sources').$type<import('../../../../shared/search.js').WebSource[]>().notNull().default([]),
   memorySources: jsonb('memory_sources').$type<import('../../../../shared/memory.js').MemoryCitation[]>().notNull().default([]),
   knowledgeMode: boolean('knowledge_mode').notNull().default(false),
   sources: jsonb().$type<Citation[]>().notNull().default([]),

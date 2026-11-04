@@ -22,6 +22,7 @@ export function ChatWorkspace() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [searchMode, setSearchMode] = useState<'auto' | 'required' | 'off'>('auto');
   const [knowledgeMode, setKnowledgeMode] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const selection = useRef(selected);
@@ -88,7 +89,7 @@ export function ChatWorkspace() {
     try {
       const result = messagesResponse.parse(await request(`/conversations/${id}/messages`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content: draft.trim(), clientRequestId: crypto.randomUUID(), knowledgeMode }),
+        body: JSON.stringify({ content: draft.trim(), clientRequestId: crypto.randomUUID(), knowledgeMode, searchMode }),
       }));
       if (selection.current === id) {
         setMessages(current => [...current.filter(m => !result.messages.some(row => row.id === m.id)), ...result.messages].sort((a, b) => a.ordinal - b.ordinal));
@@ -117,17 +118,19 @@ export function ChatWorkspace() {
         {messages.map(message => <article className={`chat-message ${message.role}`} key={message.id} aria-label={message.role === 'user' ? '用户消息' : 'AI 消息'}>
           <strong>{message.role === 'user' ? '你' : 'ContextPilot'}</strong>
           <div className="message-content">{message.status === 'processing' ? '正在生成回复…' : message.status === 'failed' ? `回复失败（${message.errorCode || 'UNKNOWN'}），原消息已保存。` : message.content}</div>
+          {message.webSources.map((source, i) => <details className="citation" key={`${source.id}-${i}`}><summary>网页 [{source.id}] {source.title} · {source.quote ? '已引用' : '仅检索'}</summary><a href={source.url} target="_blank" rel="noopener noreferrer">{source.url}</a><p>查询时间：{source.queriedAt}{source.publishedAt ? ` · 发布时间：${source.publishedAt}` : ''}</p>{source.quote ? <blockquote>{source.quote}</blockquote> : null}<p>{source.summary}</p></details>)}
           {message.memorySources.length ? <p>本回答使用以下历史记忆：</p> : null}
           {message.memorySources.map(m => <MemorySources key={m.id} memory={m} />)}
           {message.sources.map((source, i) => <details key={`${source.sourceId}-${i}`} className="citation"><summary>[{i + 1}] {source.filename} · 第 {source.page} 页</summary><blockquote>{source.quote}</blockquote><a href={`/api/documents/${source.documentId}/download`}>下载原始 PDF 核对</a></details>)}
         </article>)}
-        {sending ? <p role="status">正在生成并保存回复，请稍候…</p> : null}
+        {sending ? <p role="status">正在处理搜索（如需）并生成、保存回复，请稍候…</p> : null}
       </div>
       <form onSubmit={event => { void send(event); }}>
+        <label>联网搜索 <select aria-label="联网搜索模式" value={searchMode} onChange={e => setSearchMode(e.target.value as typeof searchMode)} disabled={sending || creating}><option value="auto">自动</option><option value="required">必须联网</option><option value="off">关闭</option></select></label>
         <label className="knowledge-toggle"><input type="checkbox" checked={knowledgeMode} onChange={event => setKnowledgeMode(event.target.checked)} disabled={creating || sending} /> 使用 PDF 知识库</label>
         <label htmlFor="chat-input">消息</label>
         <textarea id="chat-input" value={draft} onChange={event => setDraft(event.target.value)} maxLength={4000} rows={3} disabled={!selected || creating || sending || loading || pending} placeholder="输入消息，开始多轮对话…" />
-        <div className="composer-actions"><small>{knowledgeMode ? '仅按当前问题检索全部已就绪 PDF · 回答附原文证据' : '普通对话 · 自动召回已就绪历史记忆 · 不含联网'}</small><button type="submit" disabled={!selected || !draft.trim() || creating || sending || loading || pending}>发送消息</button></div>
+        <div className="composer-actions"><small>{knowledgeMode ? '仅按当前问题检索全部已就绪 PDF · 回答附原文证据' : '普通对话 · 自动召回历史记忆 · 联网按所选模式 · 仅输入公共短查询'}</small><button type="submit" disabled={!selected || !draft.trim() || creating || sending || loading || pending}>发送消息</button></div>
       </form>
     </div>
   </section></>;

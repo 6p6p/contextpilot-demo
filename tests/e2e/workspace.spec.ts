@@ -10,6 +10,9 @@ test('workspace displays health from the actual backend', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText('让上下文');
   await expect(page.getByRole('status')).toContainText('后端已连接');
   await expect(page.getByRole('status')).toContainText('数据库未配置');
+  await expect(page.getByLabel('联网搜索模式')).toHaveValue('auto');
+  await page.getByLabel('联网搜索模式').selectOption('off');
+  await expect(page.getByLabel('联网搜索模式')).toHaveValue('off');
   await page.screenshot({ path: 'test-results/workspace-desktop.png', fullPage: true });
   await page.getByRole('button', { name: '重新检查' }).click();
   await expect(page.getByRole('status')).toContainText('后端已连接');

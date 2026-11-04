@@ -12,6 +12,8 @@ if (emailStub) {
   if (!process.env.DATABASE_URL) throw new Error('Database required for email stub browser test');
 }
 const live = process.argv.includes('--live');
+const searchLive = process.argv.includes('--search-live');
+if (searchLive && (!live || process.env.ACCEPTANCE_PHASE !== '7' || process.env.ACCEPTANCE_TRACKING !== '1')) throw new Error('Search live requires Phase7 tracking and live authorization');
 const ragLive = process.argv.includes('--rag-live');
 const memoryLive = process.argv.includes('--memory-live');
 const meetingsLive = process.argv.includes('--meetings-live');
@@ -27,6 +29,8 @@ if (live) {
 const children = [];
 const env = {
   ...process.env,
+  TAVILY_API_KEY: searchLive ? process.env.TAVILY_API_KEY : '',
+  ...(searchLive ? { SEARCH_MAX_CALLS: '5', MEMORY_SCOPE: 'phase7-live-20261104' } : {}),
   EMAIL_DELIVERY_ENABLED: 'false', RESEND_API_KEY: '',
   NODE_ENV: production ? 'production' : 'test',
   PORT: String(apiPort), HOST: '127.0.0.1', DATABASE_URL: live || emailStub ? process.env.DATABASE_URL : '', LOG_LEVEL: 'silent',
@@ -80,7 +84,7 @@ try {
   }
   const separator = process.argv.indexOf('--');
   const testArguments = separator >= 0 ? process.argv.slice(separator + 1) : [];
-  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', emailStub ? 'playwright.email-stub.config.ts' : memoryLive ? 'playwright.memory.config.ts' : meetingsLive ? 'playwright.meetings.config.ts' : ragLive ? 'playwright.rag.config.ts' : live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts', ...testArguments]);
+  const runner = start(['node_modules/@playwright/test/cli.js', 'test', '--config', searchLive ? 'playwright.search.config.ts' : emailStub ? 'playwright.email-stub.config.ts' : memoryLive ? 'playwright.memory.config.ts' : meetingsLive ? 'playwright.meetings.config.ts' : ragLive ? 'playwright.rag.config.ts' : live ? 'playwright.live.config.ts' : production ? 'playwright.production.config.ts' : 'playwright.config.ts', ...testArguments]);
   const [code] = await once(runner, 'exit');
   process.exitCode = code ?? 1;
 } catch (error) {

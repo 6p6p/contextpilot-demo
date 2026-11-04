@@ -1,3 +1,4 @@
+import { createSearchProvider } from './search/service.js';
 import type { EmailProvider } from './email/provider.js';
 import { registerEmailRoutes } from './email/routes.js';
 import { createResendProvider } from './email/provider.js';
@@ -46,7 +47,7 @@ export function buildApp(env: Env, overrides: { emailProvider?: EmailProvider | 
   registerEmailRoutes(app, database, overrides.emailProvider === undefined ? createResendProvider(env) : overrides.emailProvider, env, shutdown.signal);
   registerDocumentRoutes(app, database, storage, embedder, shutdown.signal);
   registerMeetingRoutes(app, database, storage, createChatModel({ ...env, LLM_MAX_TOKENS: env.MEETING_MAX_TOKENS, LLM_TIMEOUT_MS: env.MEETING_TIMEOUT_MS }, cancellableFetch, { jsonMode: true }), shutdown.signal, memory?.scope);
-  registerChatRoutes(app, database, createChatModel(env), database && embedder ? createKnowledgeAnswerer(createRetriever(database, embedder, env.RAG_MIN_SIMILARITY)) : null, memory);
+  registerChatRoutes(app, database, createChatModel(env), database && embedder ? createKnowledgeAnswerer(createRetriever(database, embedder, env.RAG_MIN_SIMILARITY)) : null, memory, createSearchProvider(env, cancellableFetch));
 
   app.get('/api/health', async () => ({
     status: 'ok', service: 'contextpilot-api',

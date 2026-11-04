@@ -5,6 +5,11 @@ const optionalDatabaseUrl = z.preprocess(
   z.url().refine(value => /^postgres(?:ql)?:\/\//.test(value)).optional(),
 );
 const schema = z.object({
+  TAVILY_API_KEY: z.preprocess(v => v === '' ? undefined : v, z.string().min(1).optional()),
+  TAVILY_BASE_URL: z.url().default('https://api.tavily.com'),
+  SEARCH_TIMEOUT_MS: z.coerce.number().int().min(1000).max(15000).default(10000),
+  SEARCH_MAX_RESULTS: z.coerce.number().int().min(1).max(5).default(5),
+  SEARCH_MAX_CALLS: z.coerce.number().int().min(1).max(100).default(20),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   EMAIL_DELIVERY_ENABLED: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
   EMAIL_SCOPE: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/).default('demo'),
@@ -53,7 +58,7 @@ export function parseEnv(source: NodeJS.ProcessEnv) {
     const url = new URL(result.data.LLM_BASE_URL);
     if (url.username || url.password || url.search || url.hash || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(url.hostname)))) throw new Error('Invalid LLM_BASE_URL: use HTTPS without credentials or query parameters');
   }
-  for (const field of ['SUPABASE_URL', 'EMBEDDING_BASE_URL'] as const) {
+  for (const field of ['SUPABASE_URL', 'EMBEDDING_BASE_URL', 'TAVILY_BASE_URL'] as const) {
     const value = result.data[field];
     if (!value) continue;
     const url = new URL(value);

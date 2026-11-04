@@ -50,6 +50,13 @@
       "when": 1793715411606,
       "tag": "0006_organic_catseye",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793782474862,
+      "tag": "0007_furry_bill_hollister",
+      "breakpoints": true
     }
   ]
 }
