@@ -28,6 +28,8 @@ export function registerChatRoutes(app: FastifyInstance, database: ReturnType<ty
   app.post('/api/conversations/:id/messages', async request => {
     const input = sendMessageSchema.parse(request.body);
     if(isPresentationIntent(input.content)){if(!presentationAuth)throw new PublicError(503,'PPT_ACCESS_NOT_CONFIGURED','PPT 访问尚未配置。');presentationAuth.require(request);}
-    return { messages: await requireService().send(id(request.params), input) };
+    const rows=await requireService().send(id(request.params), input);
+    for(const row of rows)if(row.role==='assistant'&&row.status==='failed')request.log.warn({requestId:request.id,errorCode:row.errorCode},'Chat generation failed');
+    return { messages: rows };
   });
 }

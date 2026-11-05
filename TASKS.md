@@ -1,5 +1,18 @@
 # Development tasks
 
+## Stage B round1 defect repair — 2026-11-06
+
+- [x] 只读核查原Run：16消息、8记忆任务ready、10条带来源事实；不修改原业务数据。
+- [x] 新增5项固定协议/脱敏测试；初跑复现后修复，Golden预期不变。
+- [x] BUG-01选择器参数/截断分类与安全诊断，BUG-02编号原文选项/官方前置筛选；校验不放宽。
+- [x] BUG-03真实DB中新会话off/PDF模式路由与来源验证；不重构记忆。
+- [x] BUG-04移除前端重复认证探测，BUG-05完成会议草稿顶部入口；后端权限/邮件关闭不变。
+- [x] check/test186，生产E2E2，受控DB8通过；新Run新增66记录、旧哈希变化0，全部保留。
+- [x] UX v2六项登记，原始现场错误响应不可还原的限制明确记录。
+- [ ] 原问题真实模型/搜索成功与PPT/会议草稿现场复测；不把Mock通过当关闭缺陷的证据。
+
+本地提交后停止等待人工，不Push、不部署、不真实发信、不清理旧数据。
+
 ## Current — Shared Supabase Stage A / manual Stage B
 
 - [x] 审查Schema/服务/Worker，按新授权执行共享库受控写入；无Docker/本地库/Schema变化。

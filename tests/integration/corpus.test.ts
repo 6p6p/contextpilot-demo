@@ -183,6 +183,19 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
     // Do not leave extraction queued; the question has no asserted new facts.
     await createMemoryService(database, stub({ facts: [] }), embedder, run.scope).processOne();
     expect((await memory().list()).memories).toHaveLength(3);
+    // Stage B BUG-03: a genuinely new conversation, PDF off/search off recalls memory;
+    // PDF mode instead returns RAG evidence-gate output without entering memory retrieval.
+    const freshId=randomUUID();run.roots.conversations.push(freshId);await saveRun(run);
+    await database.db.insert(schema.conversations).values({id:freshId,title:`CORPUS-STUB ${run.runId} BUG-03 fresh`});
+    const scopedMemory=memory(),retrieve=vi.spyOn(scopedMemory,'retrieve');
+    const routing=createChatService(database,selection,createKnowledgeAnswerer(async()=>[]),scopedMemory);
+    await routing.send(freshId,{content:'ORCHID-7421 林岚 地点 时间？',clientRequestId:randomUUID(),knowledgeMode:false,searchMode:'off'});
+    expect((await routing.history(freshId)).at(-1)!.memorySources).toHaveLength(3);
+    expect(retrieve).toHaveBeenCalledTimes(1);
+    await routing.send(freshId,{content:'ORCHID-7421 林岚 地点 时间？',clientRequestId:randomUUID(),knowledgeMode:true,searchMode:'off'});
+    expect((await routing.history(freshId)).at(-1)).toMatchObject({content:insufficientEvidence,memorySources:[]});
+    expect(retrieve).toHaveBeenCalledTimes(1);
+    for(let n=0;n<2;n++)await createMemoryService(database,stub({facts:[]}),embedder,run.scope).processOne();
   });
   testCase('T06', 'search modes, saved official URLs/query dates and provider failure status (STUB)', async () => {
     let calls = 0;

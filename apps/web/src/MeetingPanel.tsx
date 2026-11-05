@@ -49,7 +49,7 @@ function DraftEditor({ draft, reload, onError }: { draft: NonNullable<MeetingDet
     } catch (error) { onError(error instanceof Error ? error.message : '草稿操作失败。'); }
     finally { setBusy(false); }
   }
-  return <section className="mail-draft" aria-label="会议邮件草稿"><h3>邮件草稿 · v{draft.version}</h3><p>版本确认本身不发送邮件，需在下方单独确认真实发送。{draft.state === 'confirmed' ? '此版本已确认；发送情况以历史为准。' : '待人工复核。'}</p>{draft.stale ? <p className="chat-error">分析版本已变化，请复核内容并保存后再确认。</p> : null}
+  return <section id="meeting-email-draft" className="mail-draft" aria-label="会议邮件草稿"><h3>邮件草稿 · v{draft.version}</h3><p>版本确认本身不发送邮件，需在下方单独确认真实发送。{draft.state === 'confirmed' ? '此版本已确认；发送情况以历史为准。' : '待人工复核。'}</p>{draft.stale ? <p className="chat-error">分析版本已变化，请复核内容并保存后再确认。</p> : null}
     <label>收件人（由用户明确指定）<input aria-label="草稿收件人" value={recipients} onChange={e => setRecipients(e.target.value)} placeholder="多个邮箱用逗号分隔" /></label>
     <label>主题<input aria-label="草稿主题" value={subject} onChange={e => setSubject(e.target.value)} /></label>
     <label>正文<textarea aria-label="草稿正文" rows={9} value={body} onChange={e => setBody(e.target.value)} /></label>
@@ -111,11 +111,12 @@ export function MeetingPanel() {
     {detail ? <div data-selected-meeting={detail.meeting.id}><div className="meeting-actions"><strong>{labels[detail.meeting.status]} · {detail.meeting.lineCount} 行 · 已保留 {detail.versions.length} 个分析版本</strong><button disabled={restarting || detail.meeting.status === 'processing' || detail.meeting.status === 'uploaded'} onClick={() => { void reanalyze(); }}>重新分析（保留人工编辑）</button><button onClick={() => { void api(`/meetings/${selected}/transcript`).then(data => setTranscript(data.transcript)).catch(() => setError('原文加载失败。')); }}>查看带行号原文</button></div>
       {detail.meeting.status === 'failed' ? <p className="chat-error">{detail.meeting.errorMessage}（{detail.meeting.errorCode}）</p> : null}
       {transcript !== null ? <pre className="meeting-transcript">{transcript.split('\n').map((line, i) => `${i + 1}: ${line}`).join('\n')}</pre> : null}
+      {detail.draft?<a href="#meeting-email-draft">查看邮件草稿（确认不发送）</a>:null}
       {result ? <><h3>{result.topic?.value ?? '会议主题未知'}</h3><p>日期：{result.meetingDate?.value ?? '未知'} · 地点：{result.location?.value ?? '未知'} · 人物：{result.participants.map(p => p.value).join('、') || '未知'}</p>
         <h4>讨论议题与关键决策</h4>{[...result.topics, ...result.decisions].map((fact, i) => <div key={i}><p>{fact.value}</p><EvidenceView evidence={fact.evidence} /></div>)}
         <h3>潜在风险（AI 分析，需人工复核）</h3>{!detail.risks.length ? <p>未识别到有证据支持的业务风险。</p> : detail.risks.map(risk => <article className="meeting-risk" key={risk.id}><strong>{risk.type} · {risk.level}</strong><p>{risk.description}</p><p>潜在影响：{risk.impact}</p>{risk.evidence.map((e, i) => <EvidenceView key={i} evidence={e} />)}</article>)}
         <h3>待办</h3>{detail.todos.map(todo => <TodoEditor key={todo.id} todo={todo} currentAnalysis={detail.meeting.currentAnalysisId} reload={reload} onError={setError} />)}
-        {detail.draft ? <DraftEditor draft={detail.draft} reload={reload} onError={setError} /> : <p>当前没有需要跟进的风险邮件草稿。</p>}
+        {detail.draft ? <DraftEditor draft={detail.draft} reload={reload} onError={setError} /> : <p>当前没有需要跟进的风险邮件草稿；仅完成分析且识别到风险时自动准备草稿。</p>}
       </> : <p>等待会议分析；不会展示未完成结果。</p>}
     </div> : <p>{selected ? '加载会议中…' : '上传或选择会议查看分析。'}</p>}
   </section>;

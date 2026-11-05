@@ -24,9 +24,16 @@ export function createChatModel(env: Env, transport: typeof fetch = fetch, optio
         await response.body?.cancel();
         throw new PublicError(502, response.status === 429 ? 'LLM_RATE_LIMITED' : 'LLM_UPSTREAM_ERROR', '模型服务调用失败，请检查后端配置或稍后重试。');
       }
-      const parsed = responseSchema.safeParse(await response.json());
-      if (!parsed.success) throw new PublicError(502, 'LLM_INVALID_RESPONSE', '模型未返回有效文本。');
-      if (jsonMode && parsed.data.choices[0].finish_reason === 'length') throw new PublicError(502, 'LLM_OUTPUT_TRUNCATED', '结构化模型输出达到长度上限，未发布不完整结果；请缩短来源或检查专用上限后人工重跑。');
+      const raw: unknown = await response.json();
+      const envelope = z.object({ choices: z.array(z.object({ finish_reason: z.string().nullable().optional() })).min(1) }).safeParse(raw);
+      const shape = z.object({ choices:z.array(z.object({message:z.object({content:z.unknown().optional(),reasoning_content:z.unknown().optional()})})).min(1) }).safeParse(raw);
+      const message=shape.success?shape.data.choices[0].message:undefined;
+      if (envelope.success && envelope.data.choices[0].finish_reason === 'length' && (jsonMode || typeof message?.content !== 'string' || !message.content.trim())) {
+        console.warn(JSON.stringify({event:'llm_output_rejected',reason:'length',reasoningPresent:typeof message?.reasoning_content==='string',contentPresent:typeof message?.content==='string'&&Boolean(message.content.trim())}));
+        throw new PublicError(502, 'LLM_OUTPUT_TRUNCATED', '模型输出达到长度上限，未发布截断回答；请缩短问题或上下文后人工重试。');
+      }
+      const parsed = responseSchema.safeParse(raw);
+      if (!parsed.success) { console.warn(JSON.stringify({event:'llm_output_rejected',reason:'invalid_shape',contentType:typeof message?.content,contentLength:typeof message?.content==='string'?message.content.length:null,reasoningPresent:typeof message?.reasoning_content==='string'})); throw new PublicError(502, 'LLM_INVALID_RESPONSE', '模型未返回有效文本。'); }
       return { content: parsed.data.choices[0].message.content, model };
     } catch (error) {
       if (error instanceof PublicError) throw error;

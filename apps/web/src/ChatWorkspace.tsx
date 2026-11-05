@@ -132,6 +132,7 @@ export function ChatWorkspace() {
       <form onSubmit={event => { void send(event); }}>
         <label>联网搜索 <select aria-label="联网搜索模式" value={searchMode} onChange={e => setSearchMode(e.target.value as typeof searchMode)} disabled={sending || creating}><option value="auto">自动</option><option value="required">必须联网</option><option value="off">关闭</option></select></label>
         <label className="knowledge-toggle"><input type="checkbox" checked={knowledgeMode} onChange={event => setKnowledgeMode(event.target.checked)} disabled={creating || sending} /> 使用 PDF 知识库</label>
+        {knowledgeMode?<small role="status">当前仅检索 PDF，不召回长期记忆；查询记忆时请关闭此开关并关闭联网。</small>:null}
         <label htmlFor="chat-input">消息</label>
         <textarea id="chat-input" value={draft} onChange={event => setDraft(event.target.value)} maxLength={4000} rows={3} disabled={!selected || creating || sending || loading || pending} placeholder="输入消息，开始多轮对话…" />
         <div className="composer-actions"><small>{knowledgeMode ? '仅按当前问题检索全部已就绪 PDF · 回答附原文证据' : '普通对话 · 自动召回历史记忆 · 联网按所选模式 · 仅输入公共短查询'}</small><button type="submit" disabled={!selected || !draft.trim() || creating || sending || loading || pending}>发送消息</button></div>

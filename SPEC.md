@@ -1,5 +1,7 @@
 # ContextPilot specification
 
+Stage B round1：记忆选择协议显式JSON/4096/non-thinking；只发布验证过的事实ID，不将reasoning内容当回答；空/结构化length响应在content校验前明确拒绝。网页优先官方候选，模型选稳定ID和服务端原文索引，旧quote模式仍逐字校验，时效/冲突约束不变。全站Demo认证状态以React Context供PPT展示，后端验证不变。PDF模式明确独占RAG；草稿仍由有风险的完成会议产生、确认不等于发送。变更与现场未验证边界见docs/stage-b-round1-fixes.md。
+
 ## Shared Supabase acceptance tracking (latest authorization)
 
 允许在现有共享Demo库新增可精确追踪的合成记录，无新Schema/本地数据库/租户体系。每Run独立UUID、预登记业务根ID；会话及子对象按精确ID/外键归属，PDF/会议Worker限定假Storage origin/bucket与独立Embedding Space，memory/PPT按Run Scope；不启动完整应用Worker。真实DB与全部外部STUB明确区分，列表可见性不被误称隔离。

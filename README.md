@@ -1,5 +1,7 @@
 # ContextPilot
 
+Stage B第一轮修复（2026-11-06）：记忆选择器显式JSON/non-thinking；空推理截断正确分类；网页改为真实来源ID+原文选项索引并保留所有证据/时效校验；PPT消费全站认证状态；增加PDF模式提示与会议草稿入口。check/test186、真实DB+外部替身8项、生产E2E2项通过，未调用付费服务。原始失败响应未保存，BUG-01/02确切供应商触发原因未能还原，协议修复不等于现场成功已确认；[修复记录](docs/stage-b-round1-fixes.md)与[UX backlog](docs/ux-backlog.md)。Stage B保持待人工复测，不Push/部署/清理/发信。
+
 ## Corpus Stage A / Stage B 交接（最新）
 
 用户已允许共享Supabase的受控合成记录，未引入本地数据库或Docker。Stage A首轮T01–T08真实DB+全外部替身8项通过：Run `49badde9-63d3-4963-8ce1-4d5bef94b047`，新增59记录、7个本地Storage替身对象，既有记录哈希变化0；真实外部调用和云Storage新增均0。额外独立Run复跑遇到hook/连接超时、未进入业务测试，保留异常并停止，不宣称所有执行都通过。

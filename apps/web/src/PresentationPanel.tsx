@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { DemoSessionContext } from './DemoAccess';
 import { presentationListSchema, type PresentationContext, type PresentationJob } from '../../../shared/presentations';
 interface Props { context:PresentationContext; onChange:(value:PresentationContext)=>void; refresh:number }
 const labels={queued:'等待规划',planning:'正在规划',rendering:'正在生成文件',ready:'已完成',failed:'失败'};
 export function PresentationPanel({context,onChange,refresh}:Props) {
   const [expanded,setExpanded]=useState(false);const newest=useRef<string|null>(null);
   const [key,setKey]=useState('');const [unlocked,setUnlocked]=useState(false);const [error,setError]=useState('');const [busy,setBusy]=useState(false);
-  const [demoAccess,setDemoAccess]=useState(false);
-  useEffect(()=>{const c=new AbortController();void fetch('/api/demo-session',{signal:c.signal}).then(r=>r.json()).then(d=>{if(!c.signal.aborted)setDemoAccess(Boolean(d.required&&d.authenticated));}).catch(()=>{});return()=>c.abort();},[]);
+  const demoAccess=useContext(DemoSessionContext);
   const [jobs,setJobs]=useState<PresentationJob[]>([]);const [meetings,setMeetings]=useState<{id:string;filename:string}[]>([]);const [revision,setRevision]=useState(0);
   async function api(path:string,options?:RequestInit){const response=await fetch(`/api${path}`,options);const data=await response.json();if(!response.ok)throw new Error(data.error?.message??'PPT 请求失败');return data;}
   useEffect(()=>{const id=jobs[0]?.id;if(id&&id!==newest.current){newest.current=id;setExpanded(true);}},[jobs]);
