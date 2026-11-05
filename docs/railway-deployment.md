@@ -9,7 +9,7 @@
 ## 架构与启动
 
 - 一个 Railway Node.js Service，单副本。Fastify 同进程提供 /api 和 dist/web 的 React/Vite 静态资源，SPA 深链返回 index.html；无需独立前端服务。
-- 构建：仓库根目录 npm ci --include=dev && npm run build。package.json engines 为 Node24/npm11；本地验证 Node24.15.0/npm11.12.1。Railpack 实际选择版本待首轮获批构建日志确认。
+- 构建：仓库根目录 npm run build（依赖由Railpack Install阶段安装，.npmrc确保包含devDependencies）。package.json engines 为 Node24/npm11；本地验证 Node24.15.0/npm11.12.1。Railpack 实际选择版本待首轮获批构建日志确认。
 - Railway 直接启动 node dist/server/apps/api/src/server.js，避免额外 watch/Worker 服务和 npm 包装影响信号；npm start 是等价本地入口。
 - NODE_ENV=production；HOST 默认自动变为0.0.0.0；PORT使用Railway注入值，不把本机3001复制过去。配置 numReplicas=1，无多区域/自动扩容，不添加独立Worker Service。
 - 现有PDF、会议、记忆、PPT模块轮询各在该进程启动一次，继续使用PostgreSQL行锁、租约和令牌写入隔离。这里“单Worker”指不另开Worker进程/副本，不替换为新调度框架。不要同时运行连接相同业务配置的本地Worker。滚动替换可能短暂重叠，仍依靠既有数据库租约；不得人为增加副本。
@@ -126,3 +126,5 @@ Hobby当前最低US$5/月，抵扣资源用量，超额另计。官方资源价R
 **可观察**：Phase3未复现上传HTTP500；历史PG连接超时。仅实际复发时按request ID排查；不加推测性重试/基础设施。低内存平台上的PDF/PPT峰值、免费credit消耗后行为和移动端现场体验，待授权验证。
 
 **非必要未来优化**：OAuth、用户/RBAC、持久化会话撤销/计费系统、复杂限流/压测、多实例队列、生产级安全审计。均不属于本Demo准备，不启动Phase9A。
+
+首次构建失败修复（2026-11-05）：Build阶段只执行npm run build；不要在此再次npm ci。Install由Railpack处理，仓库.npmrc include=dev覆盖生产默认省略dev的行为。NODE_ENV维持production，密钥不用调整。控制台Custom Build Command为空时仍采用railway.json；本地修复未push/未触发新的部署。完整证据见phase-9-verification.md末尾。

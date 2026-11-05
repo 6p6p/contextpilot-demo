@@ -1,6 +1,6 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "build": { "builder": "RAILPACK", "buildCommand": "npm ci --include=dev && npm run build" },
+  "build": { "builder": "RAILPACK", "buildCommand": "npm run build" },
   "deploy": {
     "startCommand": "node dist/server/apps/api/src/server.js",
     "numReplicas": 1,

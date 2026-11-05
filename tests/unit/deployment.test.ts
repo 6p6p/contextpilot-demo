@@ -13,6 +13,8 @@ it('read-only migration check rejects missing, altered and unexpected migration 
 });
 it('Railway runs one app process without automatic migrations or local business storage',()=>{
  const c=JSON.parse(readFileSync('railway.json','utf8'));
+ expect(c.build).toEqual({builder:'RAILPACK',buildCommand:'npm run build'});
+ expect(readFileSync('.npmrc','utf8')).toMatch(/^include=dev$/m);
  expect(c.deploy).toMatchObject({startCommand:'node dist/server/apps/api/src/server.js',numReplicas:1,healthcheckPath:'/api/ready'});expect(c.deploy.preDeployCommand).toBeUndefined();
  expect(readFileSync('apps/api/src/server.ts','utf8')).not.toContain('.acceptance');
  const ignore=readFileSync('.railwayignore','utf8');for(const path of ['.env','.acceptance/','test-results/','certs/'])expect(ignore).toContain(path);

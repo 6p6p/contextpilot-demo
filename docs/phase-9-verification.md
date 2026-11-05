@@ -47,3 +47,13 @@ Railway CLI未安装在PATH、未发现原项目关联文件；未查看账号�
 非必要未来优化：OAuth/RBAC、多用户、复杂计费/限流、压力测试、独立任务平台、历史故障专项、Phase9A，全部未开发。
 
 Phase8由用户确认实际PowerPoint/WPS打开验收通过并正式关闭，已更新原验收记录。EMAIL_DELIVERY_ENABLED保持false：本轮没有改动真实.env，生产误配true拒绝，所有测试强制false。没有真实邮件、部署、资源购买、外部业务API或远程Git操作。本地准备通过后创建本地commit，停止等待用户审查，不等于Phase9公网交付完成。
+
+## 2026-11-05 首次 Railway Build 失败的最小修复
+
+用户报告Service perceptive-spirit、GitHub 6p6p/contextpilot-demo、Railpack首次Build失败。根据提供的日志，Install已执行npm install，Build又执行npm ci --include=dev && npm run build，在清理/app/node_modules/.vite时EBUSY。实际命令来源是仓库railway.json，而不是空的控制台Custom Build Command。仓库不存在railway.toml/railpack.json；package.json的build仅tsc+vite，没有二次安装生命周期脚本；现有.npmrc原为engine-strict=true。
+
+修复：railway.json buildCommand仅npm run build；现有.npmrc增加include=dev，NODE_ENV=production仍安装构建必需的TypeScript/Vite。依赖安装继续由Railpack Install负责，不添加新安装步骤、移动依赖或修改锁文件。include=dev也会使主动npm prune --omit=dev保留开发依赖；本仓库未显式配置prune，若今后需要运行镜像裁剪需另行配置，本次不扩大修复。
+
+Railway无需为了本修复更改NODE_ENV或任何密钥。Custom Build Command可保持空，使用更新后的仓库配置；如手动填写，只填npm run build。若服务有额外自定义Install/Build覆盖，后续获批部署前只检查其是否仍有二次安装或自定义脚本；本轮未查询/修改控制台变量，也未push或触发部署。官方参考：https://railpack.com/languages/node/ 与 https://docs.npmjs.com/using-npm/config/ （npm include优先于omit）。
+
+本地验证：NODE_ENV=production下npm config get include返回dev，npm run build通过；npm run check通过155项测试、类型检查及构建。新增部署断言防止buildCommand回到安装+构建，并确认include=dev。npm run test:production:smoke通过；Chrome生产E2E 1/1通过。没有在Railpack容器复现EBUSY，也未进行新的Railway构建，云端修复效果待用户后续授权部署验证。业务代码/API/数据库/密钥均未改变。
