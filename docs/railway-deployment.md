@@ -128,3 +128,9 @@ Hobby当前最低US$5/月，抵扣资源用量，超额另计。官方资源价R
 **非必要未来优化**：OAuth、用户/RBAC、持久化会话撤销/计费系统、复杂限流/压测、多实例队列、生产级安全审计。均不属于本Demo准备，不启动Phase9A。
 
 首次构建失败修复（2026-11-05）：Build阶段只执行npm run build；不要在此再次npm ci。Install由Railpack处理，仓库.npmrc include=dev覆盖生产默认省略dev的行为。NODE_ENV维持production，密钥不用调整。控制台Custom Build Command为空时仍采用railway.json；本地修复未push/未触发新的部署。完整证据见phase-9-verification.md末尾。
+
+### Railway TLS 信任链修复（2026-11-05，待发布）
+
+用户报告公网API500，容器pg.connect失败SELF_SIGNED_CERT_IN_CHAIN。已审查公开Supabase Root2021 CA并入库prod-ca-2021.crt；npm build新增复制到dist/server/certs/prod-ca-2021.crt。连接池仍rejectUnauthorized=true，沿用pg/Node默认主机名验证；URL所有query/hash仍被拒绝。没有改业务/SQL/数据/密钥。
+
+后续获批部署时：DATABASE_SSL=true、DATABASE_CA_CERT=/app/dist/server/certs/prod-ca-2021.crt，DATABASE_URL不带sslmode/sslrootcert等query，保留真实DNS主机。先容器npm run db:tls严格TLS+SELECT1，通过后再/api/ready与鉴权业务API。不要关闭TLS校验。当前check157、生产smoke与生产E2E1通过，CA构建复制SHA一致；真实Railway握手/SELECT1/API尚未验证，未push/重新部署/修改变量。完整记录见docs/phase-9-verification.md末尾。

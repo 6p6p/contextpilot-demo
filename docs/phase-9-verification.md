@@ -57,3 +57,27 @@ Phase8由用户确认实际PowerPoint/WPS打开验收通过并正式关闭，已
 Railway无需为了本修复更改NODE_ENV或任何密钥。Custom Build Command可保持空，使用更新后的仓库配置；如手动填写，只填npm run build。若服务有额外自定义Install/Build覆盖，后续获批部署前只检查其是否仍有二次安装或自定义脚本；本轮未查询/修改控制台变量，也未push或触发部署。官方参考：https://railpack.com/languages/node/ 与 https://docs.npmjs.com/using-npm/config/ （npm include优先于omit）。
 
 本地验证：NODE_ENV=production下npm config get include返回dev，npm run build通过；npm run check通过155项测试、类型检查及构建。新增部署断言防止buildCommand回到安装+构建，并确认include=dev。npm run test:production:smoke通过；Chrome生产E2E 1/1通过。没有在Railpack容器复现EBUSY，也未进行新的Railway构建，云端修复效果待用户后续授权部署验证。业务代码/API/数据库/密钥均未改变。
+
+## 2026-11-05 Railway PostgreSQL 严格 TLS 修复（本地完成，待发布）
+
+用户已确认公网业务API500，容器TCP_OK、pg可用而pg.connect报SELF_SIGNED_CERT_IN_CHAIN。该证据指向客户端缺少数据库签发CA信任链，不应以关闭验证解决。用户提供根目录prod-ca-2021.crt，声明来自Supabase官方控制台。
+
+检查：证书仅含公开PEM，无私钥/额外文本；CA=true，自签名验证通过，有效期2021-04-28至2031-04-26；Subject/Issuer Supabase Root2021 CA；SHA256指纹80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA。自签名检查不是独立控制台来源认证，来源依据用户下载说明，指纹测试用于后续变更审查。
+
+现有db/client.ts已明确ssl.rejectUnauthorized=true，并在DATABASE_CA_CERT提供时载入ca；已安装pg8.23.1将实际host用于Node TLS identity校验并为DNS主机设置servername，无自定义checkServerIdentity绕过。因此不改连接池、连接参数、业务、SQL或数据。parseEnv已拒绝DATABASE_URL所有query/hash，包含sslmode/sslrootcert/sslcert/sslkey，且手动拆分URL不传connectionString给pg。实际Railway DATABASE_URL和凭据未读取/改动；后续需用户核对。
+
+最小改动：公开prod-ca-2021.crt入库；scripts/copy-database-ca.mjs在构建时校验公开CA并复制到dist/server/certs/prod-ca-2021.crt（不放前端dist/web）；package build保留tsc/Vite，仅增加证书复制，不重复安装。源证书在根目录，不受.gitignore/.railwayignore的certs/排除；dist是构建阶段生成，进入Railway运行产物。本机与编译产物CA SHA一致。没有提交私钥、数据库密码或真实.env。
+
+新增npm run db:tls（编译入口db/tls-check.js）：仅创建数据库连接池，要求DATABASE_SSL和CA路径，连接后检查客户端encrypted/authorized，再执行SELECT1；不启动App/Worker/模型或迁移，不输出URL/密码。失败非零、固定脱敏消息。本轮未加载真实.env或执行云端/真实数据库请求，不声称已完成实际TLS握手/SELECT1/线上API验收。
+
+实际测试：npm run check PASS157测试/15文件、类型与两个构建；npm run test:production:smoke PASS；Chrome生产E2E1/1 PASS；源/构建CA字节SHA对比PASS。新增公开CA指纹/严格ssl.ca/default hostname行为、CA缺失失败，以及所有SSL query覆盖拒绝回归。实际Railpack镜像/网络/服务器证书SAN匹配待后续验证，不能用本地配置测试替代。
+
+待用户批准发布时设置（本轮未操作Variables，保存变量可能触发部署）：
+- DATABASE_SSL=true
+- DATABASE_CA_CERT=/app/dist/server/certs/prod-ca-2021.crt
+- DATABASE_URL保留实际Supabase DNS主机和连接信息，删除全部query/hash，尤其sslmode/sslrootcert/sslcert/sslkey；密码只编码一次，不改为IP或其他主机绕过身份校验。
+- 保留NODE_ENV=production、EMAIL_DELIVERY_ENABLED=false及其他密钥，不设置NODE_TLS_REJECT_UNAUTHORIZED=0。
+
+批准push/部署之后，先在容器确认绝对路径证书存在，再npm run db:tls。只有Strict client TLS verified; SELECT1 passed才继续验证/api/ready及登录后的只读业务API（如会话列表），不触发模型/邮件。若仍失败，按实际CA链/主机名/连接参数排查，不降级验证。/app依据用户日志的工作目录；若后续Root Directory改变，先核对实际绝对路径，不盲用Windows路径。
+
+Supabase官方说明：https://supabase.com/docs/guides/database/psql；pg说明：https://node-postgres.com/features/ssl。本轮只本地提交，不push、不部署、不改云端变量；Phase3上传500仍为观察项，与本次明确TLS错误区分。

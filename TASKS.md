@@ -201,3 +201,9 @@ Phase3上传HTTP500降为观察项，不阻塞；历史数据库连接超时只�
 - [x] Phase8用户原生软件确认已记录，正式关闭。
 - [ ] 用户审查本地准备commit；另行授权Railway/GitHub/公网操作。
 - [ ] 账号Free/网络/余额、实际资源/服务变量和云端六功能验收。
+
+### Railway TLS 信任链修复（2026-11-05，待发布）
+
+用户报告公网API500，容器pg.connect失败SELF_SIGNED_CERT_IN_CHAIN。已审查公开Supabase Root2021 CA并入库prod-ca-2021.crt；npm build新增复制到dist/server/certs/prod-ca-2021.crt。连接池仍rejectUnauthorized=true，沿用pg/Node默认主机名验证；URL所有query/hash仍被拒绝。没有改业务/SQL/数据/密钥。
+
+后续获批部署时：DATABASE_SSL=true、DATABASE_CA_CERT=/app/dist/server/certs/prod-ca-2021.crt，DATABASE_URL不带sslmode/sslrootcert等query，保留真实DNS主机。先容器npm run db:tls严格TLS+SELECT1，通过后再/api/ready与鉴权业务API。不要关闭TLS校验。当前check157、生产smoke与生产E2E1通过，CA构建复制SHA一致；真实Railway握手/SELECT1/API尚未验证，未push/重新部署/修改变量。完整记录见docs/phase-9-verification.md末尾。
