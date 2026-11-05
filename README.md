@@ -1,5 +1,11 @@
 # ContextPilot
 
+## Corpus Stage A / Stage B 交接（最新）
+
+用户已允许共享Supabase的受控合成记录，未引入本地数据库或Docker。Stage A首轮T01–T08真实DB+全外部替身8项通过：Run `49badde9-63d3-4963-8ce1-4d5bef94b047`，新增59记录、7个本地Storage替身对象，既有记录哈希变化0；真实外部调用和云Storage新增均0。额外独立Run复跑遇到hook/连接超时、未进入业务测试，保留异常并停止，不宣称所有执行都通过。
+
+专用命令`CORPUS_SHARED_DB_AUTHORIZED=1 npm run test:corpus:db`（PowerShell先设`$env:CORPUS_SHARED_DB_AUTHORIZED='1'`），默认check/test仍离线。完整结果、精确ID Manifest、保留和只读清理状态见[Stage A记录](docs/corpus-stage-a-verification.md)。[Stage B人工指南](docs/corpus-stage-b-manual.md)已提供同一场景的文件副本、可复制输入和通过标准；真实服务与人工操作仍待单独授权，未启动本地真实Worker。数据/文件不删除，邮件关闭，不Push/部署。下文首次Corpus的DB NOT_RUN是当时权限状态，已由本节补充。
+
 ## Regression Corpus v1（2026-11-05）
 
 固定业务质量基准已加入：`npm run test:corpus`，单例`npm run test:corpus -- T06`。统一合成ORCHID-7421场景覆盖T01–T08；默认无真实外部调用，复用现有Vitest/Zod/PDF/PPT工具。材料、预期、扩展规范见[Corpus说明](tests/corpus/v1/README.md)，分层结果与后续条件见[综合验收记录](docs/corpus-v1-acceptance.md)。

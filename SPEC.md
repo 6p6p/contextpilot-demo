@@ -1,5 +1,11 @@
 # ContextPilot specification
 
+## Shared Supabase acceptance tracking (latest authorization)
+
+允许在现有共享Demo库新增可精确追踪的合成记录，无新Schema/本地数据库/租户体系。每Run独立UUID、预登记业务根ID；会话及子对象按精确ID/外键归属，PDF/会议Worker限定假Storage origin/bucket与独立Embedding Space，memory/PPT按Run Scope；不启动完整应用Worker。真实DB与全部外部STUB明确区分，列表可见性不被误称隔离。
+
+Manifest保留各表观测ID/关系、Storage后端/key/SHA、计数、基线哈希与结果，默认不清理；Dry Run仅SELECT，先检查跨记录引用，任何真实删除须在人工完成后另行确认。Stage A首轮8项PASS/59记录，额外重复Run因预检/连接超时未完成；完整当前状态见[Stage A验收](docs/corpus-stage-a-verification.md)。此前“数据库不写入”结论属于旧授权，未被静默当作当前结果。Stage B模型/Embedding/搜索/真实PPT仍需新授权，邮件保持关闭。
+
 ## Regression Corpus v1 quality contract
 
 统一合成ORCHID-7421项目材料（3份PDF、会议TXT、带证据记忆、冻结MOCK搜索结果、5/10页管理汇报指令），Zod定义T01–T08稳定ID/版本、冻结时钟、预期事实、允许来源、禁止行为和分层通过条件。默认`npm run test:corpus`只执行确定性业务组件，支持单例；输入SHA按PDF原字节/文本LF规范固定，不自动更新Golden。真实Bug先加入复现，基准变更必须有理由和版本。

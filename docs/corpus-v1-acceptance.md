@@ -2,7 +2,7 @@
 
 日期：2026-11-05。基线：搜索修复85adc7c。范围仅质量工程；没有改业务实现、数据库Schema、生产配置或部署。
 
-结论：Part A确定性基准已建立；Part B可免费执行的组件检查和生产壳E2E完成。**本轮六能力完整真实业务验收尚未通过，数据库层NOT_RUN，真实服务层NOT_RUN / WAITING_AUTHORIZATION。** 不把Mock、历史证据或结构检查算作本轮真实业务通过。
+更新：用户后续已批准共享Supabase受控写入。Stage A首轮8项真实DB+外部替身集成通过，新增59记录；额外独立Run复跑遇到前置超时/连接超时，停止补测。完整Run ID、清理Dry Run和结果见[Stage A记录](corpus-stage-a-verification.md)。Stage B人工指南已准备，真实服务仍NOT_RUN / WAITING_AUTHORIZATION。以下保留41f3ea9首次验收的盘点和当时未获共享库写入授权的状态，不能将其数据库NOT_RUN误读为最新Stage A结果。
 
 ## 执行前盘点与复用
 

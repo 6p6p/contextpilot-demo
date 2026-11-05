@@ -1,5 +1,19 @@
 # Development tasks
 
+## Current — Shared Supabase Stage A / manual Stage B
+
+- [x] 审查Schema/服务/Worker，按新授权执行共享库受控写入；无Docker/本地库/Schema变化。
+- [x] 首轮T01–T08真实DB+外部替身8项通过；Run49badde9-63d3-4963-8ce1-4d5bef94b047新增59记录、7本地对象，既有哈希变化0。
+- [x] 精确ID/外键Manifest，原子保存、STUB物件写前登记、独立进程读取/下载恢复、版本幂等与原版保留。
+- [x] 首轮只读Dry Run：59候选、外部引用0、缺失0，未删除；所有数据保留。
+- [x] Stage B统一材料副本、输入、预期、证据与人工指南；更新最低调用估算与待审批¥6方案。
+- [x] check及单独test181通过；新脚本严格类型检查通过。
+- [ ] 额外独立Run T01复跑未完成：hook超时/实际连接超时，后续不自动重试，记录NR。
+- [ ] Stage B真实服务/人工验收 WAITING_AUTHORIZATION；先核实费率/余量及共享Worker计量，不能擅自启动真实服务。
+- [ ] 全部人工结束后补齐Stage B精确ID、重新只读Dry Run，等待单独删除确认。当前禁止清理。
+
+本地提交后停止，不Push、不部署、不发邮件。详情见docs/corpus-stage-a-verification.md和corpus-stage-b-manual.md。下文为41f3ea9等历史里程碑状态。
+
 ## Current milestone — Corpus v1 + local integrated acceptance
 
 - [x] 盘点Phase3–9、现有fixtures/测试及.acceptance脱敏结果；区分历史真实与Mock证据。

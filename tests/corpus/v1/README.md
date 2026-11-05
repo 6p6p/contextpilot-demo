@@ -63,6 +63,12 @@ JSON 同目录，包含 Case ID、断言、失败原因。顶层 overall 包含 
 3. 预期不匹配时先诊断代码/模型/材料。禁止为使回归变绿而重写Golden。确需改变事实时新增版本目录并在变更记录说明理由、影响案例、旧新预期和评审依据。
 4. `SHA256.json`固定6个输入；PDF按字节，文本归一CRLF为LF后计算。不要自动更新校验和。初版生成PDF使用现有reportlab方式：`python scripts/generate-corpus-fixtures.py`，需要本机已有reportlab；默认回归不需要Python/reportlab且不重生成PDF。
 5. 真实结果分开记账，外部STUB不进入Live通过率；NOT_RUN不计入任何通过率分母。不得复制私有原始输出、Cookie、对象路径、凭据进fixtures。
-6. 数据库写入必须先证明测试库与公网独立，或全部列表/检索/Worker边界真正隔离。仅worker Scope不够。当前条件未满足，禁止用现有integration命令绕过。
+6. 初版41f3ea9要求先证明测试库独立或工作台完整隔离，不能用Worker Scope冒充。用户后续另行授权共享库受控合成写入，具体边界和专用入口见下节；不得把这次授权扩展为可运行全部历史integration测试或操作既有数据。
 
 变更记录：v1首次引入，沿用历史合成PDF，新增同项目brief/会议和冻结MOCK证据；没有修改旧Golden事实。初跑引用断言误以为同一来源总返回完整摘要，按既有结论去重协议改成原文包含/版本/日期断言，非业务事实变更。
+
+## 共享Supabase Stage A（后续授权）
+
+用户已明确允许共享库中的受控合成记录。仅在获得同等授权时运行：PowerShell设置`$env:CORPUS_SHARED_DB_AUTHORIZED='1'`，执行`npm run test:corpus:db`；单例附`-- T01`。每次新Run ID，外部全替身，默认check/test不运行此套件，不自动迁移/清理。使用预分配根ID+精确外键/独立Worker边界追踪，而非多租户隔离；测试列表记录可能出现在Demo，明确标为CORPUS-STUB。
+
+首轮8项PASS/59记录，后续额外复跑预检超时/数据库连接超时未完成，0业务写入；不合并为完整Live通过。Manifest、只读Dry Run、异常与保留状态见[Stage A](../../../docs/corpus-stage-a-verification.md)。Stage B使用同材料的新Run副本，[人工指南](../../../docs/corpus-stage-b-manual.md)包括可复制输入和待审批预算。此次没有改变v1 Golden、SHA或固定预期；只是增加证据层级，旧“共库不可写”门禁由本次明确授权受控放行，不是技术上实现UI隔离。
