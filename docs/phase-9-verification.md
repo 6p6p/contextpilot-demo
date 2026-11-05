@@ -81,3 +81,21 @@ Railway无需为了本修复更改NODE_ENV或任何密钥。Custom Build Command
 批准push/部署之后，先在容器确认绝对路径证书存在，再npm run db:tls。只有Strict client TLS verified; SELECT1 passed才继续验证/api/ready及登录后的只读业务API（如会话列表），不触发模型/邮件。若仍失败，按实际CA链/主机名/连接参数排查，不降级验证。/app依据用户日志的工作目录；若后续Root Directory改变，先核对实际绝对路径，不盲用Windows路径。
 
 Supabase官方说明：https://supabase.com/docs/guides/database/psql；pg说明：https://node-postgres.com/features/ssl。本轮只本地提交，不push、不部署、不改云端变量；Phase3上传500仍为观察项，与本次明确TLS错误区分。
+
+## 2026-11-05 聊天搜索回答质量最小修复（离线）
+
+用户已验证公网TLS、AI聊天、记忆和Tavily可用，但Node.js当前LTS问题引用旧文章，未明确回答当前状态。本轮只修复聊天搜索证据流程，不调用真实Tavily/模型、数据库/Storage，不修改PPT、邮件、数据库或架构；不push/部署。
+
+根因：query原样发送，无任务域名/日期提示；只校验来源ID和逐字子串，不评估权威性/时间；答案仅罗列摘录，不能区分历史LTS/当前Active或Maintenance。
+
+实现：search/evidence.ts按当前问题识别官方要求，使用小型受审查机构映射（Node.js/nodejs.org、Python/python.org、PostgreSQL/postgresql.org），绝非通用固定nodejs.org规则。未知机构不假认官方；域名/HTTPS/凭据校验拒绝伪装地址。answerWithSearch在一次Basic请求中传可选include_domains和UTC查询日期提示；先做原有私密查询检查，不传历史/资料。SearchProvider的第二参数可选：PPT等原调用不传参数，发送查询不变，已用Mock断言，不改PPT模块。
+
+候选按官方、近期、发布时间排序；30天为保守近期窗口，不是事实可信性证明。未来日期/超窗文章不能支持当前结论；无发布日期的归档blog/news/release不能支持当前结论，不能补造时间。无日期的状态页必须有直接的当前/最新/Active证据，同时展示发布时间未提供，不把查询时间当发布/更新时间。版本数字大小不会自动产生最新结论。存在更晚的直接当前状态证据时，不接受较早文章作为当前结论。LTS同一最新日期或未知日期的可识别Active版本矛盾会保守拒绝；其他自然语言语义冲突仍需模型识别，不宣称规则解决所有事实冲突。
+
+模型在原一次JSON/non-thinking/max4096调用内选择status、conclusion逐字引文、citations；服务器对结论和所有引文重新检查实际ID/原文。任意额外answer文字不渲染。未知来源/改写引文仍SEARCH_INVALID_CITATION。只有supported且通过权威/时效检查才先输出结论，后列来源URL/查询时间/真实发布日期，非近期摘录标仅供对照；不满足则明确证据不足，conflicting则明确无法确认且保留差异。全部实际返回结果元数据继续保留，未采用项quote空，不冒充已引用；历史消息结构和数据库不变。
+
+修改文件：apps/api/src/search/{service,evidence}.ts、tests/unit/search-current.test.ts、README/SPEC/TASKS及本记录。固定Mock2026-11-05中包含旧2026-07文章、官方v26.13.0 Active与v24 Maintenance状态；这些数字仅在测试数据中，不作为运行时硬编码事实。七项新增测试覆盖正向结论、过期/未知时间归档、更晚证据、同期冲突（即使模型宣称supported也拒绝）、机构隔离/伪域名、伪造结论及一次Basic提示/共享适配器兼容。旧隐私/注入/失败/来源真实性回归保留。
+
+实际结果：npm run check通过164测试/16文件、类型检查和双构建；npm run test:production:smoke通过；Chrome生产E2E1/1通过；git diff --check通过。全部为离线Mock/本地生产模拟，新增付费模型/搜索0，没有新真实API/数据库验收。首次测试因预期未使用原有NFKC归一化而失败，测试改为publicQuery(q)，未放松查询隐私校验。
+
+限制：当前保守策略可能拒绝仅有历史发布/不足摘要的问题，而不是凑出最新结论。官方机构映射有限，来源发布日期/摘要本身不保证真实性；实际线上改进需后续单独授权搜索/模型验收，当前不宣称已验证线上回答。待本地commit后停止，暂不push、暂不部署；保持邮件false。

@@ -207,3 +207,9 @@ Phase3上传HTTP500降为观察项，不阻塞；历史数据库连接超时只�
 用户报告公网API500，容器pg.connect失败SELF_SIGNED_CERT_IN_CHAIN。已审查公开Supabase Root2021 CA并入库prod-ca-2021.crt；npm build新增复制到dist/server/certs/prod-ca-2021.crt。连接池仍rejectUnauthorized=true，沿用pg/Node默认主机名验证；URL所有query/hash仍被拒绝。没有改业务/SQL/数据/密钥。
 
 后续获批部署时：DATABASE_SSL=true、DATABASE_CA_CERT=/app/dist/server/certs/prod-ca-2021.crt，DATABASE_URL不带sslmode/sslrootcert等query，保留真实DNS主机。先容器npm run db:tls严格TLS+SELECT1，通过后再/api/ready与鉴权业务API。不要关闭TLS校验。当前check157、生产smoke与生产E2E1通过，CA构建复制SHA一致；真实Railway握手/SELECT1/API尚未验证，未push/重新部署/修改变量。完整记录见docs/phase-9-verification.md末尾。
+
+### 聊天搜索事实准确性修复（2026-11-05，离线验证）
+
+官方要求按问题对应机构映射，不以nodejs.org作通用规则；聊天一次Basic搜索增加域名/查询日期提示，优先近期官方证据。结论必须逐字匹配来源并通过权威/时间检查，再显示来源与查询时间；旧证据仅供对照，缺失/冲突明确无法确认，不编造版本或日期。全部实际元数据与既有引用ID约束保留。PPT原搜索调用不传新增可选提示，行为保持不变；未改数据库、邮件或PPT。
+
+新增7个固定Mock回归，npm run check通过164测试/类型/构建，生产smoke和生产E2E1通过。未付费搜索/模型调用，未访问真实数据库，暂不push/部署；记录和限制见docs/phase-9-verification.md末尾。
