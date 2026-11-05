@@ -1,5 +1,19 @@
 # Development tasks
 
+## Current milestone — Corpus v1 + local integrated acceptance
+
+- [x] 盘点Phase3–9、现有fixtures/测试及.acceptance脱敏结果；区分历史真实与Mock证据。
+- [x] T01–T08统一合成场景、Zod契约、输入SHA、固定时钟/搜索快照；复用现有工具，无产品改动。
+- [x] `test:corpus`及单例入口/JSON失败诊断；17检查通过，check181通过。
+- [x] 生产E2E1项、启动smoke；真实本地5/10页PPTX结构/几何及15页逐页视觉通过。
+- [x] 数据库写前隔离审查：发现工作台Scope缺口，不执行数据库测试，新增0条，保留所有历史数据。
+- [x] 文档、六能力分层矩阵、扩展规则和条件费用草案（24模型/16Embedding/2Basic/2PPT，建议¥6上限，未授权）。
+- [ ] DB Integration NOT_RUN：先证明已有测试库独立于Railway；不能仅靠Worker Scope，不擅自迁移/建库。
+- [ ] 六能力同场景Live NOT_RUN / WAITING_AUTHORIZATION：先核实当前供应商/型号费率、向量免费条件和Storage余量，再单独批准。
+- [ ] 同场景实际刷新/切会话/进程重启、私有下载及新Corpus文件PowerPoint/WPS原生打开。
+
+本轮免费工作完成后创建本地commit并停止；不Push、不部署、不修改生产、不发邮件。Phase3上传500为观察项。后文为各阶段历史记录，不表示上述待验收项已通过。
+
 Phases 1–6 are authorized; Phase 6 real sending requires separate explicit approval; Phase 5 begins with a bounded engineering review. Phase 3 accepted at 8edb365; Phase 4 accepted at ccc3c53; its prerequisite worker cleanup fix accepted at 7341aa9. Advance by feature milestones, not calendar dates. Later phases require separate instruction.
 
 ## Phase 1 — Engineering initialization

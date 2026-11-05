@@ -1,0 +1,8 @@
+{
+  "tests/fixtures/rag-project.pdf": "5b7cdd99564636ae7de2e8b90d79d9a53ffed7c63b4b97acfe1adb36a90a81d0",
+  "tests/fixtures/rag-owner.pdf": "97fb6d57b2cd119ec9d7fbb5e035d037ad889dbe1772566f75d5f35dd6c9a11e",
+  "tests/corpus/v1/project-brief.pdf": "01e177c442cf0578847d571dcd182632c53ab52d3e58e14854a8ab5ee18a653f",
+  "tests/corpus/v1/meeting.txt": "c33bfedd21f49a154590fc411e004316593f588471ba62e7b204f14e44dd48c0",
+  "tests/corpus/v1/materials.ts": "414b78972615b89449dcc934cb9f3d39408418644c8bcf1cab3ee0f5dc010f16",
+  "tests/corpus/v1/cases.ts": "3d8479b93008bdf894cfee84be0eca9cf3cb4f3b18b8422ffa4f97a00c8ed1c5"
+}

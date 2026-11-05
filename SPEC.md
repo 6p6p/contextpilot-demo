@@ -1,5 +1,13 @@
 # ContextPilot specification
 
+## Regression Corpus v1 quality contract
+
+统一合成ORCHID-7421项目材料（3份PDF、会议TXT、带证据记忆、冻结MOCK搜索结果、5/10页管理汇报指令），Zod定义T01–T08稳定ID/版本、冻结时钟、预期事实、允许来源、禁止行为和分层通过条件。默认`npm run test:corpus`只执行确定性业务组件，支持单例；输入SHA按PDF原字节/文本LF规范固定，不自动更新Golden。真实Bug先加入复现，基准变更必须有理由和版本。
+
+结果必须区分Unit、组件Integration/外部替身、真实DB、E2E和Live；NOT_RUN不进入通过率分母。源ID、物理页码/行号、原文、时效、风险/负责人/时间、内容分类与PPT结构均以结构化断言校验，不比较整段LLM措辞。详细契约见[Corpus规范](tests/corpus/v1/README.md)。
+
+数据库测试门禁覆盖整个工作台，不只Worker：共库或不能证明独立且业务列表/检索不隔离时禁止写入。当前聊天/PDF/会议没有完整Corpus Scope过滤，因此本轮DB NOT_RUN、0新增；不因此改Schema/产品架构。付费测试先核实费率/用量/隔离并取得单独授权。当前离线181测试、生产E2E/smoke通过；同场景真实六能力和重启持久化尚未通过，见[验收记录](docs/corpus-v1-acceptance.md)。邮件发送仍关闭、无生产修改/推送/部署。
+
 ## Purpose and source
 
 AI decision workspace Demo for 南京信人智能. The immutable source is [docs/assignment.txt](docs/assignment.txt). Final delivery: public Web application, GitHub source, README and demo materials. This is not production SaaS.

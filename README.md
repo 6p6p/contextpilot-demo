@@ -1,5 +1,11 @@
 # ContextPilot
 
+## Regression Corpus v1（2026-11-05）
+
+固定业务质量基准已加入：`npm run test:corpus`，单例`npm run test:corpus -- T06`。统一合成ORCHID-7421场景覆盖T01–T08；默认无真实外部调用，复用现有Vitest/Zod/PDF/PPT工具。材料、预期、扩展规范见[Corpus说明](tests/corpus/v1/README.md)，分层结果与后续条件见[综合验收记录](docs/corpus-v1-acceptance.md)。
+
+本轮check通过181项，Corpus17项、生产E2E1项及smoke通过；5/10页真实PPTX已逐页视觉检查。**完整同场景业务验收尚未正式通过**：数据库工作台全链路隔离未证实，停止写入（新增0记录）；真实模型/搜索仍NOT_RUN / WAITING_AUTHORIZATION。不以Mock或旧Phase证据冒充本次Live PASS。新Corpus PPT原生软件打开未测。邮件配置未改、不发送；不Push/重新部署。Phase3偶发上传500继续观察。后文各Phase记录为历史状态；用户已报告Railway公网TLS、AI对话、记忆及Tavily可用，本轮未访问生产验证。
+
 面向南京信人智能的 AI 外脑实操 Demo。原始需求见 [docs/assignment.txt](docs/assignment.txt)；阶段规范见 [SPEC.md](SPEC.md)，开发状态见 [TASKS.md](TASKS.md)。
 
 **Phase 6 真实邮件发送验收通过。** 获授权的两封测试邮件均已由 Resend 报告 delivered，并由用户逐封确认收到；同一草稿两版本分别唯一发送，重复/并发提交没有增加外部发送次数。发送开关已恢复 false，详见 [Phase 6 验收记录](docs/phase-6-verification.md)。
