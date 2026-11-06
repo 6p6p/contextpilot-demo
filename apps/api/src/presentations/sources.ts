@@ -10,6 +10,7 @@ import { PublicError } from '../errors.js';
 import {visible} from '../management.js';
 import {untrustedInstruction} from '../evidence/policy.js';
 import {officialWebSources} from './evidence.js';
+import {normalizeMeetingDiscussion} from '../meetings/analysis.js';
 import { isPresentationIntent, presentationNeedsWeb } from './intent.js';
 export function presentationSourceQuery(request:string,kind:'pdf'|'memory') {
   const pattern=kind==='pdf'?/PDF(?:中|里|中的)?(.+?)(?=[、，,。]|以及|生成|$)/i:/(?:跨会话记忆|长期记忆)(?:中|里|中的)?(.+?)(?=[、，,。]|以及|生成|$)/;
@@ -27,12 +28,13 @@ export function createPresentationSources(database:Database,retrieve:ReturnType<
     const history=ctx.useChat?await database.db.select().from(messages).where(and(eq(messages.conversationId,job.conversationId),eq(messages.role,'user'),eq(messages.status,'completed'),sql`${messages.ordinal}<${assistant.ordinal}-1`)).orderBy(desc(messages.ordinal)).limit(10):[];
     for(const m of history.reverse().filter(m=>!isPresentationIntent(m.content)))add({kind:'chat',title:'当前会话用户陈述',text:m.content,locator:{messageId:m.id,conversationId:m.conversationId,observedAt:m.createdAt.toISOString()}});
     if(ctx.meetingId) {
-      const [meeting]=await database.db.select().from(meetings).where(eq(meetings.id,ctx.meetingId));
+      const [meeting]=await database.db.select().from(meetings).where(and(eq(meetings.id,ctx.meetingId),visible(meetings,'archived_at')));
       if(!meeting||meeting.status!=='ready'||!meeting.currentAnalysisId)throw new PublicError(409,'PPT_MEETING_NOT_READY','请选择已完成分析的会议。');
       const [analysis]=await database.db.select().from(meetingAnalyses).where(eq(meetingAnalyses.id,meeting.currentAnalysisId));
       if(!analysis)throw new PublicError(409,'PPT_MEETING_NOT_READY','会议分析不可用。');
       const locator={meetingId:meeting.id,analysisId:analysis.id,version:analysis.version};
-      for(const fact of [analysis.result.topic,analysis.result.meetingDate,analysis.result.location,...analysis.result.participants,...analysis.result.decisions].filter(f=>f!==null))add({kind:'meeting',title:meeting.filename,text:fact.value,locator:{...locator,evidence:fact.evidence}});
+      const result=normalizeMeetingDiscussion(analysis.result,meeting.transcript);
+      for(const fact of [result.topic,result.meetingDate,result.location,...result.participants,...result.decisions].filter(f=>f!==null))add({kind:'meeting',title:meeting.filename,text:fact.value,locator:{...locator,evidence:fact.evidence}});
       const risks=await database.db.select().from(meetingRisks).where(eq(meetingRisks.analysisId,analysis.id));
       for(const risk of risks) {
         const evidence=await database.db.select().from(riskEvidence).where(eq(riskEvidence.riskId,risk.id));

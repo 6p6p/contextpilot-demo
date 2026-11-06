@@ -1,4 +1,10 @@
 import {Fragment,type ReactNode} from 'react';
+function cells(line:string){
+ const value=line.trim().replace(/^\|/,'').replace(/(?<!\\)\|$/,'');
+ const result:string[]=[];let cell='',code=false;
+ for(let i=0;i<value.length;i++){const c=value[i];if(c==='\\'&&value[i+1]==='|'){cell+='|';i++;continue;}if(c==='`')code=!code;if(c==='|'&&!code){result.push(cell.trim());cell='';}else cell+=c;}
+ result.push(cell.trim());return result;
+}
 // Deliberately small Markdown subset. React escapes raw HTML; never use innerHTML.
 function inline(text:string):ReactNode[] {
  const parts:ReactNode[]=[];const re=/(`[^`\n]+`|\*\*[^*\n]+\*\*|\[[^\]\n]+\]\([^\s)]+\))/g;let cursor=0;
@@ -15,6 +21,12 @@ export function SafeMarkdown({text}:{text:string}){
  for(let i=0;i<lines.length;){
   const line=lines[i],key=i;
   if(line.startsWith('```')){const code=[];i++;while(i<lines.length&&!lines[i].startsWith('```'))code.push(lines[i++]);if(i<lines.length)i++;nodes.push(<pre key={key}><code>{code.join('\n')}</code></pre>);continue;}
+  const headers=cells(line),separator=cells(lines[i+1]??'');
+  if(line.includes('|')&&headers.length===separator.length&&separator.every(v=>/^:?-{3,}:?$/.test(v))){
+   const align=separator.map(v=>v.startsWith(':')&&v.endsWith(':')?'center':v.endsWith(':')?'right':'left') as ('center'|'right'|'left')[];
+   const rows:string[][]=[];i+=2;while(i<lines.length&&lines[i].includes('|')&&lines[i].trim()&&!lines[i].startsWith('```'))rows.push(cells(lines[i++]));
+   nodes.push(<div className="markdown-table" role="region" aria-label="Markdown 表格" tabIndex={0} key={key}><table><thead><tr>{headers.map((v,j)=><th key={j} scope="col" style={{textAlign:align[j]}}>{inline(v)}</th>)}</tr></thead><tbody>{rows.map((row,n)=><tr key={n}>{headers.map((_,j)=><td key={j} style={{textAlign:align[j]}}>{inline(row[j]??'')}</td>)}</tr>)}</tbody></table></div>);continue;
+  }
   const heading=line.match(/^(#{1,3})\s+(.+)$/);if(heading){const Tag=heading[1].length===1?'h2':heading[1].length===2?'h3':'h4';nodes.push(<Tag key={key}>{inline(heading[2])}</Tag>);i++;continue;}
   if(/^\s*(?:[-*]|\d+\.)\s+/.test(line)){const ordered=/^\s*\d+\./.test(line),list=[];while(i<lines.length&&(ordered?/^\s*\d+\.\s+/:/^\s*[-*]\s+/).test(lines[i])){list.push(<li key={i}>{inline(lines[i++].replace(/^\s*(?:[-*]|\d+\.)\s+/,''))}</li>);}nodes.push(ordered?<ol key={key}>{list}</ol>:<ul key={key}>{list}</ul>);continue;}
   if(/^>\s?/.test(line)){const quote=[];while(i<lines.length&&/^>\s?/.test(lines[i]))quote.push(lines[i++].replace(/^>\s?/,''));nodes.push(<blockquote key={key}>{inline(quote.join('\n'))}</blockquote>);continue;}

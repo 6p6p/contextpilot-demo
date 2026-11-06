@@ -28,7 +28,7 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [presentationContext,setPresentationContext]=useState<PresentationContext>({meetingId:null,useMemory:false,webQuery:null});
+  const [presentationContext,setPresentationContext]=useState<PresentationContext>({meetingId:null,useMemory:false,webQuery:null,documentIds:[],useChat:false});
   const [searchMode, setSearchMode] = useState<'auto' | 'required' | 'off'>('auto');
   const [knowledgeMode, setKnowledgeMode] = useState(false);
   const [pdfScope,setPdfScope]=useState<'all'|'selected'>('all'),[documentIds,setDocumentIds]=useState<string[]>([]);
@@ -37,6 +37,7 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
   const selection = useRef(selected);
   const listVersion = useRef(0);
   selection.current = selected;
+  useEffect(()=>{setPresentationContext({meetingId:null,useMemory:false,webQuery:null,documentIds:[],useChat:false});setDocumentIds([]);setPdfScope('all');},[selected]);
   useEffect(()=>{if(!knowledgeMode)return;const c=new AbortController();void request('/documents',{signal:c.signal}).then(data=>{if(!c.signal.aborted)setDocuments((data as {documents:{id:string;filename:string;status:string}[]}).documents.filter(d=>d.status==='ready'));}).catch(()=>{if(!c.signal.aborted)setError('PDF 范围加载失败，请刷新资料后重试。');});return()=>c.abort();},[knowledgeMode,refresh]);
 
   useEffect(() => {

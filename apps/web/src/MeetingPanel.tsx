@@ -52,7 +52,7 @@ function DraftEditor({ draft, reload, onError }: { draft: NonNullable<MeetingDet
     } catch (error) { onError(error instanceof Error ? error.message : '草稿操作失败。'); }
     finally { setBusy(false); }
   }
-  return <section id="meeting-email-draft" className="mail-draft" aria-label="会议邮件草稿"><h3>邮件草稿 · v{draft.version}</h3><p>版本确认本身不发送邮件，需在下方单独确认真实发送。{draft.state === 'confirmed' ? '此版本已确认；发送情况以历史为准。' : '待人工复核。'}</p>{draft.stale ? <p className="chat-error">来源或待办已变化，旧正文不代表最新状态；请更新预览、复核并保存后再确认。</p> : null}
+  return <section id="meeting-email-draft" className="mail-draft" aria-label="会议邮件草稿"><h3>邮件草稿</h3><p>{draft.stale?'待复核：来源已变化':dirty?'草稿已更新，尚未保存':draft.state==='confirmed'?'已确认':draft.version>1?'草稿已更新，待复核':'待复核'}</p><details><summary>版本详情</summary><p>当前版本 v{draft.version}。确认只绑定此版本，不发送邮件；保存新内容后须重新确认。</p></details>{draft.stale ? <p className="chat-error">来源或待办已变化，旧正文不代表最新状态；请更新预览、复核并保存后再确认。</p> : null}
     <button type="button" disabled={busy} onClick={()=>{setBusy(true);void api(`/email-drafts/${draft.id}/latest-preview`).then(data=>{setSubject(data.subject);setBody(data.body);}).catch(()=>onError('最新待办预览失败')).finally(()=>setBusy(false));}}>按最新待办更新预览（需复核保存）</button><label>收件人（由用户明确指定）<input aria-label="草稿收件人" value={recipients} onChange={e => setRecipients(e.target.value)} placeholder="多个邮箱用逗号分隔" /></label>
     <label>主题<input aria-label="草稿主题" value={subject} onChange={e => setSubject(e.target.value)} /></label>
     <label>正文<textarea aria-label="草稿正文" rows={9} value={body} onChange={e => setBody(e.target.value)} /></label>
@@ -62,6 +62,7 @@ function DraftEditor({ draft, reload, onError }: { draft: NonNullable<MeetingDet
 }
 export function MeetingPanel() {
   const [notice,setNotice]=useState('');
+  const [archiveTarget,setArchiveTarget]=useState<{id:string;filename:string}|null>(null);
   const [listError,setListError]=useState('');
   const [list, setList] = useState<z.infer<typeof listSchema>['meetings']>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -112,13 +113,15 @@ export function MeetingPanel() {
   return <section id="meetings" className="meeting-panel" aria-label="会议分析与风险待办"><div className="chat-heading"><h2>会议分析与风险待办</h2><label className="upload-label">{uploading ? '上传中…' : '上传会议 TXT'}<input ref={input} aria-label="上传会议 TXT" type="file" accept=".txt,text/plain" disabled={uploading} onChange={e => { const file = e.target.files?.[0]; if (file) void upload(file); }} /></label></div>
     <p>UTF-8 TXT · 1 MiB / 64000 字符上限 · 风险均需原文证据 · 邮件须人工确认版本并单独确认发送</p>
     {error||listError ? <p role="alert" className="chat-error">{error||listError}</p> : null}{notice?<p role="status">{notice}</p>:null}
-    <ul className="meeting-list">{list.map(row => <li key={row.id}><button data-meeting-id={row.id} aria-pressed={row.id === selected} onClick={() => { setSelected(row.id); setError(''); }}>{row.filename} · {labels[row.status]}</button></li>)}</ul>
+    <ul className="meeting-list">{list.map(row => <li key={row.id}><button data-meeting-id={row.id} aria-pressed={row.id === selected} onClick={() => { setSelected(row.id); setError(''); }}>{row.filename} · {labels[row.status]}</button><button type="button" aria-label={`移除会议 ${row.filename}`} onClick={()=>setArchiveTarget(row)}>移除</button></li>)}</ul>
+    <ActionDialog open={Boolean(archiveTarget)} title="移除会议" description="仅从默认列表和新的PPT选材中归档；保留会议原文、风险、人工待办、邮件草稿、历史引用和私有文件。" onClose={()=>setArchiveTarget(null)} onConfirm={async()=>{if(!archiveTarget)return;const id=archiveTarget.id;await api(`/meetings/${id}`,{method:'DELETE'});if(selected===id){setSelected(null);setDetail(null);setTranscript(null);}setList(current=>current.filter(row=>row.id!==id));reload('会议已归档，历史资料和文件保留。');}}/>
     {detail ? <div data-selected-meeting={detail.meeting.id}><div className="meeting-actions"><strong>{labels[detail.meeting.status]} · {detail.meeting.lineCount} 行 · 已保留 {detail.versions.length} 个分析版本</strong><button disabled={restarting || detail.meeting.status === 'processing' || detail.meeting.status === 'uploaded'} onClick={() => { void reanalyze(); }}>重新分析（保留人工编辑）</button><button onClick={() => { void api(`/meetings/${selected}/transcript`).then(data => setTranscript(data.transcript)).catch(() => setError('原文加载失败。')); }}>查看带行号原文</button></div>
       {detail.meeting.status === 'failed' ? <p className="chat-error">{detail.meeting.errorMessage}（{detail.meeting.errorCode}）</p> : null}
       {transcript !== null ? <pre className="meeting-transcript">{transcript.split('\n').map((line, i) => `${i + 1}: ${line}`).join('\n')}</pre> : null}
       {detail.draft?<a href="#meeting-email-draft">查看邮件草稿（确认不发送）</a>:null}
       {result ? <><h3>{result.topic?.value ?? '会议主题未知'}</h3><p>日期：{result.meetingDate?.value ?? '未知'} · 地点：{result.location?.value ?? '未知'} · 人物：{result.participants.map(p => p.value).join('、') || '未知'}</p>
-        <h4>讨论议题与关键决策</h4>{[...result.topics, ...result.decisions].map((fact, i) => <div key={i}><p>{fact.value}</p><EvidenceView evidence={fact.evidence} /></div>)}
+        <h4>讨论议题</h4>{result.topics.map((fact,i)=><div key={i}><p>{fact.scope==='background'?'[其他项目背景] ':''}{fact.category==='proposal'?'[提议，尚非决定] ':fact.category==='question'?'[待确认] ':fact.category==='decision'?'[已记录决定] ':''}{fact.value}</p><EvidenceView evidence={fact.evidence}/></div>)}
+        <h4>已记录的关键决策</h4>{result.decisions.length?result.decisions.map((fact,i)=><div key={i}><p>{fact.scope==='background'?'[其他项目背景] ':''}{fact.value}</p><EvidenceView evidence={fact.evidence}/></div>):<p>没有已确认且有原文支持的决策。</p>}
         <h3>潜在风险（AI 分析，需人工复核）</h3>{!detail.risks.length ? <p>未识别到有证据支持的业务风险。</p> : detail.risks.map(risk => <article className="meeting-risk" key={risk.id}><strong>{risk.type} · {risk.level}</strong><p>{risk.description}</p><p>潜在影响：{risk.impact}</p>{risk.evidence.map((e, i) => <EvidenceView key={i} evidence={e} />)}</article>)}
         <h3>待办</h3>{detail.todos.map(todo => <TodoEditor key={todo.id} todo={todo} currentAnalysis={detail.meeting.currentAnalysisId} reload={reload} onError={setError} />)}
         {detail.draft ? <DraftEditor draft={detail.draft} reload={reload} onError={setError} /> : <p>当前没有需要跟进的风险邮件草稿；仅完成分析且识别到风险时自动准备草稿。</p>}

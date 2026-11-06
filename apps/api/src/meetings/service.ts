@@ -8,7 +8,7 @@ import { PublicError } from '../errors.js';
 import {untrustedInstruction} from '../evidence/policy.js';
 import {visible} from '../management.js';
 import {changedTodos,latestDraftBody} from './draft-state.js';
-import { analyzeTranscript, decodeTranscript, sameAction, taskKey, validDate } from './analysis.js';
+import { analyzeTranscript, decodeTranscript, sameAction, taskKey, validDate,normalizeMeetingDiscussion } from './analysis.js';
 import { draftPatchSchema, todoPatchSchema, type MeetingAction } from '../../../../shared/meetings.js';
 
 export function createMeetingService(database: Database, storage: PrivateStorage | null, model: ChatModel | null, shutdown?: AbortSignal, memoryScope?: string) {
@@ -21,6 +21,7 @@ export function createMeetingService(database: Database, storage: PrivateStorage
   async function detail(id: string) {
     const row = await requireMeeting(id);
     const analyses = await db.select().from(meetingAnalyses).where(eq(meetingAnalyses.meetingId, id)).orderBy(desc(meetingAnalyses.version));
+    const current=analyses.find(a=>a.id===row.currentAnalysisId);
     const risks = row.currentAnalysisId ? await db.select().from(meetingRisks).where(eq(meetingRisks.analysisId, row.currentAnalysisId)) : [];
     const evidence = risks.length ? await db.select().from(riskEvidence).where(sql`${riskEvidence.riskId} in (select id from meeting_risks where analysis_id = ${row.currentAnalysisId})`) : [];
     const todos = await db.select({id:meetingTodos.id,analysisId:meetingTodos.analysisId,task:meetingTodos.task,owner:meetingTodos.owner,dueDate:meetingTodos.dueDate,status:meetingTodos.status,version:meetingTodos.version,origin:meetingTodos.origin,evidence:meetingTodos.evidence,updatedAt:meetingTodos.updatedAt,ignored:sql<boolean>`to_jsonb(${meetingTodos})->>'dismissed_at' is not null`}).from(meetingTodos).where(eq(meetingTodos.meetingId, id)).orderBy(asc(meetingTodos.updatedAt));
@@ -28,12 +29,12 @@ export function createMeetingService(database: Database, storage: PrivateStorage
     const [delivery] = draft ? await db.select({ status: emailDeliveries.status }).from(emailDeliveries).where(and(eq(emailDeliveries.draftId, draft.id), eq(emailDeliveries.version, draft.version))).limit(1) : [];
     // Explicit projection: never expose bucket, object key or credentials.
     return { meeting: { id: row.id, filename: row.filename, status: row.status, lineCount: row.lineCount, requestedVersion: row.requestedVersion, currentAnalysisId: row.currentAnalysisId, errorCode: row.errorCode, errorMessage: row.errorMessage },
-      analysis: analyses.find(a => a.id === row.currentAnalysisId) ?? null, versions: analyses.map(a => ({ id: a.id, version: a.version, createdAt: a.createdAt })),
+      analysis: current?{...current,result:normalizeMeetingDiscussion(current.result,row.transcript)}:null, versions: analyses.map(a => ({ id: a.id, version: a.version, createdAt: a.createdAt })),
       risks: risks.map(risk => ({ ...risk, evidence: evidence.filter(e => e.riskId === risk.id) })), todos, draft: draft ? { ...draft, deliveryState: delivery?.status ?? 'not_sent', stale: draft.analysisId !== row.currentAnalysisId || await changedTodos(db,draft.id) } : null };
   }
   return {
     detail,
-    list: () => db.select({ id: meetings.id, filename: meetings.filename, status: meetings.status, lineCount: meetings.lineCount, errorCode: meetings.errorCode, createdAt: meetings.createdAt }).from(meetings).orderBy(desc(meetings.createdAt)).limit(100),
+    list: () => db.select({ id: meetings.id, filename: meetings.filename, status: meetings.status, lineCount: meetings.lineCount, errorCode: meetings.errorCode, createdAt: meetings.createdAt }).from(meetings).where(visible(meetings,'archived_at')).orderBy(desc(meetings.createdAt)).limit(100),
     async transcript(id: string) { return (await requireMeeting(id)).transcript; },
     async upload(filename: string, mime: string, bytes: Buffer) {
       const transcript = decodeTranscript(filename, mime, bytes);
@@ -55,7 +56,7 @@ export function createMeetingService(database: Database, storage: PrivateStorage
     },
     async reanalyze(id: string) {
       if (!model || !storage) throw new PublicError(503, 'MEETING_NOT_CONFIGURED', '会议模型或存储未配置。');
-      const [row] = await db.update(meetings).set({ status: 'uploaded', requestedVersion: sql`${meetings.requestedVersion} + 1`, attempts: 0, leaseToken: null, leaseUntil: null, errorCode: null, errorMessage: null, updatedAt: new Date() }).where(and(eq(meetings.id, id), eq(meetings.storageReady, true), or(eq(meetings.status, 'ready'), eq(meetings.status, 'failed')))).returning();
+      const [row] = await db.update(meetings).set({ status: 'uploaded', requestedVersion: sql`${meetings.requestedVersion} + 1`, attempts: 0, leaseToken: null, leaseUntil: null, errorCode: null, errorMessage: null, updatedAt: new Date() }).where(and(eq(meetings.id, id),visible(meetings,'archived_at'), eq(meetings.storageReady, true), or(eq(meetings.status, 'ready'), eq(meetings.status, 'failed')))).returning();
       if (!row) throw new PublicError(409, 'MEETING_BUSY_OR_UNSTORED', '会议处理中、尚未上传完成或不存在，不能重跑。');
       return detail(id);
     },
@@ -111,7 +112,7 @@ export function createMeetingService(database: Database, storage: PrivateStorage
       await db.update(meetings).set({ status: 'failed', errorCode: 'MEETING_UPLOAD_INTERRUPTED', errorMessage: '上传中断，原始文件未确认保存。' }).where(and(scope, eq(meetings.status, 'uploaded'), eq(meetings.storageReady, false), lt(meetings.createdAt, new Date(Date.now() - 300000))));
       await db.update(meetings).set({ status: 'failed', errorCode: 'MEETING_INTERRUPTED', errorMessage: '多次分析中断，已停止自动恢复。' }).where(and(scope, eq(meetings.status, 'processing'), lt(meetings.leaseUntil, now), sql`${meetings.attempts} >= 2`));
       const claimed = await db.transaction(async tx => {
-        const [row] = await tx.select().from(meetings).where(and(eq(meetings.storageReady, true), eq(meetings.storageOrigin, storage.origin), eq(meetings.storageBucket, storage.bucket), sql`${meetings.attempts} < 2`, or(eq(meetings.status, 'uploaded'), and(eq(meetings.status, 'processing'), lt(meetings.leaseUntil, now))))).orderBy(meetings.createdAt).limit(1).for('update', { skipLocked: true });
+        const [row] = await tx.select().from(meetings).where(and(visible(meetings,'archived_at'),eq(meetings.storageReady, true), eq(meetings.storageOrigin, storage.origin), eq(meetings.storageBucket, storage.bucket), sql`${meetings.attempts} < 2`, or(eq(meetings.status, 'uploaded'), and(eq(meetings.status, 'processing'), lt(meetings.leaseUntil, now))))).orderBy(meetings.createdAt).limit(1).for('update', { skipLocked: true });
         if (!row) return null;
         const token = randomUUID();
         await tx.update(meetings).set({ status: 'processing', attempts: row.attempts + 1, leaseToken: token, leaseUntil: new Date(Date.now() + 300000), updatedAt: now }).where(eq(meetings.id, row.id));

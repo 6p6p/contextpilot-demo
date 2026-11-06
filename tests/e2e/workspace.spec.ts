@@ -54,12 +54,43 @@ test('workspace displays health from the actual backend', async ({ page }) => {
   }
 });
 
+test('V1.2 plain 5-page and selected-source 10-page PPT instructions use one login (UI STUB, no generation API)',async({page})=>{
+ const id='00000000-0000-4000-8000-000000000061',pdf='00000000-0000-4000-8000-000000000062',at='2026-11-06T08:00:00Z';
+ let messages:any[]=[],jobs:any[]=[];const inputs:any[]=[];
+ await page.route('**/api/conversations',r=>r.fulfill({json:{conversations:[{id,title:'V1.2合成PPT会话',createdAt:at,updatedAt:at}]}}));
+ await page.route('**/api/presentations',r=>r.fulfill({json:{presentations:jobs}}));
+ await page.route('**/api/meetings',r=>r.fulfill({json:{meetings:[{id,filename:'ORCHID-7421会议.txt',status:'ready'}]}}));
+ await page.route('**/api/documents',r=>r.fulfill({json:{documents:[{id:pdf,filename:'ORCHID-7421项目.pdf',status:'ready'}]}}));
+ await page.route(`**/api/conversations/${id}/messages`,r=>{
+  if(r.request().method()==='POST'){
+   const body=r.request().postDataJSON();inputs.push(body);const pageCount=inputs.length===1?5:10;
+   messages=[...messages,...['user','assistant'].map((role,n)=>({id:crypto.randomUUID(),conversationId:id,clientRequestId:body.clientRequestId,ordinal:messages.length+n,role,content:role==='user'?body.content:'UI替身：PPT任务已记录。',status:'completed',model:'UI-STUB',errorCode:null,createdAt:at,updatedAt:at}))];
+   jobs=[{id,assistantMessageId:id,conversationId:id,filename:`UI-STUB-${pageCount}页.pptx`,pageCount,status:'ready',errorCode:null,errorMessage:null,retries:0,size:200,createdAt:at,updatedAt:at}];
+  }return r.fulfill({json:{messages}});
+ });
+ await page.goto('/');if(process.env.DEMO_ACCESS_KEY){await page.getByLabel('Demo 访问口令').fill(process.env.DEMO_ACCESS_KEY);await page.getByRole('button',{name:'进入 Demo',exact:true}).click();}
+ await page.getByRole('button',{name:'PPT 文件',exact:true}).click();await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);
+ await page.getByLabel('PPT 主题',{exact:true}).fill('团队沟通培训');await page.getByLabel('PPT 页数',{exact:true}).selectOption('5');
+ await page.getByRole('button',{name:'填入生成指令'}).click();await expect(page.locator('#chat-input')).toHaveValue('生成 5 页团队沟通培训 PPT。');
+ await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect.poll(()=>inputs.length).toBe(1);
+ expect(inputs[0].presentationContext).toMatchObject({meetingId:null,documentIds:[],useMemory:false,useChat:false,webQuery:null});
+ await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();
+ await page.getByLabel('PPT 主题',{exact:true}).fill('ORCHID-7421管理层汇报');await page.getByLabel('PPT 页数',{exact:true}).selectOption('10');
+ await page.getByLabel('PPT PDF 资料',{exact:true}).selectOption([pdf]);await page.getByLabel('PPT 引用会议',{exact:true}).selectOption(id);await page.getByLabel('PPT 检索长期记忆',{exact:true}).check();
+ await page.getByRole('button',{name:'填入生成指令'}).click();await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect.poll(()=>inputs.length).toBe(2);
+ expect(inputs[1].presentationContext).toMatchObject({meetingId:id,documentIds:[pdf],useMemory:true,useChat:false,webQuery:null});
+ await page.reload();await page.getByRole('button',{name:'PPT 文件',exact:true}).click();await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);
+ await page.getByLabel('使用 PDF 知识库',{exact:true}).check();await page.getByLabel('问答 PDF 范围',{exact:true}).selectOption('selected');await page.getByLabel('问答 PDF 文件',{exact:true}).selectOption([pdf]);
+ await page.locator('#chat-input').fill('查询选中PDF的负责人');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect.poll(()=>inputs.length).toBe(3);expect(inputs[2].documentIds).toEqual([pdf]);
+});
+
 test('completed meeting exposes draft entry and confirmation stays separate from sending (UI fixture)',async({page})=>{
   const id='00000000-0000-4000-8000-000000000091';
-  let ignored=false;
+  let ignored=false,archived=false;
+  await page.route(`**/api/meetings/${id}`,r=>{if(r.request().method()==='DELETE'){archived=true;return r.fulfill({json:{id,retained:true}});}return r.fallback();});
   await page.route(`**/api/meeting-todos/${id}/ignore`,r=>{ignored=true;return r.fulfill({json:{id,retained:true}});});
-  await page.route('**/api/meetings',r=>r.fulfill({json:{meetings:[{id,filename:'CORPUS UI meeting.txt',status:'ready'}]}}));
-  await page.route(`**/api/meetings/${id}`,r=>r.fulfill({json:{
+  await page.route('**/api/meetings',r=>r.fulfill({json:{meetings:archived?[]:[{id,filename:'CORPUS UI meeting.txt',status:'ready'}]}}));
+  await page.route(`**/api/meetings/${id}`,r=>r.request().method()==='DELETE'?r.fallback():r.fulfill({json:{
     meeting:{id,filename:'CORPUS UI meeting.txt',status:'ready',lineCount:1,requestedVersion:1,currentAnalysisId:id,errorCode:null,errorMessage:null},
     analysis:{id,version:1,model:'UI-STUB',result:{topic:null,meetingDate:null,location:null,participants:[],topics:[],decisions:[],risks:[],actions:[]}},
     versions:[{id,version:1}],risks:[],todos:[{id,analysisId:id,task:'确认接口',owner:null,dueDate:null,status:'open',version:ignored?2:1,origin:'meeting_action',ignored,evidence:{quote:'确认接口',startLine:1,endLine:1}}],draft:{id,analysisId:id,version:1,recipients:[],subject:'合成风险草稿',body:'人工复核，不发送。',state:'draft',deliveryState:'not_sent',stale:false}
@@ -70,12 +101,16 @@ test('completed meeting exposes draft entry and confirmation stays separate from
   await page.getByRole('button',{name:'CORPUS UI meeting.txt · 分析完成'}).click();
   await page.getByRole('link',{name:'查看邮件草稿（确认不发送）'}).click();
   await expect(page.getByLabel('草稿主题')).toHaveValue('合成风险草稿');
+  await expect(page.getByRole('heading',{name:'邮件草稿',exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:/邮件草稿 · v/})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'确认此版本（不发送）'})).toBeDisabled();
   await expect(page.getByRole('button',{name:'发送此版本…'})).toBeDisabled();
   await page.getByRole('button',{name:'忽略 / 移除待办'}).click();
   await page.getByRole('dialog',{name:'忽略待办'}).getByRole('button',{name:'确认',exact:true}).click();
   await expect(page.getByRole('button',{name:'恢复待办'})).toBeVisible();
   await expect(page.getByText('待办已忽略，历史证据仍保留')).toBeVisible();
+  await page.getByRole('button',{name:'移除会议 CORPUS UI meeting.txt'}).click();await page.getByRole('dialog',{name:'移除会议'}).getByRole('button',{name:'取消',exact:true}).click();expect(archived).toBe(false);
+  await page.getByRole('button',{name:'移除会议 CORPUS UI meeting.txt'}).click();await page.getByRole('dialog',{name:'移除会议'}).getByRole('button',{name:'确认',exact:true}).click();await expect(page.getByRole('button',{name:'CORPUS UI meeting.txt · 分析完成'})).toHaveCount(0);
+  await page.reload();await page.getByRole('button',{name:'会议与待办',exact:true}).click();await expect(page.getByRole('button',{name:'CORPUS UI meeting.txt · 分析完成'})).toHaveCount(0);
 });
 
 test('chat Markdown, reading position, rename/archive confirmation and PDF removal (UI fixtures)',async({page})=>{
@@ -84,7 +119,7 @@ test('chat Markdown, reading position, rename/archive confirmation and PDF remov
   let delayRefresh=false,releaseRefresh!:()=>void;const refreshGate=new Promise<void>(resolve=>{releaseRefresh=resolve;});
   await page.route('**/api/memories',async r=>{if(delayRefresh)await refreshGate;return r.fulfill({json:{configured:true,memories:[],jobs:[]}});});
   await page.route('**/api/presentations',r=>r.fulfill({json:{presentations:[{id,assistantMessageId:id,conversationId:id,filename:'Fixture-report.pptx',pageCount:5,status:'ready',errorCode:null,errorMessage:null,retries:0,size:200,createdAt:at,updatedAt:at}]}}));
-  const message={id,conversationId:id,clientRequestId:id,ordinal:0,role:'assistant',status:'completed',content:'# 管理摘要\n**重点**\n- 风险有依据\n> 来源待复核\n```js\n<script>evil()</script>\n```\n<img src=x onerror=evil()>\n[危险](javascript:evil)\n'+Array.from({length:45},(_,i)=>`第${i}段：保留真实来源和可追溯的项目事实。`).join('\n'),errorCode:null,model:'UI-STUB',createdAt:at,updatedAt:at};
+  const message={id,conversationId:id,clientRequestId:id,ordinal:0,role:'assistant',status:'completed',content:'# 管理摘要\n**重点**\n| 项目 | 内容 | 证据 |\n| --- | --- | --- |\n| ORCHID-7421 | 这是用于窄屏横向滚动检查的较长管理摘要表格单元格内容 | 官方来源与物理页码保留 |\n\n- 风险有依据\n> 来源待复核\n```js\n<script>evil()</script>\n```\n<img src=x onerror=evil()>\n[危险](javascript:evil)\n'+Array.from({length:45},(_,i)=>`第${i}段：保留真实来源和可追溯的项目事实。`).join('\n'),errorCode:null,model:'UI-STUB',createdAt:at,updatedAt:at};
   await page.route('**/api/conversations',r=>r.fulfill({json:{conversations:archived?[]:[conversation]}}));
   await page.route(`**/api/conversations/${id}/messages`,r=>r.fulfill({json:{messages:[message]}}));
   await page.route(`**/api/conversations/${id}`,r=>{if(r.request().method()==='PATCH')conversation.title=r.request().postDataJSON().title;else if(r.request().method()==='DELETE')archived=true;return r.fulfill({json:{id,retained:true}});});
@@ -93,6 +128,7 @@ test('chat Markdown, reading position, rename/archive confirmation and PDF remov
   await page.goto('/');if(process.env.DEMO_ACCESS_KEY){await page.getByLabel('Demo 访问口令').fill(process.env.DEMO_ACCESS_KEY);await page.getByRole('button',{name:'进入 Demo',exact:true}).click();}
   await expect(page.locator('.safe-markdown strong')).toHaveText('重点');await expect(page.locator('.safe-markdown pre code')).toHaveText('<script>evil()</script>');
   expect(await page.locator('.safe-markdown img,.safe-markdown script,.safe-markdown a[href^="javascript:"]').count()).toBe(0);
+  await expect(page.getByRole('columnheader',{name:'项目',exact:true})).toBeVisible();await expect(page.locator('.markdown-table tbody tr')).toHaveCount(1);
   const scroller=page.getByLabel('聊天消息');await expect.poll(()=>scroller.evaluate(e=>e.scrollTop)).toBeGreaterThan(100);
   await scroller.evaluate(e=>{e.scrollTop=15;e.dispatchEvent(new Event('scroll',{bubbles:true}));});
   const reloaded=page.waitForResponse(r=>r.url().endsWith(`/conversations/${id}/messages`));await page.getByRole('button',{name:'重新加载历史'}).click();await reloaded;
@@ -100,7 +136,7 @@ test('chat Markdown, reading position, rename/archive confirmation and PDF remov
   await page.getByRole('button',{name:'重命名 合成项目会话'}).click();await page.getByLabel('会话名称').fill('更新的项目标题');await page.getByRole('dialog').getByRole('button',{name:'确认',exact:true}).click();await expect(page.getByRole('button',{name:'重命名 更新的项目标题'})).toBeVisible();
   await page.getByRole('button',{name:'删除 更新的项目标题'}).click();await page.getByRole('dialog').getByRole('button',{name:'取消',exact:true}).click();expect(archived).toBe(false);
   await page.screenshot({path:'test-results/chat-v2-desktop.png',fullPage:true});
-  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect.poll(async()=>{const box=await page.locator('#chat-input').boundingBox();return Boolean(box&&box.y+box.height<=844);}).toBe(true);expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+2)).toBe(true);await page.screenshot({path:'test-results/chat-v2-mobile.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await page.getByRole('region',{name:'Markdown 表格'}).evaluate(e=>e.scrollWidth>e.clientWidth)).toBe(true);await expect.poll(async()=>{const box=await page.locator('#chat-input').boundingBox();return Boolean(box&&box.y+box.height<=844);}).toBe(true);expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+2)).toBe(true);await page.screenshot({path:'test-results/chat-v2-mobile.png',fullPage:true});
   await page.getByRole('button',{name:'删除 更新的项目标题'}).click();await page.getByRole('dialog').getByRole('button',{name:'确认',exact:true}).click();await expect(page.getByText('暂无会话，创建后开始对话。')).toBeVisible();
   await page.getByRole('button',{name:'知识库',exact:true}).click();await page.getByRole('button',{name:'移除文件',exact:true}).click();await page.getByRole('dialog',{name:'移除 PDF'}).getByRole('button',{name:'确认',exact:true}).click();await expect(page.getByText('尚无已上传文件。')).toBeVisible();
   await page.getByRole('button',{name:'长期记忆',exact:true}).click();delayRefresh=true;

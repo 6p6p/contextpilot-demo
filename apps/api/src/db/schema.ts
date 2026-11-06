@@ -71,6 +71,7 @@ export const documentChunks = pgTable('document_chunks', {
 ]).enableRLS();
 
 export const meetings = pgTable('meetings', {
+  archivedAt: timestamp('archived_at',{withTimezone:true}),
   id: uuid().primaryKey(), filename: text().notNull(), sha256: text().notNull().unique(), size: integer().notNull(),
   objectKey: text('object_key').notNull(), storageOrigin: text('storage_origin').notNull(), storageBucket: text('storage_bucket').notNull(),
   transcript: text().notNull(), lineCount: integer('line_count').notNull(), storageReady: boolean('storage_ready').notNull().default(false),

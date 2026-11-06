@@ -2,11 +2,12 @@ import { z } from 'zod';
 
 export const evidenceSchema = z.object({ startLine: z.number().int().positive(), endLine: z.number().int().positive(), quote: z.string().min(1).max(1500) });
 export const factSchema = z.object({ value: z.string().min(1).max(300), evidence: evidenceSchema });
+const discussionSchema=factSchema.extend({category:z.enum(['topic','decision','proposal','question']).optional(),scope:z.enum(['project','background']).optional()});
 export const actionSchema = z.object({ task: z.string().min(1).max(300), owner: z.string().min(1).max(100).nullable(), dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(), evidence: evidenceSchema, category:z.enum(['action','question']).optional() });
 export const riskSchema = z.object({ type: z.enum(['delivery', 'financial', 'security', 'compliance', 'operational', 'other']), level: z.enum(['low', 'medium', 'high', 'critical']), description: z.string().min(1).max(500), impact: z.string().min(1).max(500), evidence: z.array(evidenceSchema).min(1).max(5) });
 export const meetingAnalysisSchema = z.object({
   topic: factSchema.nullable(), meetingDate: factSchema.nullable(), location: factSchema.nullable(),
-  participants: z.array(factSchema).max(40), topics: z.array(factSchema).max(40), decisions: z.array(factSchema).max(40),
+  participants: z.array(factSchema).max(40), topics: z.array(discussionSchema).max(40), decisions: z.array(discussionSchema).max(40),
   risks: z.array(riskSchema).max(20), actions: z.array(actionSchema).max(40),
 });
 export type Evidence = z.infer<typeof evidenceSchema>;

@@ -314,4 +314,30 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
       expect(run.objects).toHaveLength(7);
     }finally{await app.close();}
   });
+  testCase('M02','V1.2 selected PDF scope and meeting archive preserve history, drafts and downloads',async()=>{
+    const retrieve=createRetriever(database,embedder,0.5),selected=run.roots.documents[1],removed=run.roots.documents[0];
+    expect(await retrieve('项目',[])).toEqual([]);expect(await retrieve('项目',[removed])).toEqual([]);
+    const scoped=await retrieve('项目',[selected]);expect(scoped.length).toBeGreaterThan(0);expect(scoped.every(s=>s.documentId===selected)).toBe(true);
+    const key='synthetic-v12-management-secret-123456789';
+    const app=Fastify();registerDemoAccess(app,parseEnv({NODE_ENV:'test',DEMO_ACCESS_KEY:key}));registerManagementRoutes(app,database);
+    try{
+      const meetingId=run.roots.meetings[0],before=await meetingService.detail(meetingId),text=await meetingService.transcript(meetingId);
+      expect((await app.inject({method:'DELETE',url:`/api/meetings/${meetingId}`})).statusCode).toBe(401);
+      const login=await app.inject({method:'POST',url:'/api/demo-session',payload:{accessKey:key}});const cookie=String(login.headers['set-cookie']).split(';')[0];
+      expect((await app.inject({method:'DELETE',url:`/api/meetings/${meetingId}`,headers:{cookie}})).statusCode).toBe(200);
+      expect((await meetingService.list()).some(m=>m.id===meetingId)).toBe(false);
+      expect(await meetingService.detail(meetingId)).toEqual(before);expect(await meetingService.transcript(meetingId)).toBe(text);
+      await expect(meetingService.reanalyze(meetingId)).rejects.toBeDefined();
+      const row=(await database.db.select().from(schema.presentationJobs).where(eq(schema.presentationJobs.id,pptId)))[0];
+      await expect(createPresentationSources(database,retrieve,memory(),null)({...row,context:{...row.context,meetingId}})).rejects.toMatchObject({code:'PPT_MEETING_NOT_READY'});
+      const independent=configuredDatabase();try{
+        const restored=createMeetingService(independent,storage,null);
+        expect((await restored.list()).some(m=>m.id===meetingId)).toBe(false);expect(await restored.transcript(meetingId)).toBe(text);
+        expect(digest((await createPresentationService(independent,storage,stub('unused'),async()=>[],{PPT_SCOPE:run.scope,PPT_MAX_TOKENS:8192}).download(pptId)).bytes)).toBe(row.sha256);
+      }finally{await independent.pool.end();}
+      // Only this run's pre-registered meeting; prove new worker claims exclude archives.
+      await database.db.update(schema.meetings).set({status:'uploaded',attempts:0}).where(eq(schema.meetings.id,meetingId));
+      expect(await meetingService.processOne()).toBe(false);expect(run.objects).toHaveLength(7);
+    }finally{await app.close();}
+  });
 });

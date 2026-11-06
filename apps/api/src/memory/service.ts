@@ -12,7 +12,7 @@ import {projectRelevant} from '../evidence/policy.js';
 export type MemoryService = ReturnType<typeof createMemoryService>;
 export function createMemoryService(database: Database, model: ChatModel | null, embedder: Embedder | null, scope: string, shutdown?: AbortSignal) {
   const db = database.db;
-  const scoped = and(eq(memories.scope, scope),sql`not exists(select 1 from conversations c where c.id=${memories.sourceGroup} and to_jsonb(c)->>'archived_at' is not null)`)!;
+  const scoped = and(eq(memories.scope, scope),sql`not exists(select 1 from conversations c where c.id=${memories.sourceGroup} and to_jsonb(c)->>'archived_at' is not null)`,sql`not exists(select 1 from meetings m where m.id=${memories.sourceGroup} and to_jsonb(m)->>'archived_at' is not null)`)!;
   const project = (r: typeof memories.$inferSelect): MemoryCitation => ({ id: r.id, kind: r.kind, content: r.content, sources: r.sources });
   return {
     scope,

@@ -10,11 +10,11 @@ export function createPresentationAuth(env:Env) {
   return {
     require(request:Pick<FastifyRequest,'headers'>) {
       if(hasDemoAccess(env,request))return;
-      if(!env.PPT_ACCESS_KEY)throw new PublicError(503,'PPT_ACCESS_NOT_CONFIGURED','请配置后端 PPT_ACCESS_KEY 后解锁 PPT。');
+      if(!env.PPT_ACCESS_KEY)throw new PublicError(503,'PPT_ACCESS_NOT_CONFIGURED','请配置统一 DEMO_ACCESS_KEY，并通过全站 Demo 登录后使用 PPT。');
       const cookie=(request.headers.cookie??'').split(';').map(s=>s.trim()).find(s=>s.startsWith('cp_ppt='))?.slice(7)??'';
       const [expires,nonce,tag]=cookie.split('.');
       const body=`${expires}.${nonce}`;
-      if(!/^\d{13}\.[A-Za-z0-9_-]{24}\.[A-Za-z0-9_-]{43}$/.test(cookie)||Number(expires)<Date.now()||Number(expires)>Date.now()+8*3600000||!timingSafeEqual(digest(tag),digest(signature(body))))throw new PublicError(401,'PPT_ACCESS_REQUIRED','请在 PPT 资料与下载中输入访问口令。');
+      if(!/^\d{13}\.[A-Za-z0-9_-]{24}\.[A-Za-z0-9_-]{43}$/.test(cookie)||Number(expires)<Date.now()||Number(expires)>Date.now()+8*3600000||!timingSafeEqual(digest(tag),digest(signature(body))))throw new PublicError(401,'PPT_ACCESS_REQUIRED','请重新登录全站 Demo 后访问 PPT。');
     },
     register(app:FastifyInstance) {
       let failures=0,window=Date.now();

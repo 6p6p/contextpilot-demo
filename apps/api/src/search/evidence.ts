@@ -24,16 +24,21 @@ export function evidenceOrder(question:string,sources:WebSource[]){
 export function currentConclusion(question:string,s:WebSource,quote:string){
  const intent=searchIntent(question);
  if(intent.official&&!officialSource(s,intent.domains))return false;
- if(intent.current&&!s.publishedAt&&/\/(?:blog|news|releases?)(?:\/|$)/i.test(new URL(s.url).pathname))return false;
+ if(intent.current&&!s.publishedAt&&archiveSource(s))return false;
  if(intent.current&&(!recentSource(s)||!/(?:当前|最新|目前|current|latest|active\s+LTS)/i.test(quote)))return false;
  return true;
 }
-export function archiveSource(s:WebSource){return /\/(?:blog|news|releases?)(?:\/|$)/i.test(new URL(s.url).pathname);}
+export function archiveSource(s:WebSource){return /\/(?:blog|news|release)(?:\/|$)|\/releases\/(?!latest(?:\/|$)|current(?:\/|$)|status(?:\/|$))[^/]+/i.test(new URL(s.url).pathname);}
 // Extract the association, not every number in a page containing the word LTS.
 export function ltsStates(text:string){
  const states:{version:string;status:string}[]=[];
  for(const m of text.matchAll(/\bv?(\d+(?:\.\d+){0,2})[ \t]*(?:(?:is|the|current|latest)[ \t]+|[|—–:=-][ \t]*){0,5}(Active|Maintenance)[ \t]+LTS/gi))states.push({version:m[1],status:`${m[2].toLowerCase()==='active'?'Active':'Maintenance'} LTS`});
  for(const m of text.matchAll(/(Active|Maintenance)[ \t]+LTS(?:[ \t]+(?:is|version|Node\.js)|[ \t]*[|:=-]){0,5}[ \t]+v?(\d+(?:\.\d+){0,2})/gi))states.push({version:m[2],status:`${m[1].toLowerCase()==='active'?'Active':'Maintenance'} LTS`});
+ for(const line of text.split('\n')){
+  const columns=line.split('|').map(s=>s.trim()).filter(Boolean),version=columns[0]?.match(/^(?:Node\.js[ \t]+)?v?(\d+(?:\.\d+){0,2})$/i);
+  if(!version)continue;
+  for(const column of columns.slice(1))if(/^(?:Active[ \t]+LTS|Maintenance[ \t]+LTS|活跃(?:的)?[ \t]*LTS|维护(?:中|中的|的)?[ \t]*LTS)$/i.test(column))states.push({version:version[1],status:/^Active|^活跃/i.test(column)?'Active LTS':'Maintenance LTS'});
+ }
  return states;
 }
 export function conflictingLts(question:string,sources:WebSource[]){
