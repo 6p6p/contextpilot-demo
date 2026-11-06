@@ -1,6 +1,7 @@
 import { isPresentationIntent, parsePresentationRequest } from '../presentations/intent.js';
 import type { PresentationService, PresentationInput } from '../presentations/service.js';
-import { answerWithSearch, needsSearch, type SearchProvider } from '../search/service.js';
+import { needsSearch, type SearchProvider } from '../search/service.js';
+import {answerPublicSearch} from '../search/public.js';
 import type { SearchMode } from '../../../../shared/search.js';
 import { answerWithMemory, type MemoryService } from '../memory/service.js';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
@@ -64,8 +65,8 @@ export function createChatService(database: NonNullable<ReturnType<typeof create
       const assistant = preparation.rows.find(m => m.role === 'assistant')!;
       try {
         const recent = await db.select().from(messages).where(and(eq(messages.conversationId, id), sql`${messages.ordinal} < ${assistant.ordinal}`)).orderBy(desc(messages.ordinal)).limit(40);
-        const useSearch = needsSearch(input.content, input.searchMode ?? 'auto');
-        const web = input.searchMode === 'off' && needsSearch(input.content, 'auto') ? { content: '联网搜索已关闭，无法确认最新信息。请切换自动或必须联网模式。', model: 'web-disabled-gate', webSources: [] } : useSearch ? await answerWithSearch(input.content, search ?? null, model) : null;
+        const useSearch = !input.knowledgeMode&&needsSearch(input.content, input.searchMode ?? 'auto');
+        const web = !input.knowledgeMode&&input.searchMode === 'off' && needsSearch(input.content, 'auto') ? { content: '联网搜索已关闭，无法确认最新信息。请切换自动或必须联网模式。', model: 'web-disabled-gate', webSources: [] } : useSearch ? await answerPublicSearch(input.content, search ?? null, model) : null;
         const chronological=[...recent].reverse();
         const candidates = !web && !input.knowledgeMode && memory && !useCurrentContext(input.content,chronological) ? await memory.retrieve(input.content) : [];
         const result = input.knowledgeMode ? { ...await knowledge!.answer(input.content, model,input.documentIds), memorySources: [] } : web ? { content: '', model: web.model, sources: [], memorySources: [] } : candidates.length ? await answerWithMemory(input.content, buildContext(recent.reverse()), model, candidates) : { ...await model.complete(buildContext(recent.reverse())), sources: [], memorySources: [] };
