@@ -174,7 +174,7 @@ export const presentationJobs = pgTable('presentation_jobs', {
   createdAt: timestamp('created_at',{withTimezone:true}).notNull().defaultNow(), updatedAt: timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[uniqueIndex('presentation_message_idx').on(t.assistantMessageId),uniqueIndex('presentation_object_idx').on(t.objectKey),
   index('presentation_queue_idx').on(t.scope,t.status,t.leaseUntil),
-  check('presentation_page_count_check',sql`${t.pageCount} between 5 and 10`),
+  check('presentation_page_count_check',sql`${t.pageCount} between 3 and 30`),
   check('presentation_attempts_check',sql`${t.attempts} between 0 and 2 and ${t.retries} between 0 and 1`),
   check('presentation_status_check',sql`${t.status} in ('queued','planning','rendering','ready','failed')`),
 ]).enableRLS();

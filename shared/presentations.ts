@@ -17,7 +17,7 @@ export const pptItemSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('gap'), text: z.enum(['未提供可核实的项目进展', '未提供负责人或明确时间', '现有资料不足以确认风险', '尚无可引用的业务资料', '外部信息未核实', '需要补充原始资料后再判断']) }).strict(),
 ]);
 export const pptSlideSchema = z.object({ kind: z.enum(['cover', 'summary', 'background', 'progress', 'risk', 'todos', 'next', 'gaps', 'references']), items: z.array(pptItemSchema).max(3) }).strict();
-export const pptPlanSchema = z.object({ slides: z.array(pptSlideSchema).min(5).max(10) }).strict().superRefine((p,c) => {
+export const pptPlanSchema = z.object({ slides: z.array(pptSlideSchema).min(3).max(30) }).strict().superRefine((p,c) => {
   if (p.slides[0]?.kind !== 'cover' || p.slides.at(-1)?.kind !== 'references' || p.slides.filter(s=>s.kind==='cover').length!==1 || p.slides.filter(s=>s.kind==='references').length!==1) c.addIssue({ code: 'custom', message: '封面和参考资料必须分别占第一和最后一页' });
   for (const s of p.slides.slice(1,-1)) if (!s.items.length) c.addIssue({ code: 'custom', message: '内容页不能为空' });
 });

@@ -14,6 +14,7 @@ const schema = z.object({
   DEMO_SEARCH_CALLS:z.coerce.number().int().min(1).max(100).default(20),
   PPT_ACCESS_KEY: z.preprocess(v => v === '' ? undefined : v, z.string().min(32).max(128).optional()),
   PPT_SCOPE: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/).default('demo'),
+  PPT_MAX_PAGES: z.coerce.number().int().min(3).max(30).default(20),
   PPT_MAX_TOKENS: z.coerce.number().int().min(2048).max(8192).default(8192),
   TAVILY_API_KEY: z.preprocess(v => v === '' ? undefined : v, z.string().min(1).optional()),
   TAVILY_BASE_URL: z.url().default('https://api.tavily.com'),

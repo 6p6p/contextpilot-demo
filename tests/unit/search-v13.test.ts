@@ -41,3 +41,11 @@ it('A dated historical status does not erase current supported evidence; review 
 it('A failed semantic review cannot publish unchecked natural prose',async()=>{
  await expect(answerWithSearch(q,{async search(){return rows;}},model({claims:[{text:'两个受支持版本线。',evidence:proof}],issues:[]},{claims:[],issues:[]}))).rejects.toMatchObject({code:'SEARCH_INVALID_REVIEW'});
 });
+it('A synthesis can state the real query date without pretending it is a publication date',async()=>{
+ const r=await answerWithSearch(q,{async search(){return rows;}},model({claims:[{text:'查询日期为2026-11-06，网页列有两个支持版本线。',evidence:proof}],issues:[]},{claims:[{index:0,supported:true,reason:'supported'}],issues:[]}));
+ expect(r.content).toContain('查询日期为2026-11-06');expect(r.content).not.toContain('发布时间：2026-11-06');
+});
+it('A a review marked different_scope cannot authorize a global conflict even with valid=true',async()=>{
+ const r=await answerWithSearch(q,{async search(){return rows;}},model({claims:[],issues:[{kind:'conflict',text:'两条支持版本线不同。',evidence:proof}]},{claims:[],issues:[{index:0,valid:true,reason:'different_scope'}]}));
+ expect(r.content).not.toContain('来源存在冲突');expect(r.content).not.toContain('两条支持版本线不同。');
+});

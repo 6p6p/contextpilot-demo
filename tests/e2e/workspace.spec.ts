@@ -27,11 +27,11 @@ test('workspace displays health from the actual backend', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText('AI 决策助手');
   await expect(page.getByRole('status')).toContainText('后端已连接');
   await expect(page.getByRole('status')).toContainText('数据库未配置');
-  await page.getByText('PPT 资料与下载 · 在聊天中明确输入').click();
+  await expect(page.getByRole('button',{name:'添加上下文'})).toBeVisible();
   await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);await expect(page.getByRole('button',{name:'解锁 PPT',exact:true})).toHaveCount(0);
-  if(process.env.DEMO_ACCESS_KEY)await expect(page.getByText('使用当前 Demo 登录，生成与私有下载无需再次验证。')).toBeVisible();
+
   await page.unroute('**/api/demo-session');
-  await page.getByText('PPT 资料与下载 · 在聊天中明确输入').click();
+  await expect(page.getByRole('button',{name:'添加上下文'})).toBeVisible();
   await expect(page.getByLabel('联网搜索模式')).toHaveValue('auto');
   await page.getByLabel('联网搜索模式').selectOption('off');
   await expect(page.getByLabel('联网搜索模式')).toHaveValue('off');
@@ -54,34 +54,32 @@ test('workspace displays health from the actual backend', async ({ page }) => {
   }
 });
 
-test('V1.2 plain 5-page and selected-source 10-page PPT instructions use one login (UI STUB, no generation API)',async({page})=>{
- const id='00000000-0000-4000-8000-000000000061',pdf='00000000-0000-4000-8000-000000000062',at='2026-11-06T08:00:00Z';
+test('V1.3 chat native PPT attachments, progress, failures and restored downloads (UI STUB)',async({page})=>{
+ const id='00000000-0000-4000-8000-000000000061',pdf='00000000-0000-4000-8000-000000000062',uploaded='00000000-0000-4000-8000-000000000063',at='2026-11-06T08:00:00Z';
  let messages:any[]=[],jobs:any[]=[];const inputs:any[]=[];
- await page.route('**/api/conversations',r=>r.fulfill({json:{conversations:[{id,title:'V1.2合成PPT会话',createdAt:at,updatedAt:at}]}}));
- await page.route('**/api/presentations',r=>r.fulfill({json:{presentations:jobs}}));
+ const doc=(docId:string,filename:string)=>({id:docId,filename,size:200,status:'ready',pageCount:2,chunkCount:2,errorCode:null,errorMessage:null,createdAt:at,updatedAt:at});let docs=[doc(pdf,'ORCHID-7421项目.pdf')];
+ await page.route('**/api/conversations',r=>r.fulfill({json:{conversations:[{id,title:'V1.3合成会话',createdAt:at,updatedAt:at}]}}));
+ await page.route('**/api/presentations*',r=>r.fulfill({json:{presentations:jobs}}));
  await page.route('**/api/meetings',r=>r.fulfill({json:{meetings:[{id,filename:'ORCHID-7421会议.txt',status:'ready'}]}}));
- await page.route('**/api/documents',r=>r.fulfill({json:{documents:[{id:pdf,filename:'ORCHID-7421项目.pdf',status:'ready'}]}}));
+ await page.route('**/api/documents*',r=>{if(r.request().method()==='POST'){const document=doc(uploaded,'附件上传.pdf');docs.push(document);return r.fulfill({json:{document}});}return r.fulfill({json:{documents:docs}});});
  await page.route(`**/api/conversations/${id}/messages`,r=>{
   if(r.request().method()==='POST'){
    const body=r.request().postDataJSON();inputs.push(body);const pageCount=inputs.length===1?5:10;
-   messages=[...messages,...['user','assistant'].map((role,n)=>({id:crypto.randomUUID(),conversationId:id,clientRequestId:body.clientRequestId,ordinal:messages.length+n,role,content:role==='user'?body.content:'UI替身：PPT任务已记录。',status:'completed',model:'UI-STUB',errorCode:null,createdAt:at,updatedAt:at}))];
-   jobs=[{id,assistantMessageId:id,conversationId:id,filename:`UI-STUB-${pageCount}页.pptx`,pageCount,status:'ready',errorCode:null,errorMessage:null,retries:0,size:200,createdAt:at,updatedAt:at}];
+   const assistant=crypto.randomUUID();messages=[...messages,...['user','assistant'].map((role,n)=>({id:role==='assistant'?assistant:crypto.randomUUID(),conversationId:id,clientRequestId:body.clientRequestId,ordinal:messages.length+n,role,content:role==='user'?body.content:'任务已排队。',status:'completed',model:role==='assistant'?'ppt-job':null,errorCode:null,createdAt:at,updatedAt:at}))];
+   jobs=[...jobs,{id:crypto.randomUUID(),assistantMessageId:assistant,conversationId:id,filename:`UI-STUB-${pageCount}页.pptx`,pageCount,status:inputs.length===1?'queued':'failed',errorCode:inputs.length===1?null:'PPT_TEST_FAILURE',errorMessage:inputs.length===1?null:'合成失败证据',retries:1,size:200,createdAt:at,updatedAt:at}];
   }return r.fulfill({json:{messages}});
  });
  await page.goto('/');if(process.env.DEMO_ACCESS_KEY){await page.getByLabel('Demo 访问口令').fill(process.env.DEMO_ACCESS_KEY);await page.getByRole('button',{name:'进入 Demo',exact:true}).click();}
- await page.getByRole('button',{name:'PPT 文件',exact:true}).click();await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);
- await page.getByLabel('PPT 主题',{exact:true}).fill('团队沟通培训');await page.getByLabel('PPT 页数',{exact:true}).selectOption('5');
- await page.getByRole('button',{name:'填入生成指令'}).click();await expect(page.locator('#chat-input')).toHaveValue('生成 5 页团队沟通培训 PPT。');
- await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect.poll(()=>inputs.length).toBe(1);
- expect(inputs[0].presentationContext).toMatchObject({meetingId:null,documentIds:[],useMemory:false,useChat:false,webQuery:null});
- await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();
- await page.getByLabel('PPT 主题',{exact:true}).fill('ORCHID-7421管理层汇报');await page.getByLabel('PPT 页数',{exact:true}).selectOption('10');
- await page.getByLabel('PPT PDF 资料',{exact:true}).selectOption([pdf]);await page.getByLabel('PPT 引用会议',{exact:true}).selectOption(id);await page.getByLabel('PPT 检索长期记忆',{exact:true}).check();
- await page.getByRole('button',{name:'填入生成指令'}).click();await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect.poll(()=>inputs.length).toBe(2);
- expect(inputs[1].presentationContext).toMatchObject({meetingId:id,documentIds:[pdf],useMemory:true,useChat:false,webQuery:null});
- await page.reload();await page.getByRole('button',{name:'PPT 文件',exact:true}).click();await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);
- await page.getByLabel('使用 PDF 知识库',{exact:true}).check();await page.getByLabel('问答 PDF 范围',{exact:true}).selectOption('selected');await page.getByLabel('问答 PDF 文件',{exact:true}).selectOption([pdf]);
- await page.locator('#chat-input').fill('查询选中PDF的负责人');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect.poll(()=>inputs.length).toBe(3);expect(inputs[2].documentIds).toEqual([pdf]);
+ await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);await expect(page.getByLabel('PPT 主题')).toHaveCount(0);
+ await page.locator('#chat-input').fill('生成5页团队沟通培训PPT');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect.poll(()=>inputs.length).toBe(1);
+ expect(inputs[0].presentationContext).toMatchObject({meetingId:null,documentIds:[],useMemory:false,webQuery:null});await expect(page.getByText('等待生成 · 5 页')).toBeVisible();jobs[0].status='ready';await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();
+ await page.getByRole('button',{name:'添加上下文'}).click();await page.getByLabel('附件上传 PDF').setInputFiles({name:'附件上传.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-UI-STUB')});
+ await page.getByRole('button',{name:'移除附件 附件上传.pdf',exact:true}).click();await page.getByLabel('选择PDF ORCHID-7421项目.pdf').check();await page.getByLabel('附件会议').selectOption(id);
+ await page.getByRole('button',{name:'移除会议附件'}).click();await page.getByLabel('附件会议').selectOption(id);await page.getByRole('button',{name:'关闭上下文'}).click();
+ await page.locator('#chat-input').fill('根据刚才选择的PDF和会议生成10页管理汇报PPT');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect.poll(()=>inputs.length).toBe(2);
+ expect(inputs[1].presentationContext).toMatchObject({meetingId:id,documentIds:[pdf],useMemory:false});await expect(page.getByText('合成失败证据（PPT_TEST_FAILURE）')).toBeVisible();
+ await page.reload();await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();await expect(page.getByText('合成失败证据（PPT_TEST_FAILURE）')).toBeVisible();await expect(page.getByRole('button',{name:'添加上下文'})).toBeVisible();
+ await page.screenshot({path:'test-results/chat-native-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(page.getByText('合成失败证据（PPT_TEST_FAILURE）')).toBeInViewport();const sendBox=await page.getByRole('button',{name:'发送消息',exact:true}).boundingBox();expect(sendBox&&sendBox.y+sendBox.height<=844).toBeTruthy();await page.screenshot({path:'test-results/chat-native-mobile.png',fullPage:true});
 });
 
 test('completed meeting exposes draft entry and confirmation stays separate from sending (UI fixture)',async({page})=>{
@@ -118,7 +116,7 @@ test('chat Markdown, reading position, rename/archive confirmation and PDF remov
   const conversation={id,title:'合成项目会话',createdAt:at,updatedAt:at};let archived=false,removed=false;
   let delayRefresh=false,releaseRefresh!:()=>void;const refreshGate=new Promise<void>(resolve=>{releaseRefresh=resolve;});
   await page.route('**/api/memories',async r=>{if(delayRefresh)await refreshGate;return r.fulfill({json:{configured:true,memories:[],jobs:[]}});});
-  await page.route('**/api/presentations',r=>r.fulfill({json:{presentations:[{id,assistantMessageId:id,conversationId:id,filename:'Fixture-report.pptx',pageCount:5,status:'ready',errorCode:null,errorMessage:null,retries:0,size:200,createdAt:at,updatedAt:at}]}}));
+  await page.route('**/api/presentations*',r=>r.fulfill({json:{presentations:[{id,assistantMessageId:id,conversationId:id,filename:'Fixture-report.pptx',pageCount:5,status:'ready',errorCode:null,errorMessage:null,retries:0,size:200,createdAt:at,updatedAt:at}]}}));
   const message={id,conversationId:id,clientRequestId:id,ordinal:0,role:'assistant',status:'completed',content:'# 管理摘要\n**重点**\n| 项目 | 内容 | 证据 |\n| --- | --- | --- |\n| ORCHID-7421 | 这是用于窄屏横向滚动检查的较长管理摘要表格单元格内容 | 官方来源与物理页码保留 |\n\n- 风险有依据\n> 来源待复核\n```js\n<script>evil()</script>\n```\n<img src=x onerror=evil()>\n[危险](javascript:evil)\n'+Array.from({length:45},(_,i)=>`第${i}段：保留真实来源和可追溯的项目事实。`).join('\n'),errorCode:null,model:'UI-STUB',createdAt:at,updatedAt:at};
   await page.route('**/api/conversations',r=>r.fulfill({json:{conversations:archived?[]:[conversation]}}));
   await page.route(`**/api/conversations/${id}/messages`,r=>r.fulfill({json:{messages:[message]}}));
@@ -142,6 +140,6 @@ test('chat Markdown, reading position, rename/archive confirmation and PDF remov
   await page.getByRole('button',{name:'长期记忆',exact:true}).click();delayRefresh=true;
   await page.getByRole('button',{name:'刷新记忆',exact:true}).click();await expect(page.getByRole('button',{name:'刷新中…'})).toBeDisabled();releaseRefresh();
   await expect(page.getByRole('button',{name:'刷新记忆',exact:true})).toBeEnabled();await expect(page.getByText(/^已刷新 /)).toBeVisible();
-  await page.getByRole('button',{name:'PPT 文件',exact:true}).click();await expect(page.getByLabel('PPT 引用会议')).toBeVisible();await expect(page.getByRole('link',{name:'下载 PPTX'})).toHaveAttribute('href',`/api/presentations/${id}/download`);
+  await page.getByRole('button',{name:'PPT 文件',exact:true}).click();await expect(page.getByRole('heading',{name:'PPT 历史文件',exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'下载 PPTX'})).toHaveAttribute('href',`/api/presentations/${id}/download`);
   await page.reload();await page.getByRole('button',{name:'PPT 文件',exact:true}).click();await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);
 });

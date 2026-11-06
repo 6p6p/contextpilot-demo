@@ -33,7 +33,7 @@ it('FIX01 unresolved equally current latest claims stay conflicting',async()=>{
  expect(r.content.startsWith('来源存在冲突')).toBe(true);expect(r.webSources.filter(s=>s.quote)).toHaveLength(2);
 });
 it('FIX02 no second PPT password form even outside the authenticated React provider',()=>{
- const html=renderToStaticMarkup(createElement(PresentationPanel,{context:{meetingId:null,useMemory:false,webQuery:null},onChange:()=>{},refresh:0,openRequested:true}));
+ const html=renderToStaticMarkup(createElement(PresentationPanel,{refresh:0,visible:true}));
  expect(html).not.toContain('PPT 访问口令');expect(html).not.toContain('解锁 PPT');
 });
 it('FIX02 existing local PPT secret provides ONE Demo login; download still rejects unauthenticated/legacy-only cookies',async()=>{
@@ -62,9 +62,9 @@ it('FIX02 A plain 5-page topic reads no historical sources and produces a valid 
 it('FIX02 B selected PDF/meeting/current saved todo/memory produce 10 editable slides without implicit global sources',async()=>{
  const evidence={quote:'负责人林岚复核接口',startLine:4,endLine:4};
  const db=fakeDatabase([[{ordinal:3}],[{id,status:'ready',filename:'合成会议',transcript:'负责人林岚复核接口',currentAnalysisId:id}],[{id,version:2,result:{topic:null,meetingDate:null,location:null,participants:[],topics:[],decisions:[],risks:[],actions:[]}}],[{id,description:'接口待验证',impact:'影响试点',level:'high'}],[evidence],[{id,task:'复核接口',owner:'林岚',dueDate:'2026-11-10',version:4,analysisId:id,userEdited:true,status:'open',origin:'meeting_action',evidence}]]);
- const retrieve=vi.fn(async()=>[{sourceId:id,documentId:id,filename:'选中PDF',page:2,text:'项目负责人是Dr. Mira Qiao。',similarity:1}]);
+ const retrieve=vi.fn(async(_question?:string,_ids?:string[])=>[{sourceId:id,documentId:id,filename:'选中PDF',page:2,text:'项目负责人是Dr. Mira Qiao。',similarity:1}]);
  const memory={retrieve:vi.fn(async()=>[{id,content:'林岚在南京协调试点。',sources:[]}])};
- const sources=await createPresentationSources(db,retrieve,memory as any,null)({request:'根据PDF和会议生成10页管理层汇报PPT',conversationId:id,assistantMessageId:id,context:{meetingId:id,useMemory:true,webQuery:null,documentIds:[id],useChat:false,knowledgeMode:true,searchMode:'off'}} as any);
+ const sources=await createPresentationSources(db,retrieve,memory as any,null,ids=>retrieve("选定PDF全文",ids))({request:'根据PDF和会议生成10页管理层汇报PPT',conversationId:id,assistantMessageId:id,context:{meetingId:id,useMemory:true,webQuery:null,documentIds:[id],useChat:false,knowledgeMode:true,searchMode:'off'}} as any);
  expect(retrieve).toHaveBeenCalledWith(expect.any(String),[id]);expect(sources.some(s=>s.kind==='chat')).toBe(false);
  expect(sources.find(s=>s.kind==='todo')).toMatchObject({owner:'林岚',dueDate:'2026-11-10',locator:{todoVersion:4,userEdited:true}});
  const content=Array.from({length:8},(_,i)=>{const s=sources[1+i%(sources.length-1)];return {items:[{kind:'quote',sourceId:s.id,quote:s.text.split('\n')[0]}]};});

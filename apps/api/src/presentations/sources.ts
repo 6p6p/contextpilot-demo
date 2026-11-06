@@ -11,13 +11,14 @@ import {visible} from '../management.js';
 import {untrustedInstruction} from '../evidence/policy.js';
 import {officialWebSources} from './evidence.js';
 import {normalizeMeetingDiscussion} from '../meetings/analysis.js';
+import {selectedDocuments} from './documents.js';
 import { isPresentationIntent, presentationNeedsWeb } from './intent.js';
 export function presentationSourceQuery(request:string,kind:'pdf'|'memory') {
   const pattern=kind==='pdf'?/PDF(?:中|里|中的)?(.+?)(?=[、，,。]|以及|生成|$)/i:/(?:跨会话记忆|长期记忆)(?:中|里|中的)?(.+?)(?=[、，,。]|以及|生成|$)/;
   return request.match(pattern)?.[1]?.trim()||request;
 }
 export type SourceCollector=(job:typeof presentationJobs.$inferSelect,cachedWebSources?:PptSource[])=>Promise<PptSource[]>;
-export function createPresentationSources(database:Database,retrieve:ReturnType<typeof createRetriever>|null,memory:MemoryService|null,search:SearchProvider|null):SourceCollector {
+export function createPresentationSources(database:Database,_retrieve:ReturnType<typeof createRetriever>|null,memory:MemoryService|null,search:SearchProvider|null,readDocuments=(ids:string[])=>selectedDocuments(database,ids)):SourceCollector {
   return async (job,cachedWebSources)=>{
     const ctx=presentationContextSchema.parse({meetingId:job.context.meetingId,useMemory:job.context.useMemory,webQuery:job.context.webQuery,documentIds:job.context.documentIds,useChat:job.context.useChat});
     const sources:PptSource[]=[];
@@ -44,12 +45,9 @@ export function createPresentationSources(database:Database,retrieve:ReturnType<
       const todos=await database.db.select().from(meetingTodos).where(and(eq(meetingTodos.meetingId,meeting.id),visible(meetingTodos,'dismissed_at')));
       for(const todo of todos.filter(t=>t.origin!=='meeting_question'&&!untrustedInstruction(t.evidence.quote)))add({kind:'todo',title:`${meeting.filename} · 已保存待办`,classification:todo.origin==='risk_followup'?'recommendation':'fact',text:todo.task,owner:todo.owner,dueDate:todo.dueDate,locator:{...locator,todoId:todo.id,todoVersion:todo.version,todoAnalysisId:todo.analysisId,origin:todo.origin,status:todo.status,userEdited:todo.userEdited,evidence:todo.evidence}});
     } else if(/根据.{0,30}会议|这次会议|本次会议|上述会议/.test(job.request))throw new PublicError(400,'PPT_MEETING_SELECTION_REQUIRED','请在聊天区 PPT 资料中明确选择本次会议，不会猜测最近一场会议。');
-    if(ctx.documentIds?.length||job.context.knowledgeMode) {
-      if(!ctx.documentIds?.length)throw new PublicError(400,'PPT_PDF_SELECTION_REQUIRED','请为本次 PPT 明确选择 PDF；不会自动使用整个历史知识库。');
-      if(!retrieve)throw new PublicError(503,'PPT_PDF_NOT_CONFIGURED','PDF 检索服务未配置。');
-      const rows=await retrieve(presentationSourceQuery(job.request,'pdf'),ctx.documentIds);
-      if(!rows.length)throw new PublicError(422,'PPT_PDF_EVIDENCE_MISSING','未检索到可用 PDF 证据，请缩小主题或检查文件状态。');
-      for(const s of rows)add({kind:'pdf',title:`${s.filename} · 第 ${s.page} 页`,text:s.text,locator:{sourceId:s.sourceId,documentId:s.documentId,page:s.page,similarity:s.similarity}});
+    if(ctx.documentIds?.length) {
+      const rows=await readDocuments(ctx.documentIds);
+      for(const s of rows)add({kind:'pdf',title:`${s.filename} · 第 ${s.page} 页`,text:s.text,locator:{sourceId:s.sourceId,documentId:s.documentId,page:s.page,selection:'explicit'}});
     }
     if(ctx.useMemory) {
       if(!memory)throw new PublicError(503,'PPT_MEMORY_NOT_CONFIGURED','长期记忆未配置。');

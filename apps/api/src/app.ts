@@ -4,6 +4,7 @@ import {registerDemoAccess} from './demo/access.js';
 import {createDemoTransport} from './demo/limits.js';
 import { createPresentationService } from './presentations/service.js';
 import { createPresentationSources } from './presentations/sources.js';
+import {selectedDocuments} from './presentations/documents.js';
 import { registerPresentationRoutes } from './presentations/routes.js';
 import { createSearchProvider } from './search/service.js';
 import type { EmailProvider } from './email/provider.js';
@@ -61,7 +62,7 @@ export function buildApp(env: Env, overrides: { emailProvider?: EmailProvider | 
   const search=createSearchProvider(env,cancellableFetch);
   const retrieve=database&&embedder?createRetriever(database,embedder,env.RAG_MIN_SIMILARITY):null;
   const pptAuth=createPresentationAuth(env);
-  const presentations=database?createPresentationService(database,storage,createChatModel({...env,LLM_TIMEOUT_MS:60000},cancellableFetch),createPresentationSources(database,retrieve,memory,search),env,shutdown.signal):null;
+  const presentations=database?createPresentationService(database,storage,createChatModel({...env,LLM_TIMEOUT_MS:60000},cancellableFetch),createPresentationSources(database,retrieve,memory,search,ids=>selectedDocuments(database,ids,storage?{origin:storage.origin,bucket:storage.bucket}:undefined)),env,shutdown.signal):null;
   registerPresentationRoutes(app,presentations,pptAuth,Boolean(env.PPT_ACCESS_KEY||env.DEMO_ACCESS_KEY));
   registerChatRoutes(app, database, createChatModel(env,cancellableFetch), retrieve ? createKnowledgeAnswerer(retrieve) : null, memory, search, presentations,pptAuth);
 

@@ -1,7 +1,9 @@
-import { PresentationPanel } from './PresentationPanel';
+import {ChatAttachments} from './ChatAttachments';
+import {presentationListSchema,type PresentationJob} from '../../../shared/presentations';
+import { PresentationPanel,PresentationCard } from './PresentationPanel';
 import type { PresentationContext } from '../../../shared/presentations';
 import { MemorySources } from './MemoryPanel';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { conversationSchema, conversationsResponse, messagesResponse, type Conversation, type ChatMessage } from '../../../shared/chat';
 import './chat.css';
 import {ActionDialog} from './ActionDialog';
@@ -29,6 +31,9 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
   const [sending, setSending] = useState(false);
   const [creating, setCreating] = useState(false);
   const [presentationContext,setPresentationContext]=useState<PresentationContext>({meetingId:null,useMemory:false,webQuery:null,documentIds:[],useChat:false});
+  const [contextBusy,setContextBusy]=useState(false);
+  const [pptJobs,setPptJobs]=useState<PresentationJob[]>([]);
+  const [pptError,setPptError]=useState('');
   const [searchMode, setSearchMode] = useState<'auto' | 'required' | 'off'>('auto');
   const [knowledgeMode, setKnowledgeMode] = useState(false);
   const [pdfScope,setPdfScope]=useState<'all'|'selected'>('all'),[documentIds,setDocumentIds]=useState<string[]>([]);
@@ -81,6 +86,10 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
     return () => { controller.abort(); clearTimeout(timer); };
   }, [selected, refresh]);
 
+  useEffect(()=>{setPptJobs([]);if(!selected)return;const c=new AbortController();let timer:ReturnType<typeof setTimeout>;
+    async function load(){try{const data=presentationListSchema.parse(await request(`/presentations?conversationId=${selected}`,{signal:c.signal}));if(c.signal.aborted)return;setPptJobs(data.presentations);setPptError('');if(data.presentations.some(j=>!['ready','failed'].includes(j.status)))timer=setTimeout(()=>{void load();},2000);}catch(e){if(!c.signal.aborted)setPptError(e instanceof Error?e.message:'PPT记录读取失败');}}
+    void load();return()=>{c.abort();clearTimeout(timer);};},[selected,refresh]);
+  async function retryPpt(id:string){try{await request(`/presentations/${id}/retry`,{method:'POST'});setRefresh(v=>v+1);}catch(e){setPptError(e instanceof Error?e.message:'重试失败');}}
   async function create() {
     setCreating(true); setError('');
     try {
@@ -94,17 +103,18 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
   }
   async function send(event: React.FormEvent) {
     event.preventDefault();
-    if (!selected || !draft.trim() || sending || creating || loading) return;
+    if (!selected || !draft.trim() || sending || creating || loading || contextBusy) return;
     const id = selected;
     stickToBottom.current=true;setSending(true); setError('');
     try {
       const result = messagesResponse.parse(await request(`/conversations/${id}/messages`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content: draft.trim(), clientRequestId: crypto.randomUUID(), knowledgeMode, documentIds:pdfScope==='selected'?documentIds:undefined,searchMode, presentationContext }),
+        body: JSON.stringify({ content: draft.trim(), clientRequestId: crypto.randomUUID(), knowledgeMode:knowledgeMode||Boolean(presentationContext.documentIds?.length), documentIds:presentationContext.documentIds?.length?presentationContext.documentIds:pdfScope==='selected'?documentIds:undefined,searchMode, presentationContext }),
       }));
       if (selection.current === id) {
         setMessages(current => [...current.filter(m => !result.messages.some(row => row.id === m.id)), ...result.messages].sort((a, b) => a.ordinal - b.ordinal));
         setDraft('');
+        if(result.messages.some(m=>m.model==='ppt-job'))setPresentationContext({meetingId:null,useMemory:false,webQuery:null,documentIds:[],useChat:false});
         if (result.messages.some(m => m.status === 'failed')) setError('模型回复失败。消息已保存；可检查配置后重新发送。');
       }
       setRefresh(value => value + 1);
@@ -113,7 +123,7 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
     } finally { setSending(false); }
   }
   const scroller=useRef<HTMLDivElement>(null),stickToBottom=useRef(true),lastConversation=useRef(selected);
-  useEffect(()=>{if(lastConversation.current!==selected){stickToBottom.current=true;lastConversation.current=selected;}if(!loading&&stickToBottom.current&&scroller.current)scroller.current.scrollTop=scroller.current.scrollHeight;},[messages,sending,loading,selected]);
+  useLayoutEffect(()=>{if(lastConversation.current!==selected){stickToBottom.current=true;lastConversation.current=selected;}if(!loading&&stickToBottom.current&&scroller.current)scroller.current.scrollTop=scroller.current.scrollHeight;},[messages,sending,loading,selected,pptJobs]);
   const pending = messages.some(m => m.status === 'processing');
   return <><section id="chat" className="chat-workspace" aria-label="AI 对话工作台">
     <aside className="conversation-list">
@@ -126,15 +136,16 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
       <div className="chat-heading"><h2>{activeTool==='chat'||activeTool==='ppt'?'AI 对话':'辅助工作区'}</h2><button disabled={sending || creating} onClick={() => setRefresh(value => value + 1)}>重新加载历史</button></div>
       {error ? <p className="chat-error" role="alert">{error}</p> : null}
       {children}
-      <div className="chat-surface" hidden={activeTool!=='chat'&&activeTool!=='ppt'}>
-      <PresentationPanel openRequested={activeTool==='ppt'} context={presentationContext} onChange={setPresentationContext} refresh={refresh} onPrepare={setDraft}/>
+      <PresentationPanel visible={activeTool==='ppt'} refresh={refresh}/>
+      <div className="chat-surface" hidden={activeTool!=='chat'}>
       <div ref={scroller} onScroll={()=>{if(!loading&&scroller.current)stickToBottom.current=scroller.current.scrollHeight-scroller.current.clientHeight-scroller.current.scrollTop<100;}} className="chat-messages" aria-label="聊天消息" aria-busy={loading || sending || pending}>
         {loading ? <p>正在加载历史…</p> : null}
         {!loading&&!selected?<div className="chat-empty"><h2>从一个项目问题开始</h2><p>先创建对话，再按需使用知识库、会议、记忆、搜索与PPT。</p><button type="button" disabled={creating} onClick={()=>{void create();}}>创建第一段对话</button></div>:null}
         {!loading && selected && !messages.length ? <p>发送第一条消息。历史保存在云端数据库中。</p> : null}
         {messages.map(message => <article className={`chat-message ${message.role}`} key={message.id} aria-label={message.role === 'user' ? '用户消息' : 'AI 消息'}>
           <strong>{message.role === 'user' ? '你' : 'ContextPilot'}</strong>
-          <div className="message-content">{message.status === 'processing' ? '正在生成回复…' : message.status === 'failed' ? `回复失败（${message.errorCode || 'UNKNOWN'}），原消息已保存。` : <AnswerContent text={message.content} compactWeb={message.webSources.length>0}/>}</div>
+          <div className="message-content">{message.status === 'processing' ? '正在生成回复…' : message.status === 'failed' ? `回复失败（${message.errorCode || 'UNKNOWN'}），原消息已保存。` : message.model==='ppt-job' ? (pptJobs.some(j=>j.assistantMessageId===message.id)?null:'正在恢复PPT任务状态…') : <AnswerContent text={message.content} compactWeb={message.webSources.length>0}/>}</div>
+          {pptJobs.filter(j=>j.assistantMessageId===message.id).map(job=><PresentationCard key={job.id} job={job} onRetry={()=>{void retryPpt(job.id);}}/>)}
           {message.status==='failed'?<button type="button" disabled={sending||loading} onClick={()=>{const question=messages.find(m=>m.role==='user'&&m.clientRequestId===message.clientRequestId);if(question)setDraft(question.content);}}>重新编辑问题（不会自动重试）</button>:null}
           {message.webSources.map((source, i) => <details className="citation" key={`${source.id}-${i}`}><summary>网页 [{source.id}] {source.title} · {source.quote ? '已引用' : '仅检索'}</summary><a href={source.url} target="_blank" rel="noopener noreferrer">{source.url}</a><p>查询时间：{source.queriedAt}{source.publishedAt ? ` · 发布时间：${source.publishedAt}` : ''}</p>{source.quote ? <blockquote>{source.quote}</blockquote> : null}<p>{source.summary}</p></details>)}
           {message.memorySources.length ? <p>本回答使用以下历史记忆：</p> : null}
@@ -144,13 +155,15 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
         {sending ? <p role="status">正在处理搜索（如需）并生成、保存回复，请稍候…</p> : null}
       </div>
       <form onSubmit={event => { void send(event); }}>
+        <ChatAttachments scopeKey={selected} context={presentationContext} onChange={setPresentationContext} onBusy={setContextBusy} disabled={sending||creating||!selected} />
+        {pptError&&messages.some(m=>m.model==='ppt-job')?<p role="alert">{pptError}</p>:null}
         <label>联网搜索 <select aria-label="联网搜索模式" value={searchMode} onChange={e => setSearchMode(e.target.value as typeof searchMode)} disabled={sending || creating}><option value="auto">自动</option><option value="required">必须联网</option><option value="off">关闭</option></select></label>
         <label className="knowledge-toggle"><input type="checkbox" checked={knowledgeMode} onChange={event => setKnowledgeMode(event.target.checked)} disabled={creating || sending} /> 使用 PDF 知识库</label>
         {knowledgeMode?<small role="status">当前仅检索 PDF，不召回长期记忆；查询记忆时请关闭此开关并关闭联网。</small>:null}
         {knowledgeMode?<><label>问答 PDF 范围<select aria-label="问答 PDF 范围" value={pdfScope} onChange={e=>setPdfScope(e.target.value as typeof pdfScope)}><option value="all">全部有效知识库</option><option value="selected">仅选中的 PDF</option></select></label>{pdfScope==='selected'?<label>问答 PDF 文件<select multiple aria-label="问答 PDF 文件" value={documentIds} onChange={e=>setDocumentIds(Array.from(e.target.selectedOptions,o=>o.value))}>{documents.map(d=><option key={d.id} value={d.id}>{d.filename}</option>)}</select></label>:null}</>:null}
         <label htmlFor="chat-input">消息</label>
         <textarea id="chat-input" value={draft} onChange={event => setDraft(event.target.value)} maxLength={4000} rows={3} disabled={!selected || creating || sending || loading || pending} placeholder="输入消息，开始多轮对话…" />
-        <div className="composer-actions"><small>{knowledgeMode ? `${pdfScope==='all'?'全库':'仅选定资料'} PDF 问答 · PPT 使用上方独立资料选择` : '普通对话 · 自动召回历史记忆 · 联网按所选模式 · 仅输入公共短查询'}</small><button type="submit" disabled={!selected || !draft.trim() || creating || sending || loading || pending}>发送消息</button></div>
+        <div className="composer-actions"><small>{knowledgeMode ? `${pdfScope==='all'?'全库':'仅选定资料'} PDF 问答 · +选择的附件用于本次输出` : '普通对话 · 自动召回历史记忆 · 联网按所选模式 · 仅输入公共短查询'}</small><button type="submit" disabled={!selected || !draft.trim() || creating || sending || loading || pending || contextBusy}>发送消息</button></div>
       </form>
       </div>
     </div>

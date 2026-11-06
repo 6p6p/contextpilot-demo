@@ -1,6 +1,6 @@
 # ContextPilot
 
-MVP v1.3 Part A：搜索改为逐项归纳及证据复核，锚点去重和有界补搜；check224通过，真实API未调用。Part B继续进行。见[记录](docs/mvp-v1.3-verification.md)。
+MVP v1.3：搜索逐项归纳/证据复核、聊天 + 附件和消息内PPT任务卡已本地实现；选定PDF直接读取，不再依赖主题向量匹配。check/test232、Corpus17、真实DB+外部替身11项通过。真实API未调用；0011页数约束放宽尚待授权，当前共享库仍5–10，3–30结构/12页渲染仅离线通过。不Push/部署/清理/发信。证据与待授权项见[记录](docs/mvp-v1.3-verification.md)。
 
 MVP v1.2：FIX-01–07已完成本地修复：官方多源证据与有界补搜、单次Demo登录/PPT可选选材、GFM表格、会议归档与讨论分类、邮件状态标题、PDF限定范围。check/test217、Corpus17、真实DB+外部替身10、生产浏览器E2E4通过；0010经批准仅新增meetings.archived_at。真实模型/搜索/PPT A/B仍待人工验收，未Push/部署/清理/发信。根因、真实快照边界、Run ID、迁移及复测见[本轮记录](docs/mvp-v1.2-verification.md)。
 

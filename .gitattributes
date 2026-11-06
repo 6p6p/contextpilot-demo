@@ -3,3 +3,4 @@
 # 0009 was applied with LF bytes; keep its migration checksum stable on Windows.
 drizzle/0009_demo_management.sql text eol=lf
 drizzle/0010_meeting_archive.sql text eol=lf
+drizzle/0011_presentation_page_budget.sql text eol=lf

@@ -7,6 +7,7 @@ import type { ChatModel } from '../llm/adapter.js';
 import type { Env } from '../config/env.js';
 import { presentationContextSchema } from '../../../../shared/presentations.js';
 import type { PresentationContext } from '../../../../shared/presentations.js';
+import {publicQuery} from '../search/service.js';
 import type { SearchMode } from '../../../../shared/search.js';
 import { PublicError } from '../errors.js';
 import { parsePresentationRequest } from './intent.js';
@@ -16,8 +17,14 @@ import { renderPresentation, PPTX_MIME, validatePptx } from './render.js';
 type Tx=Parameters<Parameters<Database['db']['transaction']>[0]>[0];
 const hash=(v:string|Buffer)=>createHash('sha256').update(v).digest('hex');
 export interface PresentationInput {content:string;knowledgeMode?:boolean;documentIds?:string[];searchMode?:SearchMode;presentationContext?:PresentationContext}
-const context=(i:PresentationInput)=>{const selected=presentationContextSchema.parse(i.presentationContext??{});return {...selected,documentIds:selected.documentIds??[],useChat:selected.useChat??false,knowledgeMode:Boolean(selected.documentIds?.length),searchMode:(selected.webQuery?'required':'off') as SearchMode};};
-export function createPresentationService(database:Database,storage:PrivateStorage|null,model:ChatModel|null,collect:SourceCollector,env:Pick<Env,'PPT_SCOPE'|'PPT_MAX_TOKENS'>,shutdown?:AbortSignal) {
+const context=(i:PresentationInput)=>{
+ const selected=presentationContextSchema.parse(i.presentationContext??{});
+ const explicitQuery=i.content.match(/(?:联网|网络)(?:查询|搜索)?[：:\s]*(.+?)(?=[，。；]|并(?:生成|制作)|$)/)?.[1]?.trim();
+ const webQuery=selected.webQuery||(explicitQuery?publicQuery(explicitQuery):null);
+ if(webQuery&&i.searchMode==='off')throw new PublicError(400,'PPT_SEARCH_OFF','联网已关闭，请调整搜索模式后再使用公共联网资料。');
+ return {...selected,webQuery,documentIds:selected.documentIds??[],useChat:selected.useChat||/根据.{0,25}(?:刚才(?:的)?讨论|对话|聊天|上文)/.test(i.content),useMemory:selected.useMemory||/长期记忆|跨会话记忆/.test(i.content),knowledgeMode:Boolean(selected.documentIds?.length),searchMode:(webQuery?'required':'off') as SearchMode};
+};
+export function createPresentationService(database:Database,storage:PrivateStorage|null,model:ChatModel|null,collect:SourceCollector,env:Pick<Env,'PPT_SCOPE'|'PPT_MAX_TOKENS'> & {PPT_MAX_PAGES?:number},shutdown?:AbortSignal) {
   const db=database.db;
   const scope=eq(presentationJobs.scope,env.PPT_SCOPE);
   const configured=()=>{if(!storage||!storage.find||!model)throw new PublicError(503,'PPT_NOT_CONFIGURED','PPT 需要配置模型和支持核查的私有 Storage。');};
@@ -29,13 +36,14 @@ export function createPresentationService(database:Database,storage:PrivateStora
     requireConfigured:configured,
     async validateReplay(tx:Tx,assistantMessageId:string,input:PresentationInput){const [job]=await tx.select().from(presentationJobs).where(eq(presentationJobs.assistantMessageId,assistantMessageId));if(!job||job.requestHash!==fingerprint(input))throw new PublicError(409,'REQUEST_CONFLICT','同一请求标识不能修改 PPT 来源范围。');},
     async enqueue(tx:Tx,assistantMessageId:string,conversationId:string,input:PresentationInput){
-      configured();const parsed=parsePresentationRequest(input.content);const ctx=context(input);
+      configured();const ctx=context(input);const parsed=parsePresentationRequest(input.content,{maxPages:env.PPT_MAX_PAGES,sourceCount:(ctx.documentIds?.length??0)+Number(!!ctx.meetingId)});
+      if(parsed.pageCount<5||parsed.pageCount>10){const check=await tx.execute(sql`select pg_get_constraintdef(oid) as definition from pg_constraint where conrelid='presentation_jobs'::regclass and conname='presentation_page_count_check'`);if(!String(check.rows[0]?.definition).includes('30'))throw new PublicError(503,'PPT_PAGE_LIMIT_MIGRATION_REQUIRED','页数范围需已审查的0011迁移；本次未创建任务。');}
       if(/根据.{0,30}会议|这次会议|本次会议|上述会议/.test(input.content)&&!ctx.meetingId)throw new PublicError(400,'PPT_MEETING_SELECTION_REQUIRED','请明确选择要引用的会议。');
       const id=randomUUID();
       await tx.insert(presentationJobs).values({id,scope:env.PPT_SCOPE,assistantMessageId,conversationId,request:input.content,requestHash:fingerprint(input),context:ctx,topic:parsed.topic,pageCount:parsed.pageCount,objectKey:`presentations/${id}.pptx`,storageOrigin:storage!.origin,storageBucket:storage!.bucket,filename:`ContextPilot-${id}.pptx`});
       return id;
     },
-    list:async()=> (await db.select().from(presentationJobs).where(scope).orderBy(desc(presentationJobs.createdAt)).limit(100)).map(project),
+    list:async(conversationId?:string)=> (await db.select().from(presentationJobs).where(and(scoped,conversationId?eq(presentationJobs.conversationId,conversationId):undefined)).orderBy(desc(presentationJobs.createdAt)).limit(100)).map(project),
     async detail(id:string){const r=await row(id);return {presentation:project(r),plan:r.plan,sources:r.sources,planningHistory:r.context.planningHistory??[],planningOutput:r.context.planningOutput??null};},
     async retry(id:string,replan=false){configured();const r=await row(id);if(r.status!=='failed'||r.retries>=1)throw new PublicError(409,'PPT_RETRY_NOT_ALLOWED','仅允许对失败任务显式重试一次。');
       if(replan&&await storage!.find!(r.objectKey))throw new PublicError(409,'PPT_REPLAN_FILE_EXISTS','已有文件时禁止重新规划或覆盖；可按原计划重试核查。');

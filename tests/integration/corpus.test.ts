@@ -277,6 +277,19 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
     expect((await database.db.select().from(schema.presentationJobs).where(eq(schema.presentationJobs.id, pptId)))[0].context.artifactPublication?.state).toBe('published');
     expect((await database.db.select().from(schema.documentChunks).where(inArray(schema.documentChunks.documentId, run.roots.documents))).length).toBeGreaterThan(0);
   });
+  testCase('M03','chat PPT generation with no attachments and selected document/meeting uses real persisted pipeline',async()=>{
+    const plainModel=stub({content:Array.from({length:3},()=>({items:[{kind:'recommendation',text:'建议通过复述确认双方理解一致',sourceIds:[]}]}))});
+    const selectedModel:ChatModel={async complete(history){const payload=JSON.parse([...history].reverse().find(h=>h.role==='user')!.content);const pool=payload.untrustedSources.filter((s:any)=>['pdf','meeting_risk','todo'].includes(s.kind)&&s.quoteOptions.some((q:string)=>q.length<=88));expect(['pdf','meeting_risk','todo'].every(kind=>pool.some((s:any)=>s.kind===kind))).toBe(true);const chosen=['pdf','meeting_risk','todo'].map(kind=>pool.find((s:any)=>s.kind===kind));return {model:'CORPUS-STUB-V13',content:JSON.stringify({content:Array.from({length:8},(_,i)=>({items:[{kind:'quote',sourceId:chosen[i%3].id,quote:chosen[i%3].quoteOptions.find((q:string)=>q.length<=88)}]}))})};}};
+    const collector=createPresentationSources(database,null,null,null);
+    for(const [count,model,context] of [[5,plainModel,{}],[10,selectedModel,{documentIds:[run.roots.documents[0]] as string[],meetingId:run.roots.meetings[0]}]] as const){
+      const ppt=createPresentationService(database,storage,model,collector,{PPT_SCOPE:run.scope,PPT_MAX_TOKENS:8192});
+      await createChatService(database,stub('unused'),null,null,null,ppt).send(run.roots.conversations[0],{content:`生成${count}页${count===5?'团队沟通培训':'管理层汇报'}PPT`,clientRequestId:randomUUID(),presentationContext:{meetingId:null,useMemory:false,webQuery:null,...context}});
+      expect(await ppt.processOne()).toBe(true);const job=(await ppt.list())[0];expect(job.status).toBe('ready');const detail=await ppt.detail(job.id);
+      expect((await validatePptx((await ppt.download(job.id)).bytes,count)).slideCount).toBe(count);
+      if(count===5)expect(detail.sources?.map(s=>s.kind)).toEqual(['request']);
+      else expect(detail.sources?.find(s=>s.kind==='todo'&&s.owner==='林岚')).toMatchObject({owner:'林岚',dueDate:'2026-11-09',locator:{userEdited:true}});
+    }
+  });
   testCase('M01','authenticated archive/rename/remove/ignore retain old evidence and files',async()=>{
     const key='synthetic-management-access-1234567890';
     const app=Fastify();registerDemoAccess(app,parseEnv({NODE_ENV:'test',DEMO_ACCESS_KEY:key}));registerManagementRoutes(app,database);
@@ -311,7 +324,7 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
       expect(collected.filter(s=>s.kind==='pdf').some(s=>s.locator.documentId===document)).toBe(false);
       const download=createPresentationService(database,storage,stub('unused'),async()=>[],{PPT_SCOPE:run.scope,PPT_MAX_TOKENS:8192});
       expect(digest((await download.download(pptId)).bytes)).toBe(row.sha256);
-      expect(run.objects).toHaveLength(7);
+      expect(run.objects).toHaveLength(9);
     }finally{await app.close();}
   });
   testCase('M02','V1.2 selected PDF scope and meeting archive preserve history, drafts and downloads',async()=>{
@@ -337,7 +350,7 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
       }finally{await independent.pool.end();}
       // Only this run's pre-registered meeting; prove new worker claims exclude archives.
       await database.db.update(schema.meetings).set({status:'uploaded',attempts:0}).where(eq(schema.meetings.id,meetingId));
-      expect(await meetingService.processOne()).toBe(false);expect(run.objects).toHaveLength(7);
+      expect(await meetingService.processOne()).toBe(false);expect(run.objects).toHaveLength(9);
     }finally{await app.close();}
   });
 });
