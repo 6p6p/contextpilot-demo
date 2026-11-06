@@ -1,5 +1,7 @@
 # Development tasks
 
+PDF多选小修复（2026-11-07）：已完成紧凑下拉、搜索/计数/清空、禁用状态和嵌套关闭；45份合成PDF下桌面/手机及请求UUID校验通过。check258、生产E2E7通过；无云端数据操作，提交后停止。见[验收](docs/pdf-multiselect-verification.md)。
+
 ## Final UI/UX Redesign（2026-11-06）
 
 - [x] 浅灰单侧栏/纵向图标导航/历史独立滚动/桌面折叠与窄屏抽屉。

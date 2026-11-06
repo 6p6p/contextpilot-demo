@@ -32,10 +32,33 @@ async function fixture(page:Page){
  await expect(page.locator('#chat-input')).toBeEnabled();return {state,errors};
 }
 
+test('compact PDF multi-select: filter, persistence, counts, long list and exact payload (UI fixtures)',async({page})=>{
+ const {state,errors}=await fixture(page);
+ const docs=Array.from({length:45},(_,i)=>({id:`20000000-0000-4000-8000-${String(i).padStart(12,'0')}`,filename:i===44?'不可用资料.pdf':`项目资料-${String(i).padStart(2,'0')}.pdf`,size:200,status:i===44?'failed':'ready',pageCount:2,chunkCount:2,errorCode:null,errorMessage:null,createdAt:at,updatedAt:at}));
+ await page.route('**/api/documents',r=>r.fulfill({json:{documents:docs}}));
+ for(const width of [1440,390]){
+  await page.setViewportSize({width,height:844});const plus=page.getByRole('button',{name:'添加上下文'}),trigger=page.getByRole('button',{name:'选择知识库 PDF',exact:true});
+  await plus.click();await expect(trigger).toHaveText('选择 PDF（可多选）');await expect(page.getByLabel('选择PDF 项目资料-00.pdf')).toHaveCount(0);await expect(page.getByLabel('附件会议')).toBeVisible();
+  await trigger.click();await expect(page.getByLabel('搜索 PDF 文件名')).toBeFocused();await expect(page.getByLabel('选择PDF 不可用资料.pdf')).toBeDisabled();
+  const list=page.getByRole('group',{name:'PDF 文件列表'});await expect(list.locator('label')).toHaveCount(45);expect(await list.evaluate(e=>e.clientHeight<=300&&e.scrollHeight>e.clientHeight)).toBe(true);
+  await page.getByLabel('搜索 PDF 文件名').fill('资料-00');await page.getByLabel('选择PDF 项目资料-00.pdf').check();await expect(trigger).toHaveText('已选择 1 份 PDF');await page.getByLabel('搜索 PDF 文件名').fill('');await expect(page.getByLabel('选择PDF 项目资料-00.pdf')).toBeChecked();
+  await page.getByLabel('选择PDF 项目资料-01.pdf').check();await expect(trigger).toHaveText('已选择 2 份 PDF');
+  await page.screenshot({path:`test-results/pdf-multi-${width}.png`});const rect=await page.getByRole('dialog',{name:'选择知识库 PDF',exact:true}).boundingBox();expect(rect&&rect.x>=0&&rect.y>=0&&rect.x+rect.width<=width&&rect.y+rect.height<=844).toBeTruthy();
+  await page.keyboard.press('Escape');await expect(trigger).toHaveAttribute('aria-expanded','false');await expect(plus).toHaveAttribute('aria-expanded','true');await trigger.click();await expect(page.getByLabel('选择PDF 项目资料-00.pdf')).toBeChecked();
+  await page.getByText('联网与知识库设置',{exact:true}).click();await expect(trigger).toHaveAttribute('aria-expanded','false');await expect(page.getByLabel('附件会议')).toHaveValue('');await page.keyboard.press('Escape');
+  await page.getByRole('button',{name:'移除附件 项目资料-00.pdf'}).click();await plus.click();await expect(trigger).toHaveText('已选择 1 份 PDF');await trigger.click();await page.getByLabel('选择PDF 项目资料-00.pdf').check();await page.getByLabel('选择PDF 项目资料-00.pdf').uncheck();await page.getByRole('button',{name:'清空选择',exact:true}).click();await expect(trigger).toHaveText('选择 PDF（可多选）');
+  await page.getByLabel('搜索 PDF 文件名').fill('不存在');await expect(page.getByText('没有匹配的 PDF。')).toBeVisible();await page.getByLabel('搜索 PDF 文件名').fill('');await page.getByLabel('选择PDF 项目资料-00.pdf').check();await page.getByLabel('选择PDF 项目资料-01.pdf').check();await page.keyboard.press('Escape');await page.keyboard.press('Escape');
+  await page.getByRole('heading',{level:1}).click();await expect(plus).toHaveAttribute('aria-expanded','false');await plus.click();await expect(trigger).toHaveText('已选择 2 份 PDF');await page.keyboard.press('Escape');
+  await page.locator('#chat-input').fill('根据所选 PDF 回答项目问题');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect(page.locator('#chat-input')).toHaveValue('');expect(state.inputs.at(-1)).toMatchObject({knowledgeMode:true,documentIds:[docs[0].id,docs[1].id],presentationContext:{documentIds:[docs[0].id,docs[1].id],meetingId:null}});
+  await plus.click();await trigger.click();await page.getByRole('button',{name:'清空选择',exact:true}).click();await page.keyboard.press('Escape');await page.keyboard.press('Escape');
+ }
+ expect(errors).toEqual([]);
+});
+
 test('final composer: IME, multiline, duplicate guard, source payload and failure recovery (UI fixtures)',async({page})=>{
  const {state,errors}=await fixture(page);const input=page.locator('#chat-input'),plus=page.getByRole('button',{name:'添加上下文'}),send=page.getByRole('button',{name:'发送消息',exact:true});
  await expect(send).toBeDisabled();await expect(page.getByText('后端已连接')).toHaveCount(0);
- await plus.click();await page.getByLabel('选择PDF ORCHID-7421 项目资料.pdf').check();await page.getByLabel('附件会议').selectOption(meeting);
+ await plus.click();await page.getByRole('button',{name:'选择知识库 PDF',exact:true}).click();await page.getByLabel('选择PDF ORCHID-7421 项目资料.pdf').check();await page.keyboard.press('Escape');await page.getByLabel('附件会议').selectOption(meeting);
  await page.getByText('联网与知识库设置',{exact:true}).click();await expect(page.getByLabel('联网搜索模式')).toHaveValue('auto');
  for(const value of ['off','required','auto','required']){await page.getByLabel('联网搜索模式').selectOption(value);await expect(page.getByLabel('联网搜索模式')).toHaveValue(value);}
  await page.getByLabel('使用 PDF 知识库').check();await page.getByLabel('问答 PDF 范围').selectOption('selected');await page.getByLabel('问答 PDF 文件').selectOption(pdf);
@@ -70,7 +93,7 @@ test('final visual layout, history menu and navigation at four widths (UI fixtur
   await expect(page.getByRole('button',{name:'发送消息',exact:true})).toBeInViewport();await expect(page.getByRole('button',{name:'添加上下文'})).toBeInViewport();
   await page.screenshot({path:`test-results/final-chat-${width}.png`});
   if(width<=800){await page.getByRole('button',{name:'展开侧栏'}).click();await expect(page.getByRole('dialog',{name:'导航与历史'})).toBeVisible();await page.screenshot({path:`test-results/final-sidebar-${width}.png`});await page.getByRole('button',{name:'会话操作 ORCHID-7421 管理层讨论'}).click();await expect(page.getByRole('menu')).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('menu')).toHaveCount(0);await expect(page.getByRole('dialog',{name:'导航与历史'})).toBeVisible();await page.getByRole('button',{name:'会话操作 ORCHID-7421 管理层讨论'}).click();await page.getByRole('menuitem',{name:'归档会话'}).click();await expect(page.getByRole('dialog',{name:'归档会话',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog',{name:'归档会话',exact:true})).not.toBeVisible();expect(state.archived).toBe(false);await expect(page.getByRole('dialog',{name:'导航与历史'})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'展开侧栏'})).toBeFocused();}
-  await page.getByRole('button',{name:'添加上下文'}).click();await page.getByLabel('选择PDF ORCHID-7421 项目资料.pdf').check();await page.getByLabel('附件会议').selectOption(meeting);await page.getByText('联网与知识库设置',{exact:true}).click();
+  await page.getByRole('button',{name:'添加上下文'}).click();await page.getByRole('button',{name:'选择知识库 PDF',exact:true}).click();await page.getByLabel('选择PDF ORCHID-7421 项目资料.pdf').check();await page.keyboard.press('Escape');await page.getByLabel('附件会议').selectOption(meeting);await page.getByText('联网与知识库设置',{exact:true}).click();
   const rect=await page.getByRole('dialog',{name:'添加上下文',exact:true}).boundingBox();expect(rect&&rect.x>=0&&rect.x+rect.width<=width&&rect.y>=0&&rect.y+rect.height<=(width===390?844:1000)).toBeTruthy();await page.screenshot({path:`test-results/final-tools-${width}.png`});await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'移除附件 ORCHID-7421 项目资料.pdf'}).click();await page.getByRole('button',{name:'移除会议附件'}).click();
  }

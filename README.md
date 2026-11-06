@@ -1,5 +1,7 @@
 # ContextPilot
 
+PDF多选小修复（2026-11-07）：加号菜单中的知识库PDF改为可搜索的多选下拉框，列表限高260px；附件ID、RAG/PPT语义和会议单选不变。check 258项、Chrome生产E2E 7项通过，无真实服务调用或云端写入。详见[验收记录](docs/pdf-multiselect-verification.md)。
+
 Final UI/UX（2026-11-06）：已改为浅灰可折叠侧栏、居中白色对话区、紧凑底部输入框和加号工具浮层；历史操作改为三个点菜单，支持重命名/软归档。PPT卡片显示请求标题与文件状态，其他业务页共享浅色规范。后端/Schema/Prompt/任务及邮件流程不变。check 258、Corpus 17、Chrome生产E2E 6项通过，四档屏宽截图已复核；本轮无付费调用、云数据库写入或部署。详见[UI验收及截图路径](docs/final-ui-verification.md)。真实手机软键盘/原生IME仍建议人工确认，以下保留历史阶段记录。
 
 最终收尾（2026-11-06）：公开知识直接 DeepSeek，实时问题使用 Tavily → 单次自然回答；不经过 Claim/Quote、版本冲突门禁或二次审计。真实 required/auto/off、来源持久化及重启恢复已验证；最终回答诚实说明检索未给出具体 LTS 阶段，不能宣称精确当前版本已核实。check/test 258、Corpus 17、真实 PG+外部 STUB 7、生产 E2E 4 通过。Cookie 同键跨实例风险确认，历史键是否与 Railway 共用未知，需用户后续核实/轮换；本轮未改生产配置。PPT 按用户验收结论冻结，没有重新生成。详情、实际答案、用量及轮换步骤见[最终收尾记录](docs/mvp-final-closeout.md)。未 Push/部署/清理/发信；以下为历史阶段记录。
