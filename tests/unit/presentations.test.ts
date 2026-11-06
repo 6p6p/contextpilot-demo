@@ -77,13 +77,15 @@ describe('PPT real Fastify authentication boundary (no DB/providers)',()=>{
  });
  it('issues HttpOnly same-site cookie, refuses forged/expired cookies and isolates PPT scope',async()=>{
    const app=buildApp(env);try{
-     const result=await app.inject({method:'POST',url:'/api/presentation-session',payload:{accessKey:env.PPT_ACCESS_KEY}});expect(result.statusCode).toBe(200);
+     const demo=await app.inject({method:'POST',url:'/api/demo-session',payload:{accessKey:env.PPT_ACCESS_KEY}});expect(demo.statusCode).toBe(200);const demoCookie=String(demo.headers['set-cookie']).split(';')[0];
+     const result=await app.inject({method:'POST',url:'/api/presentation-session',headers:{cookie:demoCookie},payload:{accessKey:env.PPT_ACCESS_KEY}});expect(result.statusCode).toBe(200);
      const header=String(result.headers['set-cookie']);expect(header).toContain('HttpOnly');expect(header).toContain('SameSite=Strict');expect(header).not.toContain(env.PPT_ACCESS_KEY!);
      const cookie=header.split(';')[0];expect(()=>createPresentationAuth(env).require({headers:{cookie}})).not.toThrow();
      expect(()=>createPresentationAuth({...env,PPT_SCOPE:'foreign'}).require({headers:{cookie}})).toThrow();
      expect(()=>createPresentationAuth(env).require({headers:{cookie:cookie.replace(/.$/,'!')}})).toThrow();
      const now=Date.now();vi.spyOn(Date,'now').mockReturnValue(now+9*3600000);expect(()=>createPresentationAuth(env).require({headers:{cookie}})).toThrow();vi.restoreAllMocks();
-     expect((await app.inject({method:'GET',url:'/api/presentations',headers:{cookie}})).statusCode).toBe(503); // auth passed, DB remains unconfigured
+     expect((await app.inject({method:'GET',url:'/api/presentations',headers:{cookie}})).statusCode).toBe(401); // legacy cookie alone cannot bypass full-site auth
+     expect((await app.inject({method:'GET',url:'/api/presentations',headers:{cookie:demoCookie}})).statusCode).toBe(503); // one Demo login suffices
    }finally{vi.restoreAllMocks();await app.close();}
  });
  it('missing key fails closed, rate limits bad login, production cookie is Secure',async()=>{

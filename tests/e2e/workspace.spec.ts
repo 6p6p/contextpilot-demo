@@ -28,8 +28,8 @@ test('workspace displays health from the actual backend', async ({ page }) => {
   await expect(page.getByRole('status')).toContainText('后端已连接');
   await expect(page.getByRole('status')).toContainText('数据库未配置');
   await page.getByText('PPT 资料与下载 · 在聊天中明确输入').click();
-  if(process.env.DEMO_ACCESS_KEY){await expect(page.getByText('PPT 使用当前 Demo 访问权限。')).toBeVisible();await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);}
-  else {await expect(page.getByLabel('PPT 访问口令')).toBeVisible();await expect(page.getByRole('button', {name:'解锁 PPT',exact:true})).toBeDisabled();}
+  await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);await expect(page.getByRole('button',{name:'解锁 PPT',exact:true})).toHaveCount(0);
+  if(process.env.DEMO_ACCESS_KEY)await expect(page.getByText('使用当前 Demo 登录，生成与私有下载无需再次验证。')).toBeVisible();
   await page.unroute('**/api/demo-session');
   await page.getByText('PPT 资料与下载 · 在聊天中明确输入').click();
   await expect(page.getByLabel('联网搜索模式')).toHaveValue('auto');

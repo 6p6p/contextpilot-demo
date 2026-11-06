@@ -18,13 +18,13 @@ export function presentationSourceQuery(request:string,kind:'pdf'|'memory') {
 export type SourceCollector=(job:typeof presentationJobs.$inferSelect,cachedWebSources?:PptSource[])=>Promise<PptSource[]>;
 export function createPresentationSources(database:Database,retrieve:ReturnType<typeof createRetriever>|null,memory:MemoryService|null,search:SearchProvider|null):SourceCollector {
   return async (job,cachedWebSources)=>{
-    const ctx=presentationContextSchema.parse({meetingId:job.context.meetingId,useMemory:job.context.useMemory,webQuery:job.context.webQuery});
+    const ctx=presentationContextSchema.parse({meetingId:job.context.meetingId,useMemory:job.context.useMemory,webQuery:job.context.webQuery,documentIds:job.context.documentIds,useChat:job.context.useChat});
     const sources:PptSource[]=[];
     const add=(source:Omit<PptSource,'id'|'classification'>&{classification?:PptSource['classification']})=>sources.push(pptSourceSchema.parse({id:`S${sources.length+1}`,classification:'fact',...source}));
     add({kind:'request',title:'用户要求（用户陈述）',text:job.request,locator:{conversationId:job.conversationId}});
     const [assistant]=await database.db.select({ordinal:messages.ordinal}).from(messages).where(eq(messages.id,job.assistantMessageId));
     if(!assistant)throw new PublicError(404,'PPT_MESSAGE_NOT_FOUND','PPT 对话来源不存在。');
-    const history=await database.db.select().from(messages).where(and(eq(messages.conversationId,job.conversationId),eq(messages.role,'user'),eq(messages.status,'completed'),sql`${messages.ordinal}<${assistant.ordinal}-1`)).orderBy(desc(messages.ordinal)).limit(10);
+    const history=ctx.useChat?await database.db.select().from(messages).where(and(eq(messages.conversationId,job.conversationId),eq(messages.role,'user'),eq(messages.status,'completed'),sql`${messages.ordinal}<${assistant.ordinal}-1`)).orderBy(desc(messages.ordinal)).limit(10):[];
     for(const m of history.reverse().filter(m=>!isPresentationIntent(m.content)))add({kind:'chat',title:'当前会话用户陈述',text:m.content,locator:{messageId:m.id,conversationId:m.conversationId,observedAt:m.createdAt.toISOString()}});
     if(ctx.meetingId) {
       const [meeting]=await database.db.select().from(meetings).where(eq(meetings.id,ctx.meetingId));
@@ -42,17 +42,19 @@ export function createPresentationSources(database:Database,retrieve:ReturnType<
       const todos=await database.db.select().from(meetingTodos).where(and(eq(meetingTodos.meetingId,meeting.id),visible(meetingTodos,'dismissed_at')));
       for(const todo of todos.filter(t=>t.origin!=='meeting_question'&&!untrustedInstruction(t.evidence.quote)))add({kind:'todo',title:`${meeting.filename} · 已保存待办`,classification:todo.origin==='risk_followup'?'recommendation':'fact',text:todo.task,owner:todo.owner,dueDate:todo.dueDate,locator:{...locator,todoId:todo.id,todoVersion:todo.version,todoAnalysisId:todo.analysisId,origin:todo.origin,status:todo.status,userEdited:todo.userEdited,evidence:todo.evidence}});
     } else if(/根据.{0,30}会议|这次会议|本次会议|上述会议/.test(job.request))throw new PublicError(400,'PPT_MEETING_SELECTION_REQUIRED','请在聊天区 PPT 资料中明确选择本次会议，不会猜测最近一场会议。');
-    if(job.context.knowledgeMode) {
+    if(ctx.documentIds?.length||job.context.knowledgeMode) {
+      if(!ctx.documentIds?.length)throw new PublicError(400,'PPT_PDF_SELECTION_REQUIRED','请为本次 PPT 明确选择 PDF；不会自动使用整个历史知识库。');
       if(!retrieve)throw new PublicError(503,'PPT_PDF_NOT_CONFIGURED','PDF 检索服务未配置。');
-      const rows=await retrieve(presentationSourceQuery(job.request,'pdf'));
+      const rows=await retrieve(presentationSourceQuery(job.request,'pdf'),ctx.documentIds);
       if(!rows.length)throw new PublicError(422,'PPT_PDF_EVIDENCE_MISSING','未检索到可用 PDF 证据，请缩小主题或检查文件状态。');
       for(const s of rows)add({kind:'pdf',title:`${s.filename} · 第 ${s.page} 页`,text:s.text,locator:{sourceId:s.sourceId,documentId:s.documentId,page:s.page,similarity:s.similarity}});
     }
-    if(ctx.useMemory||/长期记忆|跨会话记忆/.test(job.request)) {
+    if(ctx.useMemory) {
       if(!memory)throw new PublicError(503,'PPT_MEMORY_NOT_CONFIGURED','长期记忆未配置。');
       const rows=await memory.retrieve(presentationSourceQuery(job.request,'memory'));
       for(const s of rows)add({kind:'memory',title:'长期记忆（历史陈述，可能过时）',text:s.content,locator:{memoryId:s.id,provenance:s.sources}});
     }
+    if(presentationNeedsWeb(job.request,'auto',null)&&!ctx.webQuery)throw new PublicError(400,'PPT_PUBLIC_QUERY_REQUIRED','最新外部资料需明确填写独立公共搜索词；不会使用私有生成指令搜索或猜测最新事实。');
     const wantsWeb=presentationNeedsWeb(job.request,job.context.searchMode,ctx.webQuery);
     if(wantsWeb) {
       if(job.context.searchMode==='off')throw new PublicError(400,'PPT_SEARCH_OFF','请求包含最新外部信息，但联网已关闭。');

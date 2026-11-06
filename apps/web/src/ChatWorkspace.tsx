@@ -31,10 +31,13 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
   const [presentationContext,setPresentationContext]=useState<PresentationContext>({meetingId:null,useMemory:false,webQuery:null});
   const [searchMode, setSearchMode] = useState<'auto' | 'required' | 'off'>('auto');
   const [knowledgeMode, setKnowledgeMode] = useState(false);
+  const [pdfScope,setPdfScope]=useState<'all'|'selected'>('all'),[documentIds,setDocumentIds]=useState<string[]>([]);
+  const [documents,setDocuments]=useState<{id:string;filename:string}[]>([]);
   const [refresh, setRefresh] = useState(0);
   const selection = useRef(selected);
   const listVersion = useRef(0);
   selection.current = selected;
+  useEffect(()=>{if(!knowledgeMode)return;const c=new AbortController();void request('/documents',{signal:c.signal}).then(data=>{if(!c.signal.aborted)setDocuments((data as {documents:{id:string;filename:string;status:string}[]}).documents.filter(d=>d.status==='ready'));}).catch(()=>{if(!c.signal.aborted)setError('PDF 范围加载失败，请刷新资料后重试。');});return()=>c.abort();},[knowledgeMode,refresh]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -96,7 +99,7 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
     try {
       const result = messagesResponse.parse(await request(`/conversations/${id}/messages`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content: draft.trim(), clientRequestId: crypto.randomUUID(), knowledgeMode, searchMode, presentationContext }),
+        body: JSON.stringify({ content: draft.trim(), clientRequestId: crypto.randomUUID(), knowledgeMode, documentIds:pdfScope==='selected'?documentIds:undefined,searchMode, presentationContext }),
       }));
       if (selection.current === id) {
         setMessages(current => [...current.filter(m => !result.messages.some(row => row.id === m.id)), ...result.messages].sort((a, b) => a.ordinal - b.ordinal));
@@ -123,7 +126,7 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
       {error ? <p className="chat-error" role="alert">{error}</p> : null}
       {children}
       <div className="chat-surface" hidden={activeTool!=='chat'&&activeTool!=='ppt'}>
-      <PresentationPanel openRequested={activeTool==='ppt'} context={presentationContext} onChange={setPresentationContext} refresh={refresh}/>
+      <PresentationPanel openRequested={activeTool==='ppt'} context={presentationContext} onChange={setPresentationContext} refresh={refresh} onPrepare={setDraft}/>
       <div ref={scroller} onScroll={()=>{if(!loading&&scroller.current)stickToBottom.current=scroller.current.scrollHeight-scroller.current.clientHeight-scroller.current.scrollTop<100;}} className="chat-messages" aria-label="聊天消息" aria-busy={loading || sending || pending}>
         {loading ? <p>正在加载历史…</p> : null}
         {!loading&&!selected?<div className="chat-empty"><h2>从一个项目问题开始</h2><p>先创建对话，再按需使用知识库、会议、记忆、搜索与PPT。</p><button type="button" disabled={creating} onClick={()=>{void create();}}>创建第一段对话</button></div>:null}
@@ -143,9 +146,10 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
         <label>联网搜索 <select aria-label="联网搜索模式" value={searchMode} onChange={e => setSearchMode(e.target.value as typeof searchMode)} disabled={sending || creating}><option value="auto">自动</option><option value="required">必须联网</option><option value="off">关闭</option></select></label>
         <label className="knowledge-toggle"><input type="checkbox" checked={knowledgeMode} onChange={event => setKnowledgeMode(event.target.checked)} disabled={creating || sending} /> 使用 PDF 知识库</label>
         {knowledgeMode?<small role="status">当前仅检索 PDF，不召回长期记忆；查询记忆时请关闭此开关并关闭联网。</small>:null}
+        {knowledgeMode?<><label>问答 PDF 范围<select aria-label="问答 PDF 范围" value={pdfScope} onChange={e=>setPdfScope(e.target.value as typeof pdfScope)}><option value="all">全部有效知识库</option><option value="selected">仅选中的 PDF</option></select></label>{pdfScope==='selected'?<label>问答 PDF 文件<select multiple aria-label="问答 PDF 文件" value={documentIds} onChange={e=>setDocumentIds(Array.from(e.target.selectedOptions,o=>o.value))}>{documents.map(d=><option key={d.id} value={d.id}>{d.filename}</option>)}</select></label>:null}</>:null}
         <label htmlFor="chat-input">消息</label>
         <textarea id="chat-input" value={draft} onChange={event => setDraft(event.target.value)} maxLength={4000} rows={3} disabled={!selected || creating || sending || loading || pending} placeholder="输入消息，开始多轮对话…" />
-        <div className="composer-actions"><small>{knowledgeMode ? '仅按当前问题检索全部已就绪 PDF · 回答附原文证据' : '普通对话 · 自动召回历史记忆 · 联网按所选模式 · 仅输入公共短查询'}</small><button type="submit" disabled={!selected || !draft.trim() || creating || sending || loading || pending}>发送消息</button></div>
+        <div className="composer-actions"><small>{knowledgeMode ? `${pdfScope==='all'?'全库':'仅选定资料'} PDF 问答 · PPT 使用上方独立资料选择` : '普通对话 · 自动召回历史记忆 · 联网按所选模式 · 仅输入公共短查询'}</small><button type="submit" disabled={!selected || !draft.trim() || creating || sending || loading || pending}>发送消息</button></div>
       </form>
       </div>
     </div>

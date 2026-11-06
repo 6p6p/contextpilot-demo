@@ -306,7 +306,7 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
       expect((await meetingService.draftPreview(detail.draft!.id)).body).not.toContain(todo.task);
       expect((await request('POST',`/api/meeting-todos/${todo.id}/ignore`,{version:todo.version})).statusCode).toBe(409);
       const row=(await database.db.select().from(schema.presentationJobs).where(eq(schema.presentationJobs.id,pptId)))[0];
-      const collected=await createPresentationSources(database,createRetriever(database,embedder,0.5),memory(),null)({...row,request:'根据这次会议生成5页PPT',context:{...row.context,meetingId:run.roots.meetings[0],knowledgeMode:true,useMemory:true,searchMode:'off',webQuery:null}});
+      const collected=await createPresentationSources(database,createRetriever(database,embedder,0.5),memory(),null)({...row,request:'根据这次会议生成5页PPT',context:{...row.context,meetingId:run.roots.meetings[0],documentIds:[run.roots.documents[1]],knowledgeMode:true,useMemory:true,searchMode:'off',webQuery:null}});
       expect(collected.filter(s=>s.kind==='todo').some(s=>s.locator.todoId===todo.id)).toBe(false);
       expect(collected.filter(s=>s.kind==='pdf').some(s=>s.locator.documentId===document)).toBe(false);
       const download=createPresentationService(database,storage,stub('unused'),async()=>[],{PPT_SCOPE:run.scope,PPT_MAX_TOKENS:8192});

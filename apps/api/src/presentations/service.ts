@@ -15,8 +15,8 @@ import { planPresentation, verifyPlan, validatePresentationContent } from './pla
 import { renderPresentation, PPTX_MIME, validatePptx } from './render.js';
 type Tx=Parameters<Parameters<Database['db']['transaction']>[0]>[0];
 const hash=(v:string|Buffer)=>createHash('sha256').update(v).digest('hex');
-export interface PresentationInput {content:string;knowledgeMode?:boolean;searchMode?:SearchMode;presentationContext?:PresentationContext}
-const context=(i:PresentationInput)=>({...presentationContextSchema.parse(i.presentationContext??{}),knowledgeMode:Boolean(i.knowledgeMode),searchMode:i.searchMode??'auto'});
+export interface PresentationInput {content:string;knowledgeMode?:boolean;documentIds?:string[];searchMode?:SearchMode;presentationContext?:PresentationContext}
+const context=(i:PresentationInput)=>{const selected=presentationContextSchema.parse(i.presentationContext??{});return {...selected,documentIds:selected.documentIds??[],useChat:selected.useChat??false,knowledgeMode:Boolean(selected.documentIds?.length),searchMode:(selected.webQuery?'required':'off') as SearchMode};};
 export function createPresentationService(database:Database,storage:PrivateStorage|null,model:ChatModel|null,collect:SourceCollector,env:Pick<Env,'PPT_SCOPE'|'PPT_MAX_TOKENS'>,shutdown?:AbortSignal) {
   const db=database.db;
   const scope=eq(presentationJobs.scope,env.PPT_SCOPE);

@@ -27,7 +27,7 @@ it('BUG-02 chooses exact server-owned quote options; reordered IDs remain stable
   const complete = vi.fn(async () => ({ model: 'stub', content: JSON.stringify({ status: 'supported', conclusion: { id: 'W2', quoteIndex: 0 }, citations: [{ id: 'W2', quoteIndex: 0 }] }) }));
   const result = await answerWithSearch(searchQuestion, { async search() { return web; } }, { complete });
   expect(result.content).toContain('结论（来源明确记载）');
-  const prompt = JSON.parse((complete.mock.calls[0] as any)[0][1].content);
+  const prompt = JSON.parse((complete.mock.calls[0] as any)[0].find((m:any)=>m.role==='user').content);
   expect(prompt.untrustedSearchResults[0].id).toBe('W2');
   expect(prompt.untrustedSearchResults[0].quoteOptions[0]).toBe(web[1].summary);
 });

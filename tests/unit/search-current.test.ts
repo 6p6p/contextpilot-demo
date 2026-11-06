@@ -14,7 +14,7 @@ it('prefers recent official status, gives verified conclusion before sources and
  expect(search).toHaveBeenCalledTimes(1);expect(search.mock.calls[0]).toEqual([publicQuery(q),{domains:['nodejs.org'],asOf:expect.any(String)}]);
  expect(r.content.startsWith('结论（来源明确记载）：The latest Active LTS is Node.js v26.13.0.')).toBe(true);
  expect(r.content).toContain('Maintenance LTS');expect(r.content).toContain(at);expect(r.content).toContain('2026-07-01');expect(r.content).toContain(fresh.url);
- const input=JSON.parse((m.complete.mock.calls[0] as any)[0][1].content);expect(input.untrustedSearchResults[0].id).toBe('W2');
+ const input=JSON.parse((m.complete.mock.calls[0] as any)[0].find((m:any)=>m.role==='user').content);expect(input.untrustedSearchResults[0].id).toBe('W2');
 });
 it('does not turn a literal but stale or undated archive quote into a current conclusion',async()=>{
  for(const source of [old,{...old,publishedAt:null}]){

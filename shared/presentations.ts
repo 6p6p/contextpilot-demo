@@ -1,5 +1,5 @@
 import { z } from 'zod';
-export const presentationContextSchema = z.object({ meetingId: z.uuid().nullable().default(null), useMemory: z.boolean().default(false), webQuery: z.string().trim().min(1).max(200).nullable().default(null) }).strict();
+export const presentationContextSchema = z.object({ meetingId: z.uuid().nullable().default(null), useMemory: z.boolean().default(false), webQuery: z.string().trim().min(1).max(200).nullable().default(null), documentIds:z.array(z.uuid()).max(20).optional(),useChat:z.boolean().optional() }).strict();
 export type PresentationContext = z.infer<typeof presentationContextSchema>;
 export const pptSourceSchema = z.object({
   id: z.string(), kind: z.enum(['request', 'chat', 'pdf', 'meeting', 'meeting_risk', 'todo', 'memory', 'web']),

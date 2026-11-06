@@ -15,9 +15,9 @@ it('A4 latest preview separates assigned actions from advice and questions witho
  const body=latestDraftBody([{task:'检查接口',owner:null,dueDate:null,origin:'meeting_action'},{task:'待确认上线',owner:null,dueDate:null,origin:'meeting_question'},{task:'跟进建议',owner:'林岚',dueDate:null,origin:'risk_followup'}]);
  expect(body).toContain('检查接口；负责人：未明确；截止日期：未明确');expect(body).not.toContain('待确认上线');expect(body).not.toContain('跟进建议；负责人');
 });
-it('A1 conflicting official table rows remain conflicting, not a synthesized certainty',()=>{
+it('A1 coexisting version lines are not latest claims; conflicting latest patches stay unresolved',()=>{
  const row={id:'W1',title:'status',url:'https://nodejs.org/en/about/previous-releases',summary:'v26 — Active LTS.',publishedAt:null,queriedAt:'2026-11-06T08:00:00Z',quote:''};
- expect(conflictingLts('Node.js 当前 LTS 官方',[row,{...row,id:'W2',summary:'v24 — Active LTS.'}])).toBe(true);
+ expect(conflictingLts('Node.js 当前 LTS 官方',[row,{...row,id:'W2',summary:'v24 — Active LTS.'}])).toBe(false);
  expect(conflictingLts('Node.js 当前 LTS 官方',[row,{...row,id:'W2',summary:'Node.js v26.13.0 is the latest Active LTS.'}])).toBe(false);
  expect(conflictingLts('Node.js 当前 LTS 官方',[{...row,summary:'Node.js v26.13.0 is the latest Active LTS.'},{...row,id:'W2',summary:'Node.js v26.14.0 is the latest Active LTS.'}])).toBe(true);
 });
