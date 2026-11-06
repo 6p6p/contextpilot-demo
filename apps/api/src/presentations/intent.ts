@@ -1,7 +1,7 @@
 import { PublicError } from '../errors.js';
 export interface PresentationBrief {topic:string;language:'中文'|'英文';audience:string|null;pageCount:number;requirements:string[];mode:'training'|'business'|'general'}
 export function isPresentationIntent(input: string): boolean {
-  const text = input.normalize('NFKC').trim();
+  const text = input.normalize('NFKC').trim().replace(/(?:不要|不需要|禁止|别)(?:输出|提供).{0,30}(?:指导|建议)[。！!]?/g,'');
   if (/^(?:请)?(?:解释|如何|怎么|什么是|讨论|举例|示例)/.test(text) || /(?:不要|不需要|禁止|别).{0,12}(?:生成|制作|创建|做).{0,80}(?:ppt|powerpoint|幻灯片|演示文稿)/i.test(text)) return false;
   return /(?:生成|制作|创建|做).{0,160}(?:\bppt\b|powerpoint|幻灯片|演示文稿)/i.test(text) || /(?:\bppt\b|powerpoint|幻灯片|演示文稿).{0,50}(?:生成|制作|创建)/i.test(text);
 }

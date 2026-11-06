@@ -38,6 +38,7 @@ export function createPresentationService(database:Database,storage:PrivateStora
     async validateReplay(tx:Tx,assistantMessageId:string,input:PresentationInput){const [job]=await tx.select().from(presentationJobs).where(eq(presentationJobs.assistantMessageId,assistantMessageId));if(!job||job.requestHash!==fingerprint(input))throw new PublicError(409,'REQUEST_CONFLICT','同一请求标识不能修改 PPT 来源范围。');},
     async enqueue(tx:Tx,assistantMessageId:string,conversationId:string,input:PresentationInput){
       configured();const ctx=context(input);const parsed=parsePresentationRequest(input.content,{maxPages:env.PPT_MAX_PAGES,sourceCount:(ctx.documentIds?.length??0)+Number(!!ctx.meetingId)});
+      if(/(?:根据|依据|使用).{0,20}PDF/i.test(input.content)&&!ctx.documentIds?.length)throw new PublicError(400,'PPT_DOCUMENT_SELECTION_REQUIRED','请使用聊天输入框旁的 + 选择本次 PDF；不会使用其他历史文件。');
       if(parsed.pageCount<5||parsed.pageCount>10){const check=await tx.execute(sql`select pg_get_constraintdef(oid) as definition from pg_constraint where conrelid='presentation_jobs'::regclass and conname='presentation_page_count_check'`);if(!String(check.rows[0]?.definition).includes('30'))throw new PublicError(503,'PPT_PAGE_LIMIT_MIGRATION_REQUIRED','页数范围需已审查的0011迁移；本次未创建任务。');}
       if(/根据.{0,30}会议|这次会议|本次会议|上述会议/.test(input.content)&&!ctx.meetingId)throw new PublicError(400,'PPT_MEETING_SELECTION_REQUIRED','请明确选择要引用的会议。');
       const id=randomUUID();

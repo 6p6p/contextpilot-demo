@@ -18,8 +18,8 @@ export function publicQuery(question: string): string {
   }
   return query;
 }
-export interface SearchProvider { search(query: string, options?:{domains:string[];asOf?:string}): Promise<WebSource[]> }
-const resultSchema = z.object({ results: z.array(z.object({ title: z.string().max(2000), url: z.url(), content: z.string().max(100000), published_date: z.string().max(100).nullish() })).max(20) });
+export interface SearchProvider { search(query: string, options?:{domains:string[];asOf?:string;includeContent?:boolean}): Promise<WebSource[]> }
+const resultSchema = z.object({ results: z.array(z.object({ title: z.string().max(2000), url: z.url(), content: z.string().max(100000), raw_content:z.string().max(100000).nullish(),published_date: z.string().max(100).nullish() })).max(20) });
 export function createSearchProvider(env: Env, transport: typeof fetch = fetch): SearchProvider | null {
   if (!env.TAVILY_API_KEY) return null;
   let calls = 0;
@@ -34,7 +34,7 @@ export function createSearchProvider(env: Env, transport: typeof fetch = fetch):
       const response = await transport(`${env.TAVILY_BASE_URL.replace(/\/+$/, '')}/search`, {
         method: 'POST', redirect: 'error', signal,
         headers: { 'content-type': 'application/json', authorization: `Bearer ${env.TAVILY_API_KEY}` },
-        body: JSON.stringify({ query:searchQuery,...(options?.domains.length?{include_domains:options.domains}:{}), search_depth: 'basic', auto_parameters: false, max_results: env.SEARCH_MAX_RESULTS, include_answer: false, include_raw_content: false, include_published_date: true, include_usage: true }),
+        body: JSON.stringify({ query:searchQuery,...(options?.domains.length?{include_domains:options.domains}:{}), search_depth: 'basic', auto_parameters: false, max_results: env.SEARCH_MAX_RESULTS, include_answer: false, include_raw_content: options?.includeContent?'text':false, include_published_date: true, include_usage: true }),
       });
       if (!response.ok) {
         await response.body?.cancel();
@@ -49,7 +49,7 @@ export function createSearchProvider(env: Env, transport: typeof fetch = fetch):
       finally { await reader.cancel(); }
       const parsed = resultSchema.parse(JSON.parse(Buffer.concat(chunks).toString('utf8')));
       return parsed.results.slice(0, env.SEARCH_MAX_RESULTS).filter(r => { const u = new URL(r.url); return ['https:', 'http:'].includes(u.protocol) && !u.username && !u.password; }).map((r, i) => ({
-        id: `W${i + 1}`, title: r.title, url: r.url, summary: r.content.slice(0, 1600), queriedAt,
+        id: `W${i + 1}`, title: r.title, url: r.url, summary: options?.includeContent?(r.raw_content||r.content).slice(0,6000):r.content.slice(0,1600), queriedAt,
         publishedAt: r.published_date && Number.isFinite(Date.parse(r.published_date)) ? r.published_date : null, quote: '',
       }));
     } catch (error) {

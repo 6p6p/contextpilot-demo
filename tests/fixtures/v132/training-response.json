@@ -1,0 +1,55 @@
+{
+  "request": "请生成一份 5 页中文 PPT，标题为《如何提高团队沟通效率》，面向企业新员工。直接提供可以用于培训的具体内容，包含常见沟通障碍、有效倾听、反馈技巧、团队协作案例及总结，不要输出制作 PPT 的指导建议。",
+  "output": {
+    "content": [
+      {
+        "items": [
+          {
+            "kind": "recommendation",
+            "text": "沟通时先说结论和需要对方做什么，再补充背景理由"
+          },
+          {
+            "kind": "recommendation",
+            "text": "听到不清楚处及时提问复述，确认双方理解一致"
+          },
+          {
+            "kind": "recommendation",
+            "text": "发送方把任务、责任人和时间写清楚，减少信息偏差"
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "kind": "recommendation",
+            "text": "两人一组练习复述：一人说明任务，另一人复述要点"
+          },
+          {
+            "kind": "recommendation",
+            "text": "练习用行为描述反馈：说观察到的事和影响，不评价人"
+          },
+          {
+            "kind": "recommendation",
+            "text": "讨论常见沟通障碍，并约定团队内的简明沟通规则"
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "kind": "recommendation",
+            "text": "反馈时先讲具体行为再讲影响，最后询问对方看法"
+          },
+          {
+            "kind": "recommendation",
+            "text": "协作中主动同步进展，遇到分歧先对齐目标再讨论方案"
+          },
+          {
+            "kind": "recommendation",
+            "text": "会议结束前复述分工和时间，会后及时确认落实"
+          }
+        ]
+      }
+    ]
+  }
+}

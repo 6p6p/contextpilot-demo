@@ -68,8 +68,9 @@ export function createChatService(database: NonNullable<ReturnType<typeof create
         const useSearch = !input.knowledgeMode&&needsSearch(input.content, input.searchMode ?? 'auto');
         const web = !input.knowledgeMode&&input.searchMode === 'off' && needsSearch(input.content, 'auto') ? { content: '联网搜索已关闭，无法确认最新信息。请切换自动或必须联网模式。', model: 'web-disabled-gate', webSources: [] } : useSearch ? await answerPublicSearch(input.content, search ?? null, model) : null;
         const chronological=[...recent].reverse();
-        const candidates = !web && !input.knowledgeMode && memory && !useCurrentContext(input.content,chronological) ? await memory.retrieve(input.content) : [];
-        const result = input.knowledgeMode ? { ...await knowledge!.answer(input.content, model,input.documentIds), memorySources: [] } : web ? { content: '', model: web.model, sources: [], memorySources: [] } : candidates.length ? await answerWithMemory(input.content, buildContext(recent.reverse()), model, candidates) : { ...await model.complete(buildContext(recent.reverse())), sources: [], memorySources: [] };
+        const publicDefinition=/^(?:请)?(?:什么是|解释|介绍|what is|explain)/i.test(input.content)&&! /项目|会议|PDF|记忆|刚才|我们|我司|内部|资料/i.test(input.content);
+        const candidates = !publicDefinition && !web && !input.knowledgeMode && memory && !useCurrentContext(input.content,chronological) ? await memory.retrieve(input.content) : [];
+        const result = input.knowledgeMode ? { ...await knowledge!.answer(input.content, model,input.documentIds), memorySources: [] } : web ? { content: '', model: web.model, sources: [], memorySources: [] } : candidates.length ? await answerWithMemory(input.content, buildContext(recent.reverse()), model, candidates) : { ...await model.complete(buildContext(recent.reverse()),{disableThinking:true}), sources: [], memorySources: [] };
         await db.update(messages).set({ content: [result.content, web?.content].filter(Boolean).join('\n\n'), webSources: web?.webSources ?? [], model: result.model, sources: result.sources, memorySources: result.memorySources, status: 'completed', updatedAt: new Date() }).where(and(eq(messages.id, assistant.id), eq(messages.status, 'processing')));
       } catch (error) {
         const code = error instanceof PublicError ? error.code : 'GENERATION_FAILED';

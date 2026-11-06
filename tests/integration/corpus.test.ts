@@ -214,7 +214,7 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
   testCase('T06', 'search modes, saved official URLs/query dates and provider failure status (STUB)', async () => {
     let calls = 0;
     const provider = { async search() { calls++; return web; } };
-    const service = createChatService(database, stub(searchSelection), null, null, provider);
+    const service = createChatService(database, stub('冻结官方证据支持当前LTS结论，详见来源。'), null, null, provider);
     for (const mode of ['required', 'auto', 'off'] as const) {
       await service.send(run.roots.conversations[0], { content: searchQuestion, clientRequestId: randomUUID(), searchMode: mode });
       const last = (await service.history(run.roots.conversations[0])).at(-1)!;
@@ -231,7 +231,7 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
     expect(detail.analysis!.result.decisions[0].value).toContain('2026-11-20'); expect(detail.analysis!.result.decisions[0].value).not.toContain('2026-11-27');
     expect(await meetingService.transcript(run.roots.meetings[0])).toContain('2026-11-27，尚未获批');
     const other = { ...web[1], id: 'W3', summary: 'The latest Active LTS is Node.js v24.0.0.' };
-    const service = createChatService(database, stub({ ...searchSelection, citations: [...searchSelection.citations, { id: 'W3', quote: other.summary }] }), null, null, { async search() { return [web[1], other]; } });
+    const service = createChatService(database, stub('来源存在冲突，同一阶段的当前版本无法确认，保留两份证据。'), null, null, { async search() { return [web[1], other]; } });
     await service.send(run.roots.conversations[0], { content: searchQuestion, searchMode: 'required', clientRequestId: randomUUID() });
     const last = (await service.history(run.roots.conversations[0])).at(-1)!;
     expect(last.content).toContain('来源存在冲突'); expect(last.webSources).toHaveLength(2);

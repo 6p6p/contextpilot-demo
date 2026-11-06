@@ -1,5 +1,7 @@
 # ContextPilot
 
+MVP v1.3.2：公开联网改为Tavily正文参考→单次DeepSeek自然回答，旧Claim管线只用于离线审计；PPT意图误路由、主题词/否定语义误拒已修复。两类真实5/10页PPT及独立复测/私有下载/重启恢复通过；Node.js当前阶段查询仍FAIL（检索页面版本过时/细分证据不足），未宣称整体通过。真实DeepSeek12/Tavily Basic6/Embedding与Resend0，费用保守≤¥0.599；原生PowerPoint/WPS打开待人工验收。文件、失败证据及安全事项见[报告](docs/mvp-v1.3.2-verification.md)。未Push/部署/清理/发信。
+
 MVP v1.3.1：完成搜索上限/无损格式规范化、主题brief/培训成品校验、关键事实正文覆盖及当前人工待办发布保护。check/test248、Corpus17、真实PG+外部全STUB12、Chrome生产E2E4通过；旧失败文件/快照及上轮未提交报告一并保留。修复后真实搜索/PPT-A/PPT-B与原生打开仍NOT_RUN，未新增付费调用、未改Schema/前端、未Push/部署/清理。详情及复测入口见[记录](docs/mvp-v1.3.1-verification.md)。下文v1.3为历史真实失败结论。
 
 MVP v1.3真实验收（2026-11-06）：0011已获批执行，旧68条PPT任务hash不变，CHECK改为3–30（应用默认上限20）。真实搜索FAIL（模型归纳结构超限，未发布回答）；两份真实5/10页PPT的私有Storage、下载、刷新/重启及鉴权PASS，但标题/培训内容、人工待办正文展示和缺口矛盾使业务内容FAIL。PowerPoint/WPS实际打开NOT_RUN，原文件保留。实际DeepSeek3、Tavily Basic2、Embedding/Resend0，保守费用≤¥0.211。check232、Corpus17、Chrome生产E2E4通过（业务UI为fixture）；先前真实DB+外部STUB11项非本轮Live全套。当前仍有业务阻塞，不Push/部署/清理/发信，详见[记录](docs/mvp-v1.3-verification.md)。

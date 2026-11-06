@@ -1,5 +1,7 @@
 # Development tasks
 
+MVP v1.3.2：Part A已独立提交76329f0；PPT真实5/10页及稳定性文件完成，PG/私有Storage/下载鉴权/刷新与重启恢复通过。搜索链路真实可用，但Node.js当前LTS阶段准确性未通过，原生PowerPoint/WPS仍待人工。当前模型/搜索调用已停止在12/6，未发生确认的余额不足；不Push/部署/清理/发信。保留全部失败记录及Cookie事件的必要用户处置说明，见[报告](docs/mvp-v1.3.2-verification.md)。
+
 MVP v1.3.1：三个验收阻塞完成本地定向修复，新增16项固定回归；check/test248、Corpus17、共享PG+外部全STUB12及Chrome生产E2E4通过。首轮数据库旧对象数断言失败已如实保留，复跑未改Golden且既有行hash变化0。两Run共150条新增合成记录全部保留，无清理/DDL/外部付费调用。修复后的搜索/PPT-A/PPT-B Live及PowerPoint/WPS打开仍NOT_RUN，原v1.3失败报告和文件不覆盖；三项复测入口见[记录](docs/mvp-v1.3.1-verification.md)。提交后停止，不Push/部署。
 
 MVP v1.3真实验收（2026-11-06）：0011已获批执行，旧68条PPT任务hash不变，CHECK改为3–30（应用默认上限20）。真实搜索FAIL（模型归纳结构超限，未发布回答）；两份真实5/10页PPT的私有Storage、下载、刷新/重启及鉴权PASS，但标题/培训内容、人工待办正文展示和缺口矛盾使业务内容FAIL。PowerPoint/WPS实际打开NOT_RUN，原文件保留。实际DeepSeek3、Tavily Basic2、Embedding/Resend0，保守费用≤¥0.211。check232、Corpus17、Chrome生产E2E4通过（业务UI为fixture）；先前真实DB+外部STUB11项非本轮Live全套。当前仍有业务阻塞，不Push/部署/清理/发信，详见[记录](docs/mvp-v1.3-verification.md)。

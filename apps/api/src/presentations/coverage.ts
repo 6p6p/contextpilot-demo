@@ -48,7 +48,7 @@ export function verifyContentQuality(plan:PptPlan,sources:PptSource[],brief?:Pre
   const linked=sources.filter(s=>item.sourceIds.includes(s.id));
   const uncertain=linked.some(s=>/并非已确认|尚未获批|未获批准|不确认新的/.test(s.text));
   const assertsApproval=/(?:已(?:经)?(?:正式)?(?:批准|获批|确认|确定).{0,6}(?:改期|延期)|(?:改期|延期).{0,6}已(?:经)?(?:正式)?(?:批准|获批|确认|确定)|正式决定(?:改期|延期))/.test(item.text);
-  if(uncertain&&assertsApproval&&!/并非|不是|不得|不能|不等于|尚未|未获/.test(item.text))throw new PublicError(502,'PPT_UNSUPPORTED_DECISION','分析把未确认风险或未批准提议写成了决定，未生成文件。');
+  if(uncertain&&assertsApproval&&!/并非|而非|不是|不得|不能|不等于|尚未|未获/.test(item.text))throw new PublicError(502,'PPT_UNSUPPORTED_DECISION','分析把未确认风险或未批准提议写成了决定，未生成文件。');
  }
  for(const item of items)if(item.kind==='gap'){
   const contradiction=item.text==='现有资料不足以确认风险'&&sources.some(s=>s.kind==='meeting_risk')
@@ -62,7 +62,7 @@ export function verifyContentQuality(plan:PptPlan,sources:PptSource[],brief?:Pre
   if(requirement.field==='todo'&&matching.kind!=='todos')throw new PublicError(502,'PPT_TODO_LAYOUT_REQUIRED','人工待办必须在正文待办表格中完整显示负责人和截止时间。');
  }
  if(brief?.mode==='training'&&sources.every(s=>s.kind==='request'||s.kind==='chat')){
-  const terms=meaningfulTerms(brief.topic);
+  const terms=meaningfulTerms(brief.topic+' '+brief.requirements.join(' '));
   for(const page of plan.slides.slice(1,-1)){
    const texts=page.items.map(i=>i.kind==='quote'?i.quote:i.text);
    if(texts.some(t=>/(?:建议|可以|应当)(?:制作|编写|设计).{0,12}(?:培训|课程|PPT|幻灯片)|(?:建议|可以)(?:围绕.{0,40}(?:展开|组织).{0,10}(?:培训|课程)|结合.{0,20}(?:场景|案例).{0,5}举例|(?:介绍|说明).{0,20}(?:培训|课程|价值))|培训目标.{0,6}设定|展开整场.{0,6}培训/i.test(t)))throw new PublicError(502,'PPT_META_GUIDANCE','培训正文含创作指导，需生成直接面向观众的成品内容。');
