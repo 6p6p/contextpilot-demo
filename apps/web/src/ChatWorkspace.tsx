@@ -9,6 +9,8 @@ import './chat.css';
 import {ActionDialog} from './ActionDialog';
 import {AnswerContent} from './SafeMarkdown';
 import type {ReactNode} from 'react';
+import {Icon} from './Icon';
+import {Popover} from './Popover';
 
 async function request(path: string, options?: RequestInit) {
   const response = await fetch(`/api${path}`, options);
@@ -19,7 +21,21 @@ async function request(path: string, options?: RequestInit) {
   }
   return data;
 }
-export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:string;onChat?:()=>void;children?:ReactNode}) {
+export function ChatWorkspace({activeTool='chat',onChat,children,navigation,connection}:{activeTool?:string;onChat?:()=>void;children?:ReactNode;navigation?:ReactNode;connection?:ReactNode}) {
+  const [sidebarOpen,setSidebarOpen]=useState(()=>{try{return localStorage.getItem('contextpilot.sidebar')!=='closed';}catch{return true;}});
+  const [drawer,setDrawer]=useState(false);
+  const [narrow,setNarrow]=useState(()=>matchMedia('(max-width: 800px)').matches);
+  const drawerRef=useRef<HTMLElement>(null),sidebarToggle=useRef<HTMLButtonElement>(null);
+  const form=useRef<HTMLFormElement>(null),textarea=useRef<HTMLTextAreaElement>(null),composing=useRef(false),sendingLock=useRef(false);
+  useEffect(()=>{try{localStorage.setItem('contextpilot.sidebar',sidebarOpen?'open':'closed');}catch{}},[sidebarOpen]);
+  useEffect(()=>{
+    if(!drawer)return;
+    drawerRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    const key=(e:KeyboardEvent)=>{if(e.defaultPrevented||document.querySelector('.popover,dialog[open]'))return;if(e.key==='Escape'){setDrawer(false);sidebarToggle.current?.focus();}if(e.key==='Tab'){const items=Array.from(drawerRef.current?.querySelectorAll<HTMLElement>('a[href],button:not(:disabled)')??[]);const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}};
+    document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key);
+  },[drawer]);
+  useEffect(()=>{const media=matchMedia('(min-width: 801px)');const change=()=>{setNarrow(!media.matches);if(media.matches)setDrawer(false);};media.addEventListener('change',change);return()=>media.removeEventListener('change',change);},[]);
+  useEffect(()=>{setDrawer(false);},[activeTool]);
   const [management,setManagement]=useState<{kind:'rename'|'archive';conversation:Conversation}|null>(null);
   const [newTitle,setNewTitle]=useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -53,6 +69,7 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
         const result = conversationsResponse.parse(await request('/conversations', { signal: controller.signal }));
         if (controller.signal.aborted || version !== listVersion.current) return;
         setConversations(result.conversations);
+        setError('');
         let stored: string | null = null;
         try { stored = localStorage.getItem('contextpilot.conversation'); } catch { /* Storage may be disabled. */ }
         setSelected(current => current ?? result.conversations.find(c => c.id === stored)?.id ?? result.conversations[0]?.id ?? null);
@@ -77,6 +94,7 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
         const result = messagesResponse.parse(await request(`/conversations/${selected}/messages`, { signal: controller.signal }));
         if (controller.signal.aborted) return;
         setMessages(result.messages);
+        setError('');
         if (result.messages.some(m => m.status === 'processing')) timer = setTimeout(() => { void load(); }, 2000);
       } catch (cause) {
         if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : '加载历史失败。');
@@ -97,15 +115,15 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
       const conversation = conversationSchema.parse((data as { conversation: unknown }).conversation);
       listVersion.current += 1;
       setConversations(current => [conversation, ...current]);
-      setSelected(conversation.id); setDraft('');onChat?.();
+      setSelected(conversation.id); setDraft('');setDrawer(false);onChat?.();
     } catch (cause) { setError(cause instanceof Error ? cause.message : '创建失败。'); }
     finally { setCreating(false); }
   }
   async function send(event: React.FormEvent) {
     event.preventDefault();
-    if (!selected || !draft.trim() || sending || creating || loading || contextBusy) return;
+    if (!selected || !draft.trim() || sendingLock.current || sending || creating || loading || contextBusy || messages.some(m=>m.status==='processing')) return;
     const id = selected;
-    stickToBottom.current=true;setSending(true); setError('');
+    sendingLock.current=true;stickToBottom.current=true;setSending(true); setError('');
     try {
       const result = messagesResponse.parse(await request(`/conversations/${id}/messages`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
@@ -113,39 +131,43 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
       }));
       if (selection.current === id) {
         setMessages(current => [...current.filter(m => !result.messages.some(row => row.id === m.id)), ...result.messages].sort((a, b) => a.ordinal - b.ordinal));
-        setDraft('');
-        if(result.messages.some(m=>m.model==='ppt-job'))setPresentationContext({meetingId:null,useMemory:false,webQuery:null,documentIds:[],useChat:false});
-        if (result.messages.some(m => m.status === 'failed')) setError('模型回复失败。消息已保存；可检查配置后重新发送。');
+        if (result.messages.some(m => m.status === 'failed')) setError('回复失败，问题与资料选择已保留。请检查原因后重试。');
+        else {setDraft('');if(result.messages.some(m=>m.model==='ppt-job'))setPresentationContext({meetingId:null,useMemory:false,webQuery:null,documentIds:[],useChat:false});}
       }
       setRefresh(value => value + 1);
     } catch (cause) {
       setError(`${cause instanceof Error ? cause.message : '发送失败。'} 如网络中断，请先重新加载历史确认结果，避免重复发送。`);
-    } finally { setSending(false); }
+    } finally { sendingLock.current=false;setSending(false); }
   }
   const scroller=useRef<HTMLDivElement>(null),stickToBottom=useRef(true),lastConversation=useRef(selected);
   useLayoutEffect(()=>{if(lastConversation.current!==selected){stickToBottom.current=true;lastConversation.current=selected;}if(!loading&&stickToBottom.current&&scroller.current)scroller.current.scrollTop=scroller.current.scrollHeight;},[messages,sending,loading,selected,pptJobs]);
   const pending = messages.some(m => m.status === 'processing');
-  return <><section id="chat" className="chat-workspace" aria-label="AI 对话工作台">
-    <aside className="conversation-list">
-      <h2>历史会话</h2>
-      <button onClick={() => { void create(); }} disabled={creating || sending || loading}>{creating ? '创建中…' : '新建会话'}</button>
-      <ul>{conversations.map(conversation => <li key={conversation.id}><button aria-pressed={selected === conversation.id} disabled={sending || creating} onClick={() => { setSelected(conversation.id); setDraft('');onChat?.(); }}>{conversation.title}</button><span className="history-actions"><button type="button" disabled={sending||creating} aria-label={`重命名 ${conversation.title}`} onClick={()=>{setNewTitle(conversation.title);setManagement({kind:'rename',conversation});}}>改名</button><button type="button" disabled={sending||creating} aria-label={`删除 ${conversation.title}`} onClick={()=>setManagement({kind:'archive',conversation})}>移除</button></span></li>)}</ul>
-      {!conversations.length && !loading ? <p>暂无会话，创建后开始对话。</p> : null}
+  useLayoutEffect(()=>{const el=textarea.current;if(el){el.style.height='0px';el.style.height=`${Math.min(el.scrollHeight,180)}px`;}},[draft,selected,activeTool]);
+  const title=activeTool==='chat'?(conversations.find(c=>c.id===selected)?.title??'ContextPilot'):({knowledge:'知识库',meetings:'会议与待办',memory:'长期记忆',ppt:'PPT 文件'}[activeTool]??'ContextPilot');
+  const disabled=creating||sending||pending;
+  return <><section id="chat" className={`workspace ui-v2 ${sidebarOpen?'':'sidebar-collapsed'} ${drawer?'drawer-open':''}`} aria-label="AI 对话工作台">
+    {drawer?<button className="sidebar-backdrop" tabIndex={-1} aria-label="关闭导航遮罩" onClick={()=>{setDrawer(false);sidebarToggle.current?.focus();}}/>:null}
+    <aside ref={drawerRef} id="workspace-sidebar" className="sidebar" aria-label="导航与历史" role={drawer?'dialog':undefined} aria-modal={drawer?true:undefined}>
+      <div className="sidebar-brand"><a className="brand" href="#chat" onClick={e=>{e.preventDefault();onChat?.();setDrawer(false);}}>ContextPilot</a><button type="button" className="icon-button" aria-label="收起侧栏" onClick={()=>{setSidebarOpen(false);setDrawer(false);sidebarToggle.current?.focus();}}><Icon name="panel"/></button></div>
+      <button className="new-chat" onClick={() => { void create(); }} disabled={creating || sending || loading}><Icon name="new"/>{creating ? '创建中…' : '新建会话'}</button>
+      {navigation}
+      <section className="conversation-list" aria-label="历史会话"><h2>历史会话</h2>
+      <ul>{conversations.map(conversation => <li key={conversation.id} className={selected===conversation.id?'selected':''}><button className="conversation-title" title={conversation.title} aria-pressed={selected === conversation.id} disabled={sending || creating} onClick={() => { setSelected(conversation.id); setDraft('');setDrawer(false);onChat?.(); }}>{conversation.title}</button><Popover label={`会话操作 ${conversation.title}`} trigger={<Icon name="more"/>} className="history-menu-trigger" menu disabled={sending||creating}>{close=><><button type="button" role="menuitem" onClick={()=>{close();setNewTitle(conversation.title);setManagement({kind:'rename',conversation});}}>重命名</button><button type="button" role="menuitem" onClick={()=>{close();setManagement({kind:'archive',conversation});}}>归档会话</button></>}</Popover></li>)}</ul>
+      {!conversations.length && !loading ? <p>暂无会话，创建后开始对话。</p> : null}</section>
     </aside>
-    <div className="chat-panel">
-      <div className="chat-heading"><h2>{activeTool==='chat'||activeTool==='ppt'?'AI 对话':'辅助工作区'}</h2><button disabled={sending || creating} onClick={() => setRefresh(value => value + 1)}>重新加载历史</button></div>
+    <main className="chat-panel">
+      <header className="workspace-top"><div className="workspace-title"><button ref={sidebarToggle} type="button" className="icon-button" aria-label="展开侧栏" aria-controls="workspace-sidebar" aria-expanded={narrow?drawer:sidebarOpen} onClick={()=>{if(narrow)setDrawer(v=>!v);else setSidebarOpen(v=>!v);}}><Icon name="panel"/></button><h1 title={title}>{title}</h1></div><button type="button" className="icon-button" title="重新加载历史" aria-label="重新加载历史" disabled={sending || creating} onClick={() => setRefresh(value => value + 1)}><Icon name="refresh"/></button></header>
+      {connection}
       {error ? <p className="chat-error" role="alert">{error}</p> : null}
       {children}
       <PresentationPanel visible={activeTool==='ppt'} refresh={refresh}/>
       <div className="chat-surface" hidden={activeTool!=='chat'}>
       <div ref={scroller} onScroll={()=>{if(!loading&&scroller.current)stickToBottom.current=scroller.current.scrollHeight-scroller.current.clientHeight-scroller.current.scrollTop<100;}} className="chat-messages" aria-label="聊天消息" aria-busy={loading || sending || pending}>
         {loading ? <p>正在加载历史…</p> : null}
-        {!loading&&!selected?<div className="chat-empty"><h2>从一个项目问题开始</h2><p>先创建对话，再按需使用知识库、会议、记忆、搜索与PPT。</p><button type="button" disabled={creating} onClick={()=>{void create();}}>创建第一段对话</button></div>:null}
-        {!loading && selected && !messages.length ? <p>发送第一条消息。历史保存在云端数据库中。</p> : null}
+        {!loading&&(!selected||!messages.length)?<div className="chat-empty"><div className="empty-symbol"><Icon name="chat"/></div><h2>今天有什么可以帮你？</h2><p>{selected?'问一个问题，或添加资料开始讨论。':'通过导航「新建会话」，开始一次新的讨论。'}</p></div>:null}
         {messages.map(message => <article className={`chat-message ${message.role}`} key={message.id} aria-label={message.role === 'user' ? '用户消息' : 'AI 消息'}>
-          <strong>{message.role === 'user' ? '你' : 'ContextPilot'}</strong>
           <div className="message-content">{message.status === 'processing' ? '正在生成回复…' : message.status === 'failed' ? `回复失败（${message.errorCode || 'UNKNOWN'}），原消息已保存。` : message.model==='ppt-job' ? (pptJobs.some(j=>j.assistantMessageId===message.id)?null:'正在恢复PPT任务状态…') : <AnswerContent text={message.content} compactWeb={message.webSources.length>0}/>}</div>
-          {pptJobs.filter(j=>j.assistantMessageId===message.id).map(job=><PresentationCard key={job.id} job={job} onRetry={()=>{void retryPpt(job.id);}}/>)}
+          {pptJobs.filter(j=>j.assistantMessageId===message.id).map(job=><PresentationCard key={job.id} job={job} requestTitle={messages.find(m=>m.role==='user'&&m.clientRequestId===message.clientRequestId)?.content} onRetry={()=>{void retryPpt(job.id);}}/>)}
           {message.status==='failed'?<button type="button" disabled={sending||loading} onClick={()=>{const question=messages.find(m=>m.role==='user'&&m.clientRequestId===message.clientRequestId);if(question)setDraft(question.content);}}>重新编辑问题（不会自动重试）</button>:null}
           {message.webSources.length>0?<p className="web-links">参考来源：{message.webSources.filter((s,i,a)=>a.findIndex(p=>p.url.split('#')[0]===s.url.split('#')[0])===i).slice(0,3).map(s=><a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer"> {s.title} </a>)}</p>:null}
           {message.webSources.map((source, i) => <details className="citation" key={`${source.id}-${i}`}><summary>网页 [{source.id}] {source.title} · {source.quote ? '已引用' : '仅检索'}</summary><a href={source.url} target="_blank" rel="noopener noreferrer">{source.url}</a><p>查询时间：{source.queriedAt}{source.publishedAt ? ` · 发布时间：${source.publishedAt}` : ''}</p>{source.quote ? <blockquote>{source.quote}</blockquote> : null}<p>{source.summary}</p></details>)}
@@ -155,20 +177,21 @@ export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:s
         </article>)}
         {sending ? <p role="status">正在处理搜索（如需）并生成、保存回复，请稍候…</p> : null}
       </div>
-      <form onSubmit={event => { void send(event); }}>
-        <ChatAttachments scopeKey={selected} context={presentationContext} onChange={setPresentationContext} onBusy={setContextBusy} disabled={sending||creating||!selected} />
+      <form ref={form} className="chat-composer" onSubmit={event => { void send(event); }}>
         {pptError&&messages.some(m=>m.model==='ppt-job')?<p role="alert">{pptError}</p>:null}
-        <label>联网搜索 <select aria-label="联网搜索模式" value={searchMode} onChange={e => setSearchMode(e.target.value as typeof searchMode)} disabled={sending || creating}><option value="auto">自动</option><option value="required">必须联网</option><option value="off">关闭</option></select></label>
+        <div className="composer-box"><ChatAttachments scopeKey={selected} context={presentationContext} onChange={setPresentationContext} onBusy={setContextBusy} disabled={disabled||!selected} settings={<>
+        <label>联网搜索 <select aria-label="联网搜索模式" value={searchMode} onChange={e => setSearchMode(e.target.value as typeof searchMode)} disabled={disabled}><option value="auto">自动</option><option value="required">必须联网</option><option value="off">关闭</option></select></label>
         <label className="knowledge-toggle"><input type="checkbox" checked={knowledgeMode} onChange={event => setKnowledgeMode(event.target.checked)} disabled={creating || sending} /> 使用 PDF 知识库</label>
         {knowledgeMode?<small role="status">当前仅检索 PDF，不召回长期记忆；查询记忆时请关闭此开关并关闭联网。</small>:null}
         {knowledgeMode?<><label>问答 PDF 范围<select aria-label="问答 PDF 范围" value={pdfScope} onChange={e=>setPdfScope(e.target.value as typeof pdfScope)}><option value="all">全部有效知识库</option><option value="selected">仅选中的 PDF</option></select></label>{pdfScope==='selected'?<label>问答 PDF 文件<select multiple aria-label="问答 PDF 文件" value={documentIds} onChange={e=>setDocumentIds(Array.from(e.target.selectedOptions,o=>o.value))}>{documents.map(d=><option key={d.id} value={d.id}>{d.filename}</option>)}</select></label>:null}</>:null}
-        <label htmlFor="chat-input">消息</label>
-        <textarea id="chat-input" value={draft} onChange={event => setDraft(event.target.value)} maxLength={4000} rows={3} disabled={!selected || creating || sending || loading || pending} placeholder="输入消息，开始多轮对话…" />
-        <div className="composer-actions"><small>{knowledgeMode ? `${pdfScope==='all'?'全库':'仅选定资料'} PDF 问答 · +选择的附件用于本次输出` : '普通对话 · 自动召回历史记忆 · 联网按所选模式 · 仅输入公共短查询'}</small><button type="submit" disabled={!selected || !draft.trim() || creating || sending || loading || pending || contextBusy}>发送消息</button></div>
+        </>} toolState={<>{searchMode!=='auto'?<span className="tool-state">{searchMode==='required'?'联网已启用':'联网关闭'}</span>:null}{knowledgeMode?<span className="tool-state">{pdfScope==='all'?'知识库':'指定 PDF'}问答</span>:null}</>} toolbarEnd={<button className="send-button" type="submit" title="发送消息（Enter）" aria-label="发送消息" disabled={!selected || !draft.trim() || creating || sending || loading || pending || contextBusy}>{sending||pending?<span className="spinner" aria-label="正在生成"/>:<Icon name="arrow"/>}</button>}>
+        <label className="sr-only" htmlFor="chat-input">消息</label>
+        <textarea ref={textarea} id="chat-input" value={draft} onChange={event => setDraft(event.target.value)} onCompositionStart={()=>{composing.current=true;}} onCompositionEnd={()=>{composing.current=false;}} onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing&&!composing.current&&event.keyCode!==229){event.preventDefault();form.current?.requestSubmit();}}} maxLength={4000} rows={1} disabled={!selected || creating || sending || loading || pending} placeholder="向 ContextPilot 提问" />
+        </ChatAttachments></div>
       </form>
       </div>
-    </div>
-  </section><ActionDialog open={Boolean(management)} title={management?.kind==='rename'?'重命名会话':'删除会话（归档）'} description={management?.kind==='rename'?'修改标题，不改变对话内容。':'从历史列表和新的记忆检索中移除；保留消息、历史引用和PPT文件，不执行物理删除。'} onClose={()=>setManagement(null)} onConfirm={async()=>{
+    </main>
+  </section><ActionDialog open={Boolean(management)} title={management?.kind==='rename'?'重命名会话':'归档会话'} description={management?.kind==='rename'?'修改标题，不改变对话内容。':'从历史列表和新的记忆检索中移除；保留消息、历史引用和PPT文件，不执行物理删除。'} onClose={()=>setManagement(null)} onConfirm={async()=>{
     if(!management)return;const {conversation,kind}=management;
     await request(`/conversations/${conversation.id}`,kind==='rename'?{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({title:newTitle})}:{method:'DELETE'});
     if(kind==='archive'&&selected===conversation.id){setSelected(null);setMessages([]);}setRefresh(v=>v+1);

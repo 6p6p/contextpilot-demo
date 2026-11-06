@@ -4,6 +4,7 @@ import { healthSchema, type Health } from '../../../shared/health';
 import { ChatWorkspace } from './ChatWorkspace';
 import {KnowledgeLibrary} from './KnowledgeLibrary';
 import { MeetingPanel } from './MeetingPanel';
+import {Icon} from './Icon';
 
 
 export function App() {
@@ -31,17 +32,9 @@ export function App() {
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [attempt]);
 
-  return <div className="workspace ui-v2">
-    <aside className="sidebar"><a className="brand" href="#" onClick={e=>{e.preventDefault();setTool('chat');}}>ContextPilot<span>AI 决策助手</span></a>
-      <nav aria-label="工作台模块">{[['chat','对话'],['knowledge','知识库'],['meetings','会议与待办'],['memory','长期记忆'],['ppt','PPT 文件']].map(([key,label])=><button key={key} type="button" aria-pressed={tool===key} onClick={()=>setTool(key)}>{label}</button>)}</nav>
-      <div className="sidebar-foot">私有演示工作区 · 邮件发送关闭</div>
-    </aside>
-    <main><header className="workspace-top"><h1>AI 决策助手</h1><div className="connection" role="status"><strong>{error?'后端连接失败':health?'后端已连接':'正在检查后端…'}</strong>{health?.database==='not_configured'?<span>数据库未配置</span>:null}<button onClick={()=>setAttempt(v=>v+1)}>重新检查</button></div></header>
-      <ChatWorkspace activeTool={tool} onChat={()=>setTool('chat')}>
+  return <ChatWorkspace activeTool={tool} onChat={()=>setTool('chat')} navigation={<nav aria-label="工作台模块">{([['chat','对话','chat'],['knowledge','知识库','file'],['meetings','会议与待办','meeting'],['memory','长期记忆','memory'],['ppt','PPT 文件','slides']] as const).map(([key,label,icon])=><button key={key} type="button" aria-pressed={tool===key} onClick={()=>setTool(key)}><Icon name={icon}/><span>{label}</span></button>)}</nav>} connection={error||health?.database==='not_configured'?<div className="connection-error" role="status"><span>{error?'无法连接服务，请重试。':'数据库未配置，暂时无法保存对话。'}</span><button onClick={()=>setAttempt(v=>v+1)}>重新检查</button></div>:null}>
         <section className="tool-view" hidden={tool!=='knowledge'}><KnowledgeLibrary/></section>
         <section className="tool-view" hidden={tool!=='meetings'}><MeetingPanel/></section>
         <section className="tool-view" hidden={tool!=='memory'}><MemoryPanel/></section>
-      </ChatWorkspace>
-    </main>
-  </div>;
+      </ChatWorkspace>;
 }

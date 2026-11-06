@@ -1,0 +1,4 @@
+export function Icon({name}:{name:'chat'|'file'|'meeting'|'memory'|'slides'|'panel'|'new'|'plus'|'arrow'|'more'|'refresh'|'close'}){
+ const paths={chat:'M4 5h16v11H9l-5 4V5Z',file:'M7 3h7l4 4v14H7V3Zm7 0v5h4M10 12h5m-5 4h5',meeting:'M5 5h14v15H5V5Zm3-3v6m8-6v6M5 10h14m-10 4h2m2 0h2',memory:'M9 4a3 3 0 0 0-5 3 4 4 0 0 0 0 7 3 3 0 0 0 5 4m6-14a3 3 0 0 1 5 3 4 4 0 0 1 0 7 3 3 0 0 1-5 4M9 3v18m6-18v18M5 9h4m6 6h4',slides:'M3 4h18v13H3V4Zm9 13v4m-4 0h8M7 12l3-3 3 2 4-4',panel:'M3 4h18v16H3V4Zm6 0v16',new:'m15 4 5 5M5 19l4-1L21 6l-4-4L5 14v5ZM3 7v14h14',plus:'M12 5v14M5 12h14',arrow:'m6 12 6-6 6 6m-6-6v14',more:'M5 12h.01M12 12h.01M19 12h.01',refresh:'M20 7v5h-5M4 17v-5h5m-4-4a8 8 0 0 1 13-3l2 3M4 16l2 3a8 8 0 0 0 13-3',close:'m6 6 12 12M6 18 18 6'};
+ return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={name==='more'?3:1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]}/></svg>;
+}

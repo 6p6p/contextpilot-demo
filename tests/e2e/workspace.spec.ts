@@ -24,20 +24,18 @@ test('workspace displays health from the actual backend', async ({ page }) => {
   }
   const response = await responsePromise;
   expect(await response.json()).toMatchObject({ service: 'contextpilot-api', database: 'not_configured' });
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('AI 决策助手');
-  await expect(page.getByRole('status')).toContainText('后端已连接');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('ContextPilot');
+  await expect(page.getByText('后端已连接')).toHaveCount(0);
   await expect(page.getByRole('status')).toContainText('数据库未配置');
   await expect(page.getByRole('button',{name:'添加上下文'})).toBeVisible();
   await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);await expect(page.getByRole('button',{name:'解锁 PPT',exact:true})).toHaveCount(0);
 
   await page.unroute('**/api/demo-session');
   await expect(page.getByRole('button',{name:'添加上下文'})).toBeVisible();
-  await expect(page.getByLabel('联网搜索模式')).toHaveValue('auto');
-  await page.getByLabel('联网搜索模式').selectOption('off');
-  await expect(page.getByLabel('联网搜索模式')).toHaveValue('off');
+  await expect(page.getByRole('button',{name:'添加上下文'})).toBeDisabled();
   await page.screenshot({ path: 'test-results/workspace-desktop.png', fullPage: true });
   await page.getByRole('button', { name: '重新检查' }).click();
-  await expect(page.getByRole('status')).toContainText('后端已连接');
+  await expect(page.getByRole('status')).toContainText('数据库未配置');
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   expect(errors).toEqual([]);
@@ -46,8 +44,8 @@ test('workspace displays health from the actual backend', async ({ page }) => {
     for(const [path,type,size] of [['/api/documents?filename=x.pdf','application/pdf',6*1024*1024+1],['/api/meetings?filename=x.txt','text/plain',1024*1024+1]] as const){
       const r=await page.request.post(path,{headers:{'content-type':type},data:Buffer.alloc(size)});expect(r.status()).toBe(413);
     }
-    await page.goto('/interview');await expect(page.getByRole('heading',{level:1})).toContainText('AI 决策助手');
-    await page.reload();await expect(page.getByRole('heading',{level:1})).toContainText('AI 决策助手');
+    await page.goto('/interview');await expect(page.getByRole('heading',{level:1})).toContainText('ContextPilot');
+    await page.reload();await expect(page.getByRole('heading',{level:1})).toContainText('ContextPilot');
     await page.getByRole('button',{name:'退出 Demo',exact:true}).click();await expect(page.getByLabel('Demo 访问口令')).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
     expect((await page.request.get('/api/conversations')).status()).toBe(401);
@@ -72,14 +70,14 @@ test('V1.3 chat native PPT attachments, progress, failures and restored download
  await page.goto('/');if(process.env.DEMO_ACCESS_KEY){await page.getByLabel('Demo 访问口令').fill(process.env.DEMO_ACCESS_KEY);await page.getByRole('button',{name:'进入 Demo',exact:true}).click();}
  await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);await expect(page.getByLabel('PPT 主题')).toHaveCount(0);
  await page.locator('#chat-input').fill('生成5页团队沟通培训PPT');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect.poll(()=>inputs.length).toBe(1);
- expect(inputs[0].presentationContext).toMatchObject({meetingId:null,documentIds:[],useMemory:false,webQuery:null});await expect(page.getByText('等待生成 · 5 页')).toBeVisible();jobs[0].status='ready';await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();
+ expect(inputs[0].presentationContext).toMatchObject({meetingId:null,documentIds:[],useMemory:false,webQuery:null});await expect(page.getByText('PPTX · 5 页 · 等待生成')).toBeVisible();jobs[0].status='ready';await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();
  await page.getByRole('button',{name:'添加上下文'}).click();await page.getByLabel('附件上传 PDF').setInputFiles({name:'附件上传.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-UI-STUB')});
- await page.getByRole('button',{name:'移除附件 附件上传.pdf',exact:true}).click();await page.getByLabel('选择PDF ORCHID-7421项目.pdf').check();await page.getByLabel('附件会议').selectOption(id);
- await page.getByRole('button',{name:'移除会议附件'}).click();await page.getByLabel('附件会议').selectOption(id);await page.getByRole('button',{name:'关闭上下文'}).click();
+ await page.keyboard.press('Escape');await page.getByRole('button',{name:'移除附件 附件上传.pdf',exact:true}).click();await page.getByRole('button',{name:'添加上下文'}).click();await page.getByLabel('选择PDF ORCHID-7421项目.pdf').check();await page.getByLabel('附件会议').selectOption(id);
+ await page.keyboard.press('Escape');await page.getByRole('button',{name:'移除会议附件'}).click();await page.getByRole('button',{name:'添加上下文'}).click();await page.getByLabel('附件会议').selectOption(id);await page.getByRole('button',{name:'关闭上下文'}).click();
  await page.locator('#chat-input').fill('根据刚才选择的PDF和会议生成10页管理汇报PPT');await page.getByRole('button',{name:'发送消息',exact:true}).click();await expect.poll(()=>inputs.length).toBe(2);
- expect(inputs[1].presentationContext).toMatchObject({meetingId:id,documentIds:[pdf],useMemory:false});await expect(page.getByText('合成失败证据（PPT_TEST_FAILURE）')).toBeVisible();
- await page.reload();await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();await expect(page.getByText('合成失败证据（PPT_TEST_FAILURE）')).toBeVisible();await expect(page.getByRole('button',{name:'添加上下文'})).toBeVisible();
- await page.screenshot({path:'test-results/chat-native-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(page.getByText('合成失败证据（PPT_TEST_FAILURE）')).toBeInViewport();const sendBox=await page.getByRole('button',{name:'发送消息',exact:true}).boundingBox();expect(sendBox&&sendBox.y+sendBox.height<=844).toBeTruthy();await page.screenshot({path:'test-results/chat-native-mobile.png',fullPage:true});
+ expect(inputs[1].presentationContext).toMatchObject({meetingId:id,documentIds:[pdf],useMemory:false});await expect(page.getByText('合成失败证据')).toBeVisible();
+ await page.reload();await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();await expect(page.getByText('合成失败证据')).toBeVisible();await expect(page.getByRole('button',{name:'添加上下文'})).toBeVisible();
+ await page.screenshot({path:'test-results/chat-native-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await expect(page.getByText('合成失败证据')).toBeInViewport();const sendBox=await page.getByRole('button',{name:'发送消息',exact:true}).boundingBox();expect(sendBox&&sendBox.y+sendBox.height<=844).toBeTruthy();await page.screenshot({path:'test-results/chat-native-mobile.png',fullPage:true});
 });
 
 test('completed meeting exposes draft entry and confirmation stays separate from sending (UI fixture)',async({page})=>{
@@ -100,6 +98,8 @@ test('completed meeting exposes draft entry and confirmation stays separate from
   await page.getByRole('link',{name:'查看邮件草稿（确认不发送）'}).click();
   await expect(page.getByLabel('草稿主题')).toHaveValue('合成风险草稿');
   await expect(page.getByRole('heading',{name:'邮件草稿',exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:/邮件草稿 · v/})).toHaveCount(0);
+  await page.screenshot({path:'test-results/final-meeting-desktop.png'});
+  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'test-results/final-meeting-mobile.png'});await page.setViewportSize({width:1280,height:720});
   await expect(page.getByRole('button',{name:'确认此版本（不发送）'})).toBeDisabled();
   await expect(page.getByRole('button',{name:'发送此版本…'})).toBeDisabled();
   await page.getByRole('button',{name:'忽略 / 移除待办'}).click();
@@ -131,15 +131,15 @@ test('chat Markdown, reading position, rename/archive confirmation and PDF remov
   await scroller.evaluate(e=>{e.scrollTop=15;e.dispatchEvent(new Event('scroll',{bubbles:true}));});
   const reloaded=page.waitForResponse(r=>r.url().endsWith(`/conversations/${id}/messages`));await page.getByRole('button',{name:'重新加载历史'}).click();await reloaded;
   await expect(scroller).toHaveAttribute('aria-busy','false');expect(await scroller.evaluate(e=>e.scrollTop)).toBeLessThan(100);
-  await page.getByRole('button',{name:'重命名 合成项目会话'}).click();await page.getByLabel('会话名称').fill('更新的项目标题');await page.getByRole('dialog').getByRole('button',{name:'确认',exact:true}).click();await expect(page.getByRole('button',{name:'重命名 更新的项目标题'})).toBeVisible();
-  await page.getByRole('button',{name:'删除 更新的项目标题'}).click();await page.getByRole('dialog').getByRole('button',{name:'取消',exact:true}).click();expect(archived).toBe(false);
+  await page.getByRole('button',{name:'会话操作 合成项目会话'}).click();await page.getByRole('menuitem',{name:'重命名'}).click();await page.getByLabel('会话名称').fill('更新的项目标题');await page.getByRole('dialog').getByRole('button',{name:'确认',exact:true}).click();await expect(page.getByRole('button',{name:'会话操作 更新的项目标题'})).toBeAttached();
+  await page.getByRole('button',{name:'会话操作 更新的项目标题'}).click();await page.getByRole('menuitem',{name:'归档会话'}).click();await page.getByRole('dialog').getByRole('button',{name:'取消',exact:true}).click();expect(archived).toBe(false);
   await page.screenshot({path:'test-results/chat-v2-desktop.png',fullPage:true});
   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(await page.getByRole('region',{name:'Markdown 表格'}).evaluate(e=>e.scrollWidth>e.clientWidth)).toBe(true);await expect.poll(async()=>{const box=await page.locator('#chat-input').boundingBox();return Boolean(box&&box.y+box.height<=844);}).toBe(true);expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+2)).toBe(true);await page.screenshot({path:'test-results/chat-v2-mobile.png',fullPage:true});
-  await page.getByRole('button',{name:'删除 更新的项目标题'}).click();await page.getByRole('dialog').getByRole('button',{name:'确认',exact:true}).click();await expect(page.getByText('暂无会话，创建后开始对话。')).toBeVisible();
+  await page.getByRole('button',{name:'展开侧栏'}).click();await page.getByRole('button',{name:'会话操作 更新的项目标题'}).click();await page.getByRole('menuitem',{name:'归档会话'}).click();await page.getByRole('dialog').getByRole('button',{name:'确认',exact:true}).click();await expect(page.getByText('暂无会话，创建后开始对话。')).toBeVisible();
   await page.getByRole('button',{name:'知识库',exact:true}).click();await page.getByRole('button',{name:'移除文件',exact:true}).click();await page.getByRole('dialog',{name:'移除 PDF'}).getByRole('button',{name:'确认',exact:true}).click();await expect(page.getByText('尚无已上传文件。')).toBeVisible();
-  await page.getByRole('button',{name:'长期记忆',exact:true}).click();delayRefresh=true;
+  await page.getByRole('button',{name:'展开侧栏'}).click();await page.getByRole('button',{name:'长期记忆',exact:true}).click();delayRefresh=true;
   await page.getByRole('button',{name:'刷新记忆',exact:true}).click();await expect(page.getByRole('button',{name:'刷新中…'})).toBeDisabled();releaseRefresh();
   await expect(page.getByRole('button',{name:'刷新记忆',exact:true})).toBeEnabled();await expect(page.getByText(/^已刷新 /)).toBeVisible();
-  await page.getByRole('button',{name:'PPT 文件',exact:true}).click();await expect(page.getByRole('heading',{name:'PPT 历史文件',exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'下载 PPTX'})).toHaveAttribute('href',`/api/presentations/${id}/download`);
-  await page.reload();await page.getByRole('button',{name:'PPT 文件',exact:true}).click();await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);
+  await page.getByRole('button',{name:'展开侧栏'}).click();await page.getByRole('button',{name:'PPT 文件',exact:true}).click();await expect(page.getByRole('heading',{name:'PPT 历史文件',exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'下载 PPTX'})).toHaveAttribute('href',`/api/presentations/${id}/download`);
+  await page.reload();await page.getByRole('button',{name:'展开侧栏'}).click();await page.getByRole('button',{name:'PPT 文件',exact:true}).click();await expect(page.getByRole('link',{name:'下载 PPTX'})).toBeVisible();await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);
 });
