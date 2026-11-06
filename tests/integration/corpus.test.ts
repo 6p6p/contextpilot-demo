@@ -239,8 +239,9 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
   testCase('T08', 'PPT plan/file, concurrent workers, recovery, immutable version and process restart', async () => {
     const detail = await meetingService.detail(run.roots.meetings[0]);
     const todo = detail.todos.find(t => t.task === analysis.actions[0].task)!;
+    const storedTodo = (await database.db.select().from(schema.meetingTodos).where(eq(schema.meetingTodos.id,todo.id)))[0];
     const savedMemory = (await memory().list()).memories[0];
-    pptSources = structuredClone(goldenSources).map(s => s.id === 'P' ? { ...s, locator: { documentId: run.roots.documents[0], page: 2 } } : s.id === 'O' ? { ...s, locator: { documentId: run.roots.documents[1], page: 1 } } : s.id === 'T' ? { ...s, owner: todo.owner, dueDate: todo.dueDate, locator: { todoId: todo.id, todoVersion: todo.version } } : s.id === 'L' ? { ...s, locator: { memoryId: savedMemory.id, evidence: savedMemory.sources[0].evidence } } : s.id === 'M' ? { ...s, locator: { meetingId: run.roots.meetings[0], evidence: detail.risks[0].evidence } } : s);
+    pptSources = structuredClone(goldenSources).map(s => s.id === 'P' ? { ...s, locator: { documentId: run.roots.documents[0], page: 2 } } : s.id === 'O' ? { ...s, locator: { documentId: run.roots.documents[1], page: 1 } } : s.id === 'T' ? { ...s, owner: todo.owner, dueDate: todo.dueDate, locator: { todoId: todo.id, todoVersion: todo.version, meetingId:storedTodo.meetingId,status:todo.status,userEdited:storedTodo.userEdited } } : s.id === 'L' ? { ...s, locator: { memoryId: savedMemory.id, evidence: savedMemory.sources[0].evidence } } : s.id === 'M' ? { ...s, locator: { meetingId: run.roots.meetings[0], evidence: detail.risks[0].evidence } } : s);
     const planner = vi.fn(async () => ({ model: 'CORPUS-STUB-PPT', content: JSON.stringify({ content: plan(5).slides.slice(1, -1).map(s => ({ items: s.items })) }) }));
     const config = { PPT_SCOPE: run.scope, PPT_MAX_TOKENS: 8192 };
     const ppt = createPresentationService(database, storage, { complete: planner }, async () => pptSources, config);
@@ -278,8 +279,14 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
     expect((await database.db.select().from(schema.documentChunks).where(inArray(schema.documentChunks.documentId, run.roots.documents))).length).toBeGreaterThan(0);
   });
   testCase('M03','chat PPT generation with no attachments and selected document/meeting uses real persisted pipeline',async()=>{
-    const plainModel=stub({content:Array.from({length:3},()=>({items:[{kind:'recommendation',text:'建议通过复述确认双方理解一致',sourceIds:[]}]}))});
-    const selectedModel:ChatModel={async complete(history){const payload=JSON.parse([...history].reverse().find(h=>h.role==='user')!.content);const pool=payload.untrustedSources.filter((s:any)=>['pdf','meeting_risk','todo'].includes(s.kind)&&s.quoteOptions.some((q:string)=>q.length<=88));expect(['pdf','meeting_risk','todo'].every(kind=>pool.some((s:any)=>s.kind===kind))).toBe(true);const chosen=['pdf','meeting_risk','todo'].map(kind=>pool.find((s:any)=>s.kind===kind));return {model:'CORPUS-STUB-V13',content:JSON.stringify({content:Array.from({length:8},(_,i)=>({items:[{kind:'quote',sourceId:chosen[i%3].id,quote:chosen[i%3].quoteOptions.find((q:string)=>q.length<=88)}]}))})};}};
+    const plainModel=stub({content:Array.from({length:3},()=>({items:[{kind:'recommendation',text:'沟通时通过复述确认双方理解一致',sourceIds:[]}]}))});
+    const selectedModel:ChatModel={async complete(history){
+      const payload=JSON.parse([...history].reverse().find(h=>h.role==="user")!.content);
+      const pool=payload.untrustedSources.filter((s:any)=>["pdf","meeting_risk","todo"].includes(s.kind)&&s.quoteOptions.length);
+      expect(["pdf","meeting_risk","todo"].every(kind=>pool.some((s:any)=>s.kind===kind))).toBe(true);
+      const content=payload.contentSlots.map((slot:any,i:number)=>({items:slot.requiredQuotes?.length?slot.requiredQuotes.map((q:any)=>({kind:"quote",sourceId:q.sourceId,quote:q.quote})):[{kind:"recommendation",text:"建议核实资料中的交付依赖并同步进展",sourceIds:[]}]}));
+      return {model:"CORPUS-STUB-V131",content:JSON.stringify({content})};
+    }};
     const collector=createPresentationSources(database,null,null,null);
     for(const [count,model,context] of [[5,plainModel,{}],[10,selectedModel,{documentIds:[run.roots.documents[0]] as string[],meetingId:run.roots.meetings[0]}]] as const){
       const ppt=createPresentationService(database,storage,model,collector,{PPT_SCOPE:run.scope,PPT_MAX_TOKENS:8192});
@@ -290,7 +297,23 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
       else expect(detail.sources?.find(s=>s.kind==='todo'&&s.owner==='林岚')).toMatchObject({owner:'林岚',dueDate:'2026-11-09',locator:{userEdited:true}});
     }
   });
+  testCase('M04','a manual todo changed during model planning prevents stale PPT publication',async()=>{
+    const todo=(await database.db.select().from(schema.meetingTodos).where(eq(schema.meetingTodos.meetingId,run.roots.meetings[0]))).find(t=>t.userEdited)!;
+    const planner=vi.fn(async(history:Parameters<ChatModel['complete']>[0])=>{
+      const input=JSON.parse(history.find(m=>m.role==='user')!.content);
+      const content=input.contentSlots.map((slot:any)=>({items:slot.requiredQuotes?.length?slot.requiredQuotes.map((q:any)=>({kind:'quote',sourceId:q.sourceId,quote:q.quote})):[{kind:'recommendation',text:'建议继续核实接口依赖并同步风险',sourceIds:[]}]}));
+      // Only this Run's own synthetic todo is edited. No historical business row.
+      await database.db.update(schema.meetingTodos).set({dueDate:'2026-11-10',version:todo.version+1,updatedAt:new Date()}).where(eq(schema.meetingTodos.id,todo.id));
+      return {model:'CORPUS-STUB-CONCURRENT-EDIT',content:JSON.stringify({content})};
+    });
+    const ppt=createPresentationService(database,storage,{complete:planner},createPresentationSources(database,null,null,null),{PPT_SCOPE:run.scope,PPT_MAX_TOKENS:8192});
+    await createChatService(database,stub('unused'),null,null,null,ppt).send(run.roots.conversations[0],{content:'根据所选PDF和会议生成10页管理汇报PPT，保留人工待办',clientRequestId:randomUUID(),presentationContext:{documentIds:[run.roots.documents[0]],meetingId:run.roots.meetings[0],useMemory:false,webQuery:null}});
+    await ppt.processOne();const job=(await ppt.list())[0];
+    expect(planner).toHaveBeenCalledTimes(1);expect(job).toMatchObject({status:'failed',errorCode:'PPT_TODO_SOURCE_CHANGED'});
+    await expect(ppt.download(job.id)).rejects.toMatchObject({code:'PPT_NOT_READY'});
+  });
   testCase('M01','authenticated archive/rename/remove/ignore retain old evidence and files',async()=>{
+    const objectsBefore=structuredClone(run.objects);
     const key='synthetic-management-access-1234567890';
     const app=Fastify();registerDemoAccess(app,parseEnv({NODE_ENV:'test',DEMO_ACCESS_KEY:key}));registerManagementRoutes(app,database);
     app.setErrorHandler((e,_r,reply)=>reply.code(e instanceof PublicError?e.statusCode:500).send({code:e instanceof PublicError?e.code:'TEST_ERROR'}));
@@ -324,10 +347,11 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
       expect(collected.filter(s=>s.kind==='pdf').some(s=>s.locator.documentId===document)).toBe(false);
       const download=createPresentationService(database,storage,stub('unused'),async()=>[],{PPT_SCOPE:run.scope,PPT_MAX_TOKENS:8192});
       expect(digest((await download.download(pptId)).bytes)).toBe(row.sha256);
-      expect(run.objects).toHaveLength(9);
+      expect(run.objects).toEqual(objectsBefore);
     }finally{await app.close();}
   });
   testCase('M02','V1.2 selected PDF scope and meeting archive preserve history, drafts and downloads',async()=>{
+    const objectsBefore=structuredClone(run.objects);
     const retrieve=createRetriever(database,embedder,0.5),selected=run.roots.documents[1],removed=run.roots.documents[0];
     expect(await retrieve('项目',[])).toEqual([]);expect(await retrieve('项目',[removed])).toEqual([]);
     const scoped=await retrieve('项目',[selected]);expect(scoped.length).toBeGreaterThan(0);expect(scoped.every(s=>s.documentId===selected)).toBe(true);
@@ -350,7 +374,7 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
       }finally{await independent.pool.end();}
       // Only this run's pre-registered meeting; prove new worker claims exclude archives.
       await database.db.update(schema.meetings).set({status:'uploaded',attempts:0}).where(eq(schema.meetings.id,meetingId));
-      expect(await meetingService.processOne()).toBe(false);expect(run.objects).toHaveLength(9);
+      expect(await meetingService.processOne()).toBe(false);expect(run.objects).toEqual(objectsBefore);
     }finally{await app.close();}
   });
 });

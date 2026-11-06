@@ -83,8 +83,8 @@ export async function renderPresentation(plan:PptPlan,sources:PptSource[],topic:
           let label:string,body:string;
           if(item.kind==='quote') {
             const source=sources.find(s=>s.id===item.sourceId)!;
-            label=`${source.classification==='analysis'?'来源分析':source.classification==='recommendation'?'来源建议':'来源陈述'} [${source.id}]${source.riskLevel?` · 风险评估：${({low:'低',medium:'中',high:'高',critical:'严重'})[source.riskLevel]}`:''}`;
-            body=item.quote;
+            label=`${source.locator.discussionCategory==='proposal'?'来源提议（非正式决定）':source.classification==='analysis'?'来源分析':source.classification==='recommendation'?'来源建议':'来源陈述'} [${source.id}]${source.riskLevel?` · 风险评估：${({low:'低',medium:'中',high:'高',critical:'严重'})[source.riskLevel]}`:''}`;
+            body=item.quote+(source.kind==='todo'?`\n负责人：${source.owner??'未提供'} · 截止：${source.dueDate??'未提供'}`:'');
           } else {label=item.kind==='analysis'?'分析判断':item.kind==='recommendation'?'建议':'资料不足';body=item.text;}
           text(label,0.8,y,11.5,0.34,14,'label',item.kind==='quote'&&sources.find(s=>s.id===item.sourceId)?.riskLevel?'9C4F2B':'2D7369',true);
           text(body,0.8,y+0.4,11.5,1.08,20,'body');

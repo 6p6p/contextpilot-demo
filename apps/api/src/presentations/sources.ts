@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql, inArray } from 'drizzle-orm';
 import { presentationContextSchema, pptSourceSchema, type PptSource } from '../../../../shared/presentations.js';
 import { conversations, messages, meetings, meetingAnalyses, meetingRisks, meetingTodos, riskEvidence, presentationJobs as jobs } from '../db/schema.js';
 import type { presentationJobs } from '../db/schema.js';
@@ -35,7 +35,9 @@ export function createPresentationSources(database:Database,_retrieve:ReturnType
       if(!analysis)throw new PublicError(409,'PPT_MEETING_NOT_READY','会议分析不可用。');
       const locator={meetingId:meeting.id,analysisId:analysis.id,version:analysis.version};
       const result=normalizeMeetingDiscussion(analysis.result,meeting.transcript);
-      for(const fact of [result.topic,result.meetingDate,result.location,...result.participants,...result.decisions].filter(f=>f!==null))add({kind:'meeting',title:meeting.filename,text:fact.value,locator:{...locator,evidence:fact.evidence}});
+      for(const fact of [result.topic,result.meetingDate,result.location,...result.participants].filter(f=>f!==null))add({kind:'meeting',title:meeting.filename,text:fact.value,locator:{...locator,evidence:fact.evidence}});
+      for(const fact of result.decisions)add({kind:'meeting',title:meeting.filename,text:fact.value,locator:{...locator,discussionCategory:'decision',evidence:fact.evidence}});
+      for(const fact of result.topics.filter(f=>f.category==='proposal'&&f.scope!=='background'))add({kind:'meeting',title:meeting.filename,text:fact.value,locator:{...locator,discussionCategory:'proposal',evidence:fact.evidence}});
       const risks=await database.db.select().from(meetingRisks).where(eq(meetingRisks.analysisId,analysis.id));
       for(const risk of risks) {
         const evidence=await database.db.select().from(riskEvidence).where(eq(riskEvidence.riskId,risk.id));
@@ -76,4 +78,16 @@ export function createPresentationSources(database:Database,_retrieve:ReturnType
     if(sources.length>48||JSON.stringify(sources).length>36000)throw new PublicError(422,'PPT_SOURCE_LIMIT','来源超过单次上下文上限，请缩小主题或减少来源范围。');
     return officialWebSources(sources);
   };
+}
+
+// Re-read only explicitly selected todo IDs. A persisted source snapshot is evidence,
+// not authority to publish stale/ignored content after a user edit during planning.
+export async function assertCurrentPresentationTodos(database:{db:Pick<Database['db'],'select'>},sources:PptSource[],lock=false){
+ const selected=sources.filter(s=>s.kind==='todo');if(!selected.length)return;
+ const ids=selected.map(s=>String(s.locator.todoId));
+ const query=database.db.select().from(meetingTodos).where(inArray(meetingTodos.id,ids));
+ const rows=await (lock?query.for('share'):query);
+ for(const s of selected){const row=rows.find(r=>r.id===s.locator.todoId);
+  if(!row||row.dismissedAt||row.meetingId!==s.locator.meetingId||row.version!==s.locator.todoVersion||row.task!==s.text||row.owner!==s.owner||row.dueDate!==s.dueDate||row.status!==s.locator.status)throw new PublicError(409,'PPT_TODO_SOURCE_CHANGED','已选待办在规划期间发生变化或被忽略，请复核后创建新任务；未发布旧内容。');
+ }
 }

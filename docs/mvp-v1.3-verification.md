@@ -1,6 +1,8 @@
 # MVP v1.3 — 搜索与聊天原生PPT
 
-2026-11-06。无付费API/邮件调用，不Push/部署/清理，Corpus Golden不变。
+MVP v1.3.1：依据下述真实失败完成定向离线修复，原失败证据和结论保留；修复后的真实搜索/两份PPT尚未复测，不能标为Live通过。实现、分层测试和三项复测入口见[v1.3.1记录](mvp-v1.3.1-verification.md)。本文件此前未提交的真实验收报告与本轮一并提交。
+
+2026-11-06。以下 Part A/B 为本地实现历史；文末“经批准的最终真实验收”更新当前状态。真实搜索 FAIL；两份真实 PPT 文件链路 PASS、业务内容 FAIL；原生软件打开 NOT_RUN。0011 已经批准执行。不Push/部署/清理，Corpus Golden不变。
 
 ## Part A
 
@@ -71,3 +73,94 @@ UI浏览器fixture覆盖：`+`上传/选中/移除、会议移除与重选、无
 不Push/部署/真实邮件/自动清理；邮件false。Phase3偶发上传500仍观察。**本地自动化修复已完成；扩展页数迁移及真实业务验收仍有明确待授权项，MVP v1.3不能标作Live正式通过。**
 
 主要文件：搜索`search/{service,synthesis}.ts`；PPT`presentations/{documents,sources,service,intent,routes}.ts`及shared/config；前端`ChatAttachments.tsx`、`ChatWorkspace.tsx`、只读`PresentationPanel.tsx`及CSS；0011/快照/受控脚本；`search-v13.test.ts`、`ppt-v13.test.ts`、数据库M03与生产E2E。React检查已按既有清单复核，未新增框架或依赖。
+
+## 经批准的最终真实验收 — 2026-11-06
+
+本节取代上文“0011未批准/真实API未运行”的当前状态，不改写先前离线证据。验收对象为 `dfa56ac` / `0adab65`，本轮只执行迁移、验收与记录，**没有修改业务代码、校验规则、模型提示或固定预期**。未重试模型，未补造来源，未重新渲染修正内容。
+
+### 范围与 Worker 隔离
+
+Run ID：`587aa9f5-c61b-4ab3-ab90-6fb6e4fc684f`。批准上限 DeepSeek 4 / Tavily Basic 2 / Embedding 0 / PPT 2 / ¥3。先读取官方费率与只读余额/用量接口，DeepSeek余额满足上限，Tavily剩余额度满足2个Basic credit；不充值、不开通资源。执行前再次确认 `EMAIL_DELIVERY_ENABLED=false`。
+
+旧部署基线 `85adc7c` 与本地 PPT Worker 均以 `PPT_SCOPE`、Storage origin、bucket 精确过滤领取、过期恢复和带token写回。本轮新建随机128-bit Scope（完整值只留本地Manifest），确认与本地配置及全部既有任务Scope不同；已运行旧Worker的启动环境不会取得之后生成的新值，因此不会领取本轮任务。没有读取或修改Railway环境；该结论以已检查的旧Worker精确匹配代码及进程环境不动态改变为依据，不冒充云端运行状态探测。
+
+本地 `127.0.0.1:3183` 验收进程使用真实已构建React界面、Demo认证、聊天/PPT路由、服务与数据库/Storage/模型适配器；列表只读限定到本轮会话及选定材料。**不启动全应用后台Worker**，仅对新Scope的两个队列任务各手动调用一次现有 `processOne()`，无记忆/会议/文件/邮件Worker，无Embedding。这样避免启动旧业务队列或自动重试消费额度。此为受控真实业务链路验收，不是未经限制的完整生产启动Live E2E；无资料上传或资料重新分析。
+
+### 0011：PASS（真实 PostgreSQL）
+
+实际命令（PowerShell）：`$env:APPROVE_PPT_BUDGET_0011='1'; node --import tsx scripts/migrate-ppt-page-budget.ts`。
+
+脚本验证迁移父版本0010和固定迁移集合，在Drizzle事务中仅替换 `presentation_page_count_check`。迁移前后旧任务整行hash一致；最终只读复核68条既有任务均未改变，原页数最小5/最大10、不兼容行0。当前约束为 `CHECK (((page_count >= 3) AND (page_count <= 30)))`。未改PPT内容/任务历史，未删除/重置数据。旧版原5–10页读写兼容；旧规划器对未来>10页仍不兼容，本轮任务仅5/10页且Scope隔离，不能据此宣称旧公网版本已支持3–30页。应用默认资源上限仍20页。
+
+证据：`.acceptance/mvp-v1.3/migration-receipt.json`；本轮Manifest的旧任务hash和 `final-audit.json` 的页数/兼容性核查。
+
+### 真实搜索：FAIL（已联网，未完成回答）
+
+使用用户批准的完整 Active/Maintenance 问题、required模式。真实 Tavily Basic 2次（主查询+一次有界补搜），各返回HTTP200/1 credit；DeepSeek实际1次，返回有效JSON、finish_reason=stop，7058输入/763输出tokens。原始快照每次5条，均为Node.js官方域名，包括 [英文版本状态页](https://nodejs.org/en/about/previous-releases)、[中文状态页](https://nodejs.org/zh-cn/about/previous-releases)和官方发布索引。补搜有多个同页锚点；现有服务确有锚点/相同正文去重，不能把它们计为独立支持票数。部分摘要同时有v26 Current、v24/v22泛称LTS和博客26.13.0 LTS；仅泛称LTS不能证明Active/Maintenance细分。
+
+**实际失败阶段是 `search/synthesis.ts` 的结构校验，不是已证实的“生命周期冲突”**：模型给出7个claims（schema最多6），第一个claim有7条evidence（最多4）。`SEARCH_INVALID_CITATION` 在来源ID解析、逐字引用和独立语义复核之前抛出，复核模型未调用。模型claims中还直接写URL，若进入下一阶段会触发既有禁止自行输出链接的门禁；没有关闭该约束绕过。`search/service.ts` 的规划提示给出了结构示例，却未声明这两个数组上限和正文URL禁用规则，是本次可由代码与原始输出确认的协议缺口；模型仍不能从当前摘要确认两个阶段，修复协议也不等于证据问题已解决。
+
+失败assistant消息：`07e98640-4420-4ccb-8472-b57ba612a9ab`，status=failed、content为空、`SEARCH_INVALID_CITATION`、webSources为空。刷新及独立进程重启后失败记录恢复。**没有成功回答或持久化成功引用，不将诚实缺口或HTTP200算业务PASS**。数据库请求/完成窗口 `2026-11-06T04:39:13.466Z`–`04:39:31.451Z`（北京时间12:39）；未成功显示每条来源查询时间，故该验收项FAIL。原始Tavily快照无应用侧queriedAt，不能事后用文件时间冒充精确查询时间。原始模型输出含约04:39 UTC的时间说明，仅属未发布输出。
+
+脱敏诊断：`stage=synthesis_schema; code=SEARCH_INVALID_CITATION; claims=7/max6; claims[0].evidence=7/max4; review=NOT_RUN`。来源选择全为任务对应官方域，非官方排除0；失败前无逐项语义支持/冲突裁决结果。完整真实响应保留在忽略目录 `search-{1,2}-response.json` / `llm-1-response.json`，另有 `search-result.json` / `search-receipt.json` / 刷新截图；不将未经验证的输出作为答案引用。
+
+### PPT-A：文件链路 PASS，业务内容 FAIL
+
+真实输入：“生成 5 页中文 PPT，主题《如何提高团队沟通效率》，面向企业新员工。”未选PDF/会议，记忆/搜索关闭。来源只有用户要求；真实DeepSeek1次，827输入/205输出tokens。任务 `fefc49e6-ec06-4010-8d89-fe7664b58084`，ready，attempts=1/retries=0。无第二PPT口令，无 `PPT_PDF_EVIDENCE_MISSING`。
+
+实际PptxGenJS生成5页/36个ZIP parts，24,485 bytes，私有Storage上传、真实下载、CRC/关系/页数/尺寸校验均通过。SHA-256：`623dee47acbc6a227c6b9fe549372d98a14307542fb28e1725fe93edf55a32c6`，本地/数据库/刷新后及重启后下载一致，未登录401。
+
+内容失败：第1页标题只有“中文”。`presentations/intent.ts` 的topic取生成动词后的第一个逗号分句，清除页数/PPT后留下语言修饰词，遗漏后面的明确主题；完整用户要求仍传给了模型，不能归因于模型未收到主题。第2–3页含“建议结合新员工常见场景举例”“建议培训目标设定为”等培训创作建议，缺少所请求的实际教学内容；第4页有可用表达/倾听/反馈方法，但不能覆盖整份培训任务完成度。保留原输出，不手工改成一份通过的PPT。
+
+### PPT-B：文件链路/来源快照 PASS，业务内容 FAIL
+
+使用原真实上传Run `cee51f13-79e6-42d6-9caa-dc21b81cf079` 的 ORCHID-7421项目PDF（真实私有原件2354bytes、2页/2chunks）及已分析会议v4；先只读下载解析核对项目代号，不用CORPUS-STUB文件、不上传新资料、不调用Embedding。使用用户批准的10页完整输入。任务 `c0055f47-77f4-432e-9fd1-94dc3afdbc74`，ready，attempts=1/retries=0；DeepSeek1次，2399输入/667输出tokens。
+
+实际10页/56个ZIP parts，46,242 bytes。SHA-256：`db7a3b9e20b6be66362b1798a40b7a536716750a20cf868306352a24ec1d3639`，本地/数据库/真实Storage下载、刷新、独立进程重启后均一致，未登录401。
+
+通过项：来源仅用户要求、所选PDF和所选会议/风险/当前有效待办；未读取其他历史PDF、会议、记忆或网页。4项入选待办均为当前人工编辑版本，task/owner/dueDate/version与DB逐项一致，1项已忽略待办排除；另一待确认事项由既有规则排除。每项quote均通过生产 `verifyPlan` 完整原句/来源ID检查，PDF引用有页码，会议来源有原文/行号，notes保留源事实与人工修改版本。第4–5/7页保留“高风险不等于已确认延期、保留2026-11-20目标、不确认新上线日期”，没有把未批准改期当决定。
+
+业务失败/局限：
+
+- 第5页引用人工修改的“复核供应商交付清单”S10，但与风险混排，页面归为risk；模板只在纯todo页面显示owner/dueDate，因此正文漏掉最新负责人林岚、截止2026-11-09（备注完整保留，未误写为原会议的周宁/11-08）。第9页其他待办显示正确，不能据此宣称关键人工修改项已完整展示。
+- 第6页无范围限定地写“现有资料不足以确认风险”等固定缺口，与同一份已提供并展示的高风险证据相矛盾；现有校验只验证缺口枚举，没有验证是否与已知证据冲突。不能算内容一致性PASS。
+- 第3–4页把合成材料标记/预算/测试访问码放进进展/风险页，并有英文原句；它们真实存在于所选合成PDF，**不是来源编造**，但与中文管理汇报的相关性/组织质量不足。没有将合成测试码当真实凭据处理或改动业务事实。
+
+### 页面、UI及恢复
+
+真实浏览器在同一次Demo登录后直接由聊天发送，无PPT独立口令表单。B在 `+` 中选/移除/重选PDF及会议，附件标签、queued/planning及完成卡、文件名/页数/下载均可用。A/B刷新恢复当前会话和下载入口；结束原进程后，新只读进程重新登录，均从真实PG/Storage恢复相同文件。匿名访问A、B及一个既有历史PPT下载均401，没有公开私有对象。
+
+全部15页均从原始PPTX导入本地Artifact Tool渲染PNG，并逐页人工看图：中文可读，未见明显文本溢出/遮挡/空白页；B9表格三行完整，B10参考资料正文最多5项、其余在备注，现有长文件名被缩略，不冒充原文引用。**版式基本通过不能掩盖以上业务内容FAIL。** 渲染器不是PowerPoint/WPS；两份原生软件实际打开均 **NOT_RUN，等待用户人工确认**，不宣称已通过兼容性。
+
+验收驱动本身记录：初次A驱动因局部变量遮蔽 `process` 在登录前ReferenceError（0生成/0付费调用），修正的是忽略目录脚本。后续A已生成文件后首次刷新检查中断，保留 `a-ui-error*.json`；独立只读驱动等待异步恢复后，刷新/重启/下载均通过，没有重新入队/生成。首次用Windows CIM定位进程被环境拒绝；通过本工具原先持有的进程句柄停止，再启动只读进程成功；中间一次端口占用启动失败没有新增任务/API调用。均不作为产品PASS证据掩盖。
+
+验收服务故意未提供完整主页配置/辅助模块，真实截图可能出现整体“后端连接失败”提示；它不等于本轮已测路由/数据库失败，也不能据此宣称完整启动健康检查PASS。完整编译API健康/工作台入口由以下明确隔离的生产E2E验证。默认Scope仍保留，**本轮两份任务只在新验收Scope可见，不会自动出现在默认PPT列表**；需要复核原会话UI时，可用保留的 `node --import tsx .acceptance/mvp-v1.3-live/server.ts --readonly` 启动3183端口并用既有Demo口令登录，不能为方便访问擅改Railway或根`.env`的Scope。
+
+### 测试层级与实际命令
+
+| 检查 | 本轮结果 | 边界 |
+| --- | --- | --- |
+| `npm run check` | PASS：232测试/27文件、类型、两端生产构建 | 外部服务替身/离线，不能覆盖Live失败 |
+| `node scripts/corpus.mjs` | PASS：17项，Golden未改 | 固定快照/模型替身；真实解析渲染 |
+| `$env:PLAYWRIGHT_CHANNEL='chrome'; npm run test:e2e:production` | PASS：4项，11.9秒 | 实际编译API/Demo认证，业务UI fixture，无付费调用 |
+| 真实搜索 | FAIL | 真实PG+Tavily+DeepSeek；结构拒绝，未复核发布 |
+| PPT-A/B文件链路与恢复 | PASS：各1份 | 真实PG/DeepSeek/Supabase Storage，现有Worker手动单步 |
+| PPT-A/B业务内容 | FAIL | 上述已定位标题/内容/待办展示及缺口矛盾 |
+| 原生PowerPoint/WPS打开 | NOT_RUN | 两份原文件保留，等待用户，不计通过率 |
+
+第一次不指定channel的生产E2E因本机缺Playwright默认headless shell而在4项浏览器启动前失败；未安装额外软件，使用现有Chrome/项目已支持的环境变量后通过，不隐去首次失败。先前11项真实DB+外部STUB仍为上节历史结果，本轮未重复新增该套72条测试记录；本轮真实DB验证为上述迁移、业务写入/恢复和只读核对，不能把历史结果计为新Live全套PASS。
+
+### 用量、数据保留与人工检查
+
+实际DeepSeek **3/4**（搜索规划1、A规划1、B规划1），共输入10,284/输出1,635tokens；Tavily Basic **2/2**（2credits）；Embedding **0**、Resend **0**，真实PPT **2/2**。没有模型自动重试，剩余1次模型额度不继续使用。按[DeepSeek官方费率](https://api-docs.deepseek.com/zh-cn/quick_start/pricing/)与[Tavily Basic credit规则](https://docs.tavily.com/documentation/api-credits)预检；忽略缓存/低峰/免费额度优惠，并用¥3/百万输入、¥12/百万输出及¥0.08/Basic的保守计价，合计上界 **¥0.210472（向上取¥0.211）**，请求前累计最大预留¥0.524410，低于¥3。不是账户实际扣费账单；Tavily当时额度足够，不启用新付费。Storage本轮共上传70,727bytes，下载含只读检查/重复校验小于1MB，未新建资源/升级套餐。
+
+新增并保留：会话3、消息6、PPT任务2、私有PPT对象2；不新增PDF、会议、风险、待办、草稿、记忆或Embedding，不清理旧/失败记录。精确ID/关联/Storage对象标识只留忽略目录Manifest与 `final-audit.json`；不输出私有对象路径、Cookie或凭据到报告/公开日志。已有68条PPT整行hash变更0；所选资料只读且当前人工待办快照逐字段核对一致。没有对其他业务表做全表hash比较，不将只读检查说成完整生产审计。
+
+本地原件（不入Git）：
+
+- `.acceptance/mvp-v1.3-live/A-communication-5.pptx`
+- `.acceptance/mvp-v1.3-live/B-management-10.pptx`
+
+Windows用PowerPoint/WPS直接打开上述原件：确认无修复提示、5/10页、中文/表格/备注；重点检查A1主题、A2–3培训内容，B5人工待办与备注、B6缺口矛盾、B9待办表格。人工打开成功也不能关闭已记录的业务内容失败。逐页PNG在同目录 `render/`，完整输出及诊断均保留，不以另造文件替代失败版本。
+
+**结论：0011、文件生成/私有下载/持久化、聊天附件UI及离线回归通过；搜索及PPT内容质量仍有阻塞，MVP v1.3最终真实业务验收不通过。** 本轮停止在验收报告，不新增功能/修复，不Push、不部署、不清理、不发信，等待用户审查。Phase3偶发上传HTTP500仍为观察项。

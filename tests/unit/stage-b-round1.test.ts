@@ -29,7 +29,7 @@ it('BUG-02 chooses exact server-owned quote options; reordered IDs remain stable
   expect(result.content).toContain('结论（来源明确记载）');
   const prompt = JSON.parse((complete.mock.calls[0] as any)[0].find((m:any)=>m.role==='user').content);
   expect(prompt.untrustedSearchResults[0].id).toBe('W2');
-  expect(prompt.untrustedSearchResults[0].quoteOptions[0]).toBe(web[1].summary);
+  expect(prompt.untrustedSearchResults[0].quoteOptions[0]).toEqual({quoteIndex:0,quote:web[1].summary});
 });
 it('BUG-02 unknown IDs, invalid option indexes and rewritten legacy quotes still fail closed', async () => {
   for (const c of [{ id: 'W99', quoteIndex: 0 }, { id: 'W2', quoteIndex: 999 }, { id: 'W2', quote: 'Node.js invented latest version' }]) {

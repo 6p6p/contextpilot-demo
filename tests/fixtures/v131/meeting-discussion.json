@@ -1,0 +1,158 @@
+{
+  "provenance": "Synthetic ORCHID saved analysis excerpt; proposal missing from previous PPT snapshot.",
+  "result": {
+    "risks": [
+      {
+        "type": "delivery",
+        "level": "high",
+        "impact": "若供应商接口延迟交付，可能阻塞联调并影响2026-11-20试点准备。",
+        "evidence": [
+          {
+            "quote": "供应商接口尚未交付，可能影响联调；会议评估为高风险，并非已确认延期。",
+            "endLine": 4,
+            "startLine": 4
+          }
+        ],
+        "description": "供应商接口尚未交付，可能影响联调；会议评估为高风险，但并非已确认延期。"
+      }
+    ],
+    "topic": {
+      "value": "ORCHID-7421 AI 系统交付评审",
+      "evidence": {
+        "quote": "合成企业青禾科技：ORCHID-7421 AI 系统交付评审。",
+        "endLine": 1,
+        "startLine": 1
+      }
+    },
+    "topics": [
+      {
+        "value": "供应商接口尚未交付，可能影响联调",
+        "evidence": {
+          "quote": "供应商接口尚未交付，可能影响联调；会议评估为高风险，并非已确认延期。",
+          "endLine": 4,
+          "startLine": 4
+        }
+      },
+      {
+        "value": "补充验收指标，负责人和截止日期待定",
+        "evidence": {
+          "quote": "补充验收指标，负责人和截止日期待定。",
+          "endLine": 6,
+          "startLine": 6
+        }
+      },
+      {
+        "value": "提议将试点改为2026-11-27，尚未获批",
+        "evidence": {
+          "quote": "提议将试点改为2026-11-27，尚未获批。",
+          "endLine": 8,
+          "startLine": 8
+        },
+        "category": "proposal"
+      },
+      {
+        "value": "另一项目ORCHID-FIN的林岚负责财务，地点苏州，时间2026-12-01",
+        "evidence": {
+          "quote": "同名区分：另一项目ORCHID-FIN的林岚负责财务，地点苏州，时间2026-12-01。",
+          "endLine": 10,
+          "startLine": 10
+        },
+        "scope": "background"
+      }
+    ],
+    "actions": [
+      {
+        "task": "复核供应商交付清单",
+        "owner": "周宁",
+        "dueDate": "2026-11-08",
+        "evidence": {
+          "quote": "周宁负责复核供应商交付清单，截止日期2026-11-08。",
+          "endLine": 5,
+          "startLine": 5
+        }
+      },
+      {
+        "task": "补充验收指标",
+        "owner": null,
+        "dueDate": null,
+        "evidence": {
+          "quote": "补充验收指标，负责人和截止日期待定。",
+          "endLine": 6,
+          "startLine": 6
+        }
+      },
+      {
+        "task": "先核实依赖",
+        "owner": null,
+        "dueDate": null,
+        "evidence": {
+          "quote": "决策：保留2026-11-20试点目标，先核实依赖，不确认新的上线日期。",
+          "endLine": 7,
+          "startLine": 7
+        }
+      },
+      {
+        "task": "协调ORCHID-7421试点准备",
+        "owner": "林岚",
+        "dueDate": "2026-11-06",
+        "evidence": {
+          "quote": "长期记忆：林岚于2026-11-06在南京协调ORCHID-7421试点准备。",
+          "endLine": 9,
+          "startLine": 9
+        }
+      }
+    ],
+    "location": {
+      "value": "Nanjing Room Cedar-17",
+      "evidence": {
+        "quote": "会议日期：2026-11-05；地点：Nanjing Room Cedar-17。",
+        "endLine": 2,
+        "startLine": 2
+      }
+    },
+    "decisions": [
+      {
+        "value": "保留2026-11-20试点目标，先核实依赖，不确认新的上线日期",
+        "evidence": {
+          "quote": "决策：保留2026-11-20试点目标，先核实依赖，不确认新的上线日期。",
+          "endLine": 7,
+          "startLine": 7
+        }
+      }
+    ],
+    "meetingDate": {
+      "value": "2026-11-05",
+      "evidence": {
+        "quote": "会议日期：2026-11-05；地点：Nanjing Room Cedar-17。",
+        "endLine": 2,
+        "startLine": 2
+      }
+    },
+    "participants": [
+      {
+        "value": "Dr. Mira Qiao",
+        "evidence": {
+          "quote": "项目总负责人：Dr. Mira Qiao；交付协调人：林岚；供应商接口人：周宁。",
+          "endLine": 3,
+          "startLine": 3
+        }
+      },
+      {
+        "value": "林岚",
+        "evidence": {
+          "quote": "项目总负责人：Dr. Mira Qiao；交付协调人：林岚；供应商接口人：周宁。",
+          "endLine": 3,
+          "startLine": 3
+        }
+      },
+      {
+        "value": "周宁",
+        "evidence": {
+          "quote": "项目总负责人：Dr. Mira Qiao；交付协调人：林岚；供应商接口人：周宁。",
+          "endLine": 3,
+          "startLine": 3
+        }
+      }
+    ]
+  }
+}

@@ -55,7 +55,7 @@ it('FIX02 A plain 5-page topic reads no historical sources and produces a valid 
  const collect=createPresentationSources(fakeDatabase([[{ordinal:3}]]),vi.fn(),null,null);
  const sources=await collect({request:'生成5页团队沟通培训PPT',conversationId:id,assistantMessageId:id,context:{meetingId:null,useMemory:false,webQuery:null,documentIds:[],useChat:false,knowledgeMode:false,searchMode:'off'}} as any);
  expect(sources.map(s=>s.kind)).toEqual(['request']);
- const plan=await planPresentation(model({content:['建议明确沟通目标','建议复述对方的核心诉求','建议反馈具体行为'].map(text=>({items:[{kind:'recommendation',text,sourceIds:[]}]}))}),'生成5页团队沟通培训PPT',5,sources,8192);
+ const plan=await planPresentation(model({content:['沟通时先说明结论和期望回应','复述核心诉求并确认沟通双方理解一致','沟通结束时记录行动事项并及时反馈'].map(text=>({items:[{kind:'recommendation',text,sourceIds:[]}]}))}),'生成5页团队沟通培训PPT',5,sources,8192);
  const rendered=await renderPresentation(plan,sources,'团队沟通培训',new Date(at));
  expect((await validatePptx(rendered.bytes,5)).slideCount).toBe(5);
 });
@@ -89,7 +89,7 @@ it('FIX01 localized official catalogues without patch numbers trigger bounded su
 it('FIX01 long status tables expose complete row quote options and associate status through table columns',async()=>{
  const row='| v26 | Lithium | 2026-04-01 | Active LTS |';
  const summary=row+'\n'+Array.from({length:32},(_,i)=>`| 历史记录${i} | 已结束支持 | 仅供历史对照 |`).join('\n');
- const m={complete:vi.fn(async(history:any[])=>{const input=JSON.parse(history.find(h=>h.role==='user').content);const s=input.untrustedSearchResults.find((s:any)=>s.id==='W1');const index=s.quoteOptions.indexOf(row);expect(index).toBeGreaterThanOrEqual(0);return {model:'MOCK',content:JSON.stringify({status:'supported',citations:[],release:{version:'26.13.0',status:'Active LTS',evidence:[{id:'W1',quoteIndex:index},{id:'W2',quoteIndex:0}]}})};})};
+ const m={complete:vi.fn(async(history:any[])=>{const input=JSON.parse(history.find(h=>h.role==='user').content);const s=input.untrustedSearchResults.find((s:any)=>s.id==='W1');const index=s.quoteOptions.findIndex((q:any)=>q.quote===row);expect(index).toBeGreaterThanOrEqual(0);return {model:'MOCK',content:JSON.stringify({status:'supported',citations:[],release:{version:'26.13.0',status:'Active LTS',evidence:[{id:'W1',quoteIndex:index},{id:'W2',quoteIndex:0}]}})};})};
  const search=vi.fn(async()=>[source('W1',summary),source('W2','Node.js v26.13.0 has been released.','https://nodejs.org/en/blog/release/v26.13.0','2026-11-05')]);
  const result=await answerWithSearch(q,{search},m);expect(result.content).toContain('基于官方证据归纳');expect(search).toHaveBeenCalledTimes(1);
 });

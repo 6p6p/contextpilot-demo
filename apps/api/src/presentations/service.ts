@@ -11,7 +11,8 @@ import {publicQuery} from '../search/service.js';
 import type { SearchMode } from '../../../../shared/search.js';
 import { PublicError } from '../errors.js';
 import { parsePresentationRequest } from './intent.js';
-import type { SourceCollector } from './sources.js';
+import {assertCurrentPresentationTodos,type SourceCollector} from './sources.js';
+import {verifyContentQuality} from './coverage.js';
 import { planPresentation, verifyPlan, validatePresentationContent } from './plan.js';
 import { renderPresentation, PPTX_MIME, validatePptx } from './render.js';
 type Tx=Parameters<Parameters<Database['db']['transaction']>[0]>[0];
@@ -70,8 +71,11 @@ export function createPresentationService(database:Database,storage:PrivateStora
       try {
         const sources=job.sources??await collect(job);if(shutdown?.aborted)return false;
         if(!job.sources)await save({sources});
-        const plan=job.plan??(job.context.planningOutput?validatePresentationContent(job.context.planningOutput,job.pageCount,sources):await planPresentation(model,job.request,job.pageCount,sources,env.PPT_MAX_TOKENS,async output=>{await save({context:{...job.context,planningOutput:output}});}));if(shutdown?.aborted)return false;
+        await assertCurrentPresentationTodos(database,sources);
+        const brief={...parsePresentationRequest(job.request,{maxPages:30}),pageCount:job.pageCount};
+        const plan=job.plan??(job.context.planningOutput?validatePresentationContent(job.context.planningOutput,job.pageCount,sources,brief):await planPresentation(model,job.request,job.pageCount,sources,env.PPT_MAX_TOKENS,async output=>{await save({context:{...job.context,planningOutput:output}});}));if(shutdown?.aborted)return false;
         verifyPlan(plan,job.pageCount,sources);
+        verifyContentQuality(plan,sources,brief);
         await save({plan,status:'rendering'});
         const {bytes}=await renderPresentation(plan,sources,job.topic,job.createdAt);const sha256=hash(bytes);
         if(job.sha256&&job.sha256!==sha256)throw new PublicError(409,'PPT_RENDER_VERSION_MISMATCH','已记录文件与当前渲染不一致，禁止覆盖。');
@@ -82,7 +86,11 @@ export function createPresentationService(database:Database,storage:PrivateStora
         const actual=await storage.find(job.objectKey);
         if(!actual||actual.length!==bytes.length||hash(actual)!==sha256)throw new PublicError(502,'PPT_UPLOAD_UNVERIFIED','上传内容未通过读取校验，未发布下载。');
         if(shutdown?.aborted)return false;
-        await save({status:'ready',leaseUntil:null,errorCode:null,errorMessage:null});
+        await db.transaction(async tx=>{
+          await assertCurrentPresentationTodos({db:tx},sources,true);
+          const result=await tx.update(presentationJobs).set({status:'ready',leaseUntil:null,errorCode:null,errorMessage:null,updatedAt:new Date()}).where(owns).returning({id:presentationJobs.id});
+          if(!result.length)throw new PublicError(409,'PPT_LEASE_LOST','PPT 任务租约已失效。');
+        });
       }catch(error){if(shutdown?.aborted)return false;await db.update(presentationJobs).set({status:'failed',errorCode:error instanceof PublicError?error.code:'PPT_GENERATION_FAILED',errorMessage:error instanceof PublicError?error.message:'PPT 生成失败，请查看配置并人工决定是否重试。',leaseUntil:null,updatedAt:new Date()}).where(owns);}
       finally{clearInterval(heartbeat);}
       return true;

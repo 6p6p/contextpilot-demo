@@ -1,6 +1,8 @@
 # Development tasks
 
-MVP v1.3：搜索逐项归纳/证据复核、聊天 + 附件和消息内PPT任务卡已本地实现；选定PDF直接读取，不再依赖主题向量匹配。check/test232、Corpus17、真实DB+外部替身11项通过。真实API未调用；0011页数约束放宽尚待授权，当前共享库仍5–10，3–30结构/12页渲染仅离线通过。不Push/部署/清理/发信。证据与待授权项见[记录](docs/mvp-v1.3-verification.md)。
+MVP v1.3.1：三个验收阻塞完成本地定向修复，新增16项固定回归；check/test248、Corpus17、共享PG+外部全STUB12及Chrome生产E2E4通过。首轮数据库旧对象数断言失败已如实保留，复跑未改Golden且既有行hash变化0。两Run共150条新增合成记录全部保留，无清理/DDL/外部付费调用。修复后的搜索/PPT-A/PPT-B Live及PowerPoint/WPS打开仍NOT_RUN，原v1.3失败报告和文件不覆盖；三项复测入口见[记录](docs/mvp-v1.3.1-verification.md)。提交后停止，不Push/部署。
+
+MVP v1.3真实验收（2026-11-06）：0011已获批执行，旧68条PPT任务hash不变，CHECK改为3–30（应用默认上限20）。真实搜索FAIL（模型归纳结构超限，未发布回答）；两份真实5/10页PPT的私有Storage、下载、刷新/重启及鉴权PASS，但标题/培训内容、人工待办正文展示和缺口矛盾使业务内容FAIL。PowerPoint/WPS实际打开NOT_RUN，原文件保留。实际DeepSeek3、Tavily Basic2、Embedding/Resend0，保守费用≤¥0.211。check232、Corpus17、Chrome生产E2E4通过（业务UI为fixture）；先前真实DB+外部STUB11项非本轮Live全套。当前仍有业务阻塞，不Push/部署/清理/发信，详见[记录](docs/mvp-v1.3-verification.md)。
 
 MVP v1.2：FIX-01–07已完成本地修复：官方多源证据与有界补搜、单次Demo登录/PPT可选选材、GFM表格、会议归档与讨论分类、邮件状态标题、PDF限定范围。check/test217、Corpus17、真实DB+外部替身10、生产浏览器E2E4通过；0010经批准仅新增meetings.archived_at。真实模型/搜索/PPT A/B仍待人工验收，未Push/部署/清理/发信。根因、真实快照边界、Run ID、迁移及复测见[本轮记录](docs/mvp-v1.2-verification.md)。
 

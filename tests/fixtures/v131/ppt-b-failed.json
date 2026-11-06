@@ -1,0 +1,622 @@
+{
+  "provenance": "Redacted synthetic ORCHID acceptance; exact model content/quotes retained. Historical failed original remains unchanged outside Git.",
+  "request": "根据所选 PDF 和会议内容，生成 10 页中文管理层汇报 PPT。包括项目概况、交付风险、人工修改后的待办和行动建议。区分事实、分析和建议，不得把未批准的改期当作正式决定。",
+  "plan": {
+    "slides": [
+      {
+        "kind": "cover",
+        "items": []
+      },
+      {
+        "kind": "summary",
+        "items": [
+          {
+            "kind": "quote",
+            "quote": "ORCHID-7421 AI 系统交付评审",
+            "sourceId": "S2"
+          },
+          {
+            "kind": "quote",
+            "quote": "2026-11-05；地点：Nanjing Room Cedar-17。",
+            "sourceId": "S3"
+          },
+          {
+            "kind": "quote",
+            "quote": "项目总负责人：Dr. Mira Qiao；交付协调人：林岚；供应商接口人：周宁。",
+            "sourceId": "S5"
+          }
+        ]
+      },
+      {
+        "kind": "progress",
+        "items": [
+          {
+            "kind": "quote",
+            "quote": "保留2026-11-20试点目标，先核实依赖，不确认新的上线日期",
+            "sourceId": "S8"
+          },
+          {
+            "kind": "quote",
+            "quote": "Project reference: ORCHID-7421.",
+            "sourceId": "S14"
+          },
+          {
+            "kind": "quote",
+            "quote": "This document contains synthetic facts for testing only.",
+            "sourceId": "S14"
+          }
+        ]
+      },
+      {
+        "kind": "risk",
+        "items": [
+          {
+            "kind": "quote",
+            "quote": "The launch access code for project ORCHID-7421 is AMBER-593.",
+            "sourceId": "S15"
+          },
+          {
+            "kind": "quote",
+            "quote": "The approved budget for project ORCHID-7421 is CNY 137420.",
+            "sourceId": "S15"
+          },
+          {
+            "kind": "quote",
+            "quote": "供应商接口尚未交付，可能影响联调；会议评估为高风险，并非已确认延期。",
+            "sourceId": "S9"
+          }
+        ]
+      },
+      {
+        "kind": "risk",
+        "items": [
+          {
+            "kind": "quote",
+            "quote": "若供应商接口延迟交付，可能阻塞联调并影响2026-11-20试点准备。",
+            "sourceId": "S9"
+          },
+          {
+            "kind": "quote",
+            "quote": "决策：保留2026-11-20试点目标，先核实依赖，不确认新的上线日期。",
+            "sourceId": "S8"
+          },
+          {
+            "kind": "quote",
+            "quote": "复核供应商交付清单",
+            "sourceId": "S10"
+          }
+        ]
+      },
+      {
+        "kind": "gaps",
+        "items": [
+          {
+            "kind": "gap",
+            "text": "未提供负责人或明确时间"
+          },
+          {
+            "kind": "gap",
+            "text": "现有资料不足以确认风险"
+          },
+          {
+            "kind": "gap",
+            "text": "需要补充原始资料后再判断"
+          }
+        ]
+      },
+      {
+        "kind": "background",
+        "items": [
+          {
+            "kind": "analysis",
+            "text": "供应商接口未交付是核心交付风险，需优先核实依赖",
+            "sourceIds": [
+              "S9",
+              "S8"
+            ]
+          },
+          {
+            "kind": "analysis",
+            "text": "高风险不等于已确认延期，改期尚未获批准",
+            "sourceIds": [
+              "S9",
+              "S8"
+            ]
+          },
+          {
+            "kind": "analysis",
+            "text": "预算与访问码仅见于合成测试资料，引用需谨慎",
+            "sourceIds": [
+              "S15"
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "background",
+        "items": [
+          {
+            "kind": "recommendation",
+            "text": "建议逐项核对供应商交付清单并记录缺失项",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议明确接口联调的验收口径后再确认上线安排",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议持续跟踪风险状态并同步管理层",
+            "sourceIds": []
+          }
+        ]
+      },
+      {
+        "kind": "todos",
+        "items": [
+          {
+            "kind": "quote",
+            "quote": "补充验收指标",
+            "sourceId": "S11"
+          },
+          {
+            "kind": "quote",
+            "quote": "协调ORCHID-7421试点准备",
+            "sourceId": "S12"
+          },
+          {
+            "kind": "quote",
+            "quote": "复核并跟进风险：供应商接口尚未交付，可能影响联调，当前评估为高风险但并非已确认延期。",
+            "sourceId": "S13"
+          }
+        ]
+      },
+      {
+        "kind": "references",
+        "items": []
+      }
+    ]
+  },
+  "output": {
+    "content": [
+      {
+        "items": [
+          {
+            "kind": "quote",
+            "sourceId": "S2",
+            "quote": "ORCHID-7421 AI 系统交付评审"
+          },
+          {
+            "kind": "quote",
+            "sourceId": "S3",
+            "quote": "2026-11-05；地点：Nanjing Room Cedar-17。"
+          },
+          {
+            "kind": "quote",
+            "sourceId": "S5",
+            "quote": "项目总负责人：Dr. Mira Qiao；交付协调人：林岚；供应商接口人：周宁。"
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "kind": "quote",
+            "sourceId": "S8",
+            "quote": "保留2026-11-20试点目标，先核实依赖，不确认新的上线日期"
+          },
+          {
+            "kind": "quote",
+            "sourceId": "S14",
+            "quote": "Project reference: ORCHID-7421."
+          },
+          {
+            "kind": "quote",
+            "sourceId": "S14",
+            "quote": "This document contains synthetic facts for testing only."
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "kind": "quote",
+            "sourceId": "S15",
+            "quote": "The launch access code for project ORCHID-7421 is AMBER-593."
+          },
+          {
+            "kind": "quote",
+            "sourceId": "S15",
+            "quote": "The approved budget for project ORCHID-7421 is CNY 137420."
+          },
+          {
+            "kind": "quote",
+            "sourceId": "S9",
+            "quote": "供应商接口尚未交付，可能影响联调；会议评估为高风险，并非已确认延期。"
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "kind": "quote",
+            "sourceId": "S9",
+            "quote": "若供应商接口延迟交付，可能阻塞联调并影响2026-11-20试点准备。"
+          },
+          {
+            "kind": "quote",
+            "sourceId": "S8",
+            "quote": "决策：保留2026-11-20试点目标，先核实依赖，不确认新的上线日期。"
+          },
+          {
+            "kind": "quote",
+            "sourceId": "S10",
+            "quote": "复核供应商交付清单"
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "kind": "gap",
+            "text": "未提供负责人或明确时间"
+          },
+          {
+            "kind": "gap",
+            "text": "现有资料不足以确认风险"
+          },
+          {
+            "kind": "gap",
+            "text": "需要补充原始资料后再判断"
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "kind": "analysis",
+            "text": "供应商接口未交付是核心交付风险，需优先核实依赖",
+            "sourceIds": [
+              "S9",
+              "S8"
+            ]
+          },
+          {
+            "kind": "analysis",
+            "text": "高风险不等于已确认延期，改期尚未获批准",
+            "sourceIds": [
+              "S9",
+              "S8"
+            ]
+          },
+          {
+            "kind": "analysis",
+            "text": "预算与访问码仅见于合成测试资料，引用需谨慎",
+            "sourceIds": [
+              "S15"
+            ]
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "kind": "recommendation",
+            "text": "建议逐项核对供应商交付清单并记录缺失项",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议明确接口联调的验收口径后再确认上线安排",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议持续跟踪风险状态并同步管理层",
+            "sourceIds": []
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "kind": "quote",
+            "sourceId": "S11",
+            "quote": "补充验收指标"
+          },
+          {
+            "kind": "quote",
+            "sourceId": "S12",
+            "quote": "协调ORCHID-7421试点准备"
+          },
+          {
+            "kind": "quote",
+            "sourceId": "S13",
+            "quote": "复核并跟进风险：供应商接口尚未交付，可能影响联调，当前评估为高风险但并非已确认延期。"
+          }
+        ]
+      }
+    ]
+  },
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "request",
+      "text": "根据所选 PDF 和会议内容，生成 10 页中文管理层汇报 PPT。包括项目概况、交付风险、人工修改后的待办和行动建议。区分事实、分析和建议，不得把未批准的改期当作正式决定。",
+      "title": "用户要求（用户陈述）",
+      "locator": {
+        "conversationId": "00000000-0000-4000-8000-000000000001"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S2",
+      "kind": "meeting",
+      "text": "ORCHID-7421 AI 系统交付评审",
+      "title": "合成会议.txt",
+      "locator": {
+        "version": 4,
+        "evidence": {
+          "quote": "合成企业青禾科技：ORCHID-7421 AI 系统交付评审。",
+          "endLine": 1,
+          "startLine": 1
+        },
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S3",
+      "kind": "meeting",
+      "text": "2026-11-05",
+      "title": "合成会议.txt",
+      "locator": {
+        "version": 4,
+        "evidence": {
+          "quote": "会议日期：2026-11-05；地点：Nanjing Room Cedar-17。",
+          "endLine": 2,
+          "startLine": 2
+        },
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S4",
+      "kind": "meeting",
+      "text": "Nanjing Room Cedar-17",
+      "title": "合成会议.txt",
+      "locator": {
+        "version": 4,
+        "evidence": {
+          "quote": "会议日期：2026-11-05；地点：Nanjing Room Cedar-17。",
+          "endLine": 2,
+          "startLine": 2
+        },
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S5",
+      "kind": "meeting",
+      "text": "Dr. Mira Qiao",
+      "title": "合成会议.txt",
+      "locator": {
+        "version": 4,
+        "evidence": {
+          "quote": "项目总负责人：Dr. Mira Qiao；交付协调人：林岚；供应商接口人：周宁。",
+          "endLine": 3,
+          "startLine": 3
+        },
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S6",
+      "kind": "meeting",
+      "text": "林岚",
+      "title": "合成会议.txt",
+      "locator": {
+        "version": 4,
+        "evidence": {
+          "quote": "项目总负责人：Dr. Mira Qiao；交付协调人：林岚；供应商接口人：周宁。",
+          "endLine": 3,
+          "startLine": 3
+        },
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S7",
+      "kind": "meeting",
+      "text": "周宁",
+      "title": "合成会议.txt",
+      "locator": {
+        "version": 4,
+        "evidence": {
+          "quote": "项目总负责人：Dr. Mira Qiao；交付协调人：林岚；供应商接口人：周宁。",
+          "endLine": 3,
+          "startLine": 3
+        },
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S8",
+      "kind": "meeting",
+      "text": "保留2026-11-20试点目标，先核实依赖，不确认新的上线日期",
+      "title": "合成会议.txt",
+      "locator": {
+        "version": 4,
+        "evidence": {
+          "quote": "决策：保留2026-11-20试点目标，先核实依赖，不确认新的上线日期。",
+          "endLine": 7,
+          "startLine": 7
+        },
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S9",
+      "kind": "meeting_risk",
+      "text": "供应商接口尚未交付，可能影响联调；会议评估为高风险，但并非已确认延期。\n潜在影响：若供应商接口延迟交付，可能阻塞联调并影响2026-11-20试点准备。",
+      "title": "合成会议.txt",
+      "locator": {
+        "riskId": "00000000-0000-4000-8000-000000000004",
+        "version": 4,
+        "evidence": [
+          {
+            "id": "00000000-0000-4000-8000-000000000005",
+            "quote": "供应商接口尚未交付，可能影响联调；会议评估为高风险，并非已确认延期。",
+            "riskId": "00000000-0000-4000-8000-000000000004",
+            "endLine": 4,
+            "startLine": 4
+          }
+        ],
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "riskLevel": "high",
+      "classification": "analysis"
+    },
+    {
+      "id": "S10",
+      "kind": "todo",
+      "text": "复核供应商交付清单",
+      "owner": "林岚",
+      "title": "合成会议.txt",
+      "dueDate": "2026-11-09",
+      "locator": {
+        "origin": "meeting_action",
+        "status": "in_progress",
+        "todoId": "00000000-0000-4000-8000-000000000006",
+        "version": 4,
+        "evidence": {
+          "quote": "周宁负责复核供应商交付清单，截止日期2026-11-08。",
+          "endLine": 5,
+          "startLine": 5
+        },
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003",
+        "userEdited": true,
+        "todoVersion": 4,
+        "todoAnalysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S11",
+      "kind": "todo",
+      "text": "补充验收指标",
+      "owner": null,
+      "title": "合成会议.txt",
+      "dueDate": null,
+      "locator": {
+        "origin": "meeting_action",
+        "status": "open",
+        "todoId": "00000000-0000-4000-8000-000000000007",
+        "version": 4,
+        "evidence": {
+          "quote": "补充验收指标，负责人和截止日期待定。",
+          "endLine": 6,
+          "startLine": 6
+        },
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003",
+        "userEdited": true,
+        "todoVersion": 4,
+        "todoAnalysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S12",
+      "kind": "todo",
+      "text": "协调ORCHID-7421试点准备",
+      "owner": "林岚",
+      "title": "合成会议.txt",
+      "dueDate": "2026-11-09",
+      "locator": {
+        "origin": "meeting_action",
+        "status": "done",
+        "todoId": "00000000-0000-4000-8000-000000000008",
+        "version": 4,
+        "evidence": {
+          "quote": "长期记忆：林岚于2026-11-06在南京协调ORCHID-7421试点准备。",
+          "endLine": 9,
+          "startLine": 9
+        },
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003",
+        "userEdited": true,
+        "todoVersion": 6,
+        "todoAnalysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S13",
+      "kind": "todo",
+      "text": "复核并跟进风险：供应商接口尚未交付，可能影响联调，当前评估为高风险但并非已确认延期。",
+      "owner": null,
+      "title": "合成会议.txt",
+      "dueDate": null,
+      "locator": {
+        "origin": "risk_followup",
+        "status": "open",
+        "todoId": "00000000-0000-4000-8000-000000000009",
+        "version": 4,
+        "evidence": {
+          "quote": "供应商接口尚未交付，可能影响联调；会议评估为高风险，并非已确认延期。",
+          "endLine": 4,
+          "startLine": 4
+        },
+        "meetingId": "00000000-0000-4000-8000-000000000002",
+        "analysisId": "00000000-0000-4000-8000-000000000003",
+        "userEdited": true,
+        "todoVersion": 2,
+        "todoAnalysisId": "00000000-0000-4000-8000-000000000003"
+      },
+      "classification": "recommendation"
+    },
+    {
+      "id": "S14",
+      "kind": "pdf",
+      "text": "ContextPilot - Synthetic RAG Acceptance \nProject reference: ORCHID-7421.\nThis document contains synthetic facts for testing only. \nrag-project.pdf | Page 1 | Synthetic test data only",
+      "title": "合成项目.pdf",
+      "locator": {
+        "page": 1,
+        "sourceId": "00000000-0000-4000-8000-000000000010",
+        "selection": "explicit",
+        "documentId": "00000000-0000-4000-8000-000000000011"
+      },
+      "classification": "fact"
+    },
+    {
+      "id": "S15",
+      "kind": "pdf",
+      "text": "ContextPilot - Synthetic RAG Acceptance \nThe launch access code for project ORCHID-7421 is AMBER-593.\nThe approved budget for project ORCHID-7421 is CNY 137420. \nrag-project.pdf | Page 2 | Synthetic test data only",
+      "title": "合成项目.pdf",
+      "locator": {
+        "page": 2,
+        "sourceId": "00000000-0000-4000-8000-000000000012",
+        "selection": "explicit",
+        "documentId": "00000000-0000-4000-8000-000000000011"
+      },
+      "classification": "fact"
+    }
+  ]
+}

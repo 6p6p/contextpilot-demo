@@ -1,0 +1,243 @@
+{
+  "provenance": "Redacted public Node.js Tavily snapshots and failed DeepSeek JSON captured 2026-11-06; frozen clock is test-only, not reconstructed per-source query timestamp.",
+  "clock": "2026-11-06T04:39:14.000Z",
+  "searches": [
+    [
+      {
+        "title": "Node.js",
+        "url": "https://nodejs.org/zh-cn/blog/year-2026/page/1",
+        "summary": "Skip to content\n\n# 博客\n\n最新的 Node.js 新闻、研究案例、教程和资源。\n\n所有内容公告版本发布漏洞Migration Guides活动\n\n所有内容公告版本发布漏洞Migration Guides活动\n\nNotable V8 changes from Node.js 26 to 27 (Alpha)公告Notable V8 changes from Node.js 26 to 27 (Alpha)\n\nWednesday, November 11, 2026 Security Releases漏洞Wednesday, November 11, 2026 Security Releases\n\nNode.js 27.0.0-alpha.0.0.0 (Alpha)版本发布Node.js 27.0.0-alpha.0.0.0 (Alpha)\n\nNode.js 24.22.2 (LTS)版本发布Node.js 24.22.2 (LTS)\n\nNode.js 26.13.0 (LTS)版本发布Node.js 26.13.0 (LTS) [...] Wednesday, October 21, 2026 Security Releases漏洞Wednesday, October 21, 2026 Security Releases",
+        "publishedAt": null
+      },
+      {
+        "title": "Node.js",
+        "url": "https://nodejs.org/zh-cn/blog/all/page/1",
+        "summary": "Skip to content\n\n# 博客\n\n最新的 Node.js 新闻、研究案例、教程和资源。\n\n所有内容公告版本发布漏洞Migration Guides活动\n\n所有内容\n\n所有内容公告版本发布漏洞Migration Guides活动\n\nNotable V8 changes from Node.js 26 to 27 (Alpha)公告Notable V8 changes from Node.js 26 to 27 (Alpha)\n\nWednesday, November 11, 2026 Security Releases漏洞Wednesday, November 11, 2026 Security Releases\n\nNode.js 27.0.0-alpha.0.0.0 (Alpha)版本发布Node.js 27.0.0-alpha.0.0.0 (Alpha)\n\nNode.js 24.22.2 (LTS)版本发布Node.js 24.22.2 (LTS)\n\nNode.js 26.13.0 (LTS)版本发布Node.js 26.13.0 (LTS) [...] Wednesday, October 21, 2026 Security Releases漏洞Wednesday, October 21, 2026 Security Releases",
+        "publishedAt": null
+      },
+      {
+        "title": "Node.js",
+        "url": "https://nodejs.org/zh-cn/blog/year-2026",
+        "summary": "Skip to content\n\n# 博客\n\n最新的 Node.js 新闻、研究案例、教程和资源。\n\n所有内容公告版本发布漏洞Migration Guides活动\n\n所有内容公告版本发布漏洞Migration Guides活动\n\nNode.js 27.0.0-alpha.0.0.0 (Alpha)版本发布Node.js 27.0.0-alpha.0.0.0 (Alpha)\n\nNode.js 24.22.2 (LTS)版本发布Node.js 24.22.2 (LTS)\n\nNode.js 26.13.0 (LTS)版本发布Node.js 26.13.0 (LTS)\n\nWednesday, October 21, 2026 Security Releases漏洞Wednesday, October 21, 2026 Security Releases\n\nNode.js 26.12.1 (Current)版本发布Node.js 26.12.1 (Current)\n\nNode.js 24.22.1 (LTS)版本发布Node.js 24.22.1 (LTS)",
+        "publishedAt": "Tue, 22 Sep 2026 00:00:00 GMT"
+      },
+      {
+        "title": "Node.js — Blog",
+        "url": "https://nodejs.org/zh-cn/blog",
+        "summary": "Skip to content\n\n# 博客\n\n最新的 Node.js 新闻、研究案例、教程和资源。\n\n所有内容公告版本发布漏洞Migration Guides活动\n\n所有内容\n\n所有内容公告版本发布漏洞Migration Guides活动\n\nNode.js 27.0.0-alpha.0.0.0 (Alpha)版本发布Node.js 27.0.0-alpha.0.0.0 (Alpha)\n\nNode.js 24.22.2 (LTS)版本发布Node.js 24.22.2 (LTS)\n\nNode.js 26.13.0 (LTS)版本发布Node.js 26.13.0 (LTS)\n\nWednesday, October 21, 2026 Security Releases漏洞Wednesday, October 21, 2026 Security Releases\n\nNode.js 26.12.1 (Current)版本发布Node.js 26.12.1 (Current)\n\nNode.js 24.22.1 (LTS)版本发布Node.js 24.22.1 (LTS)",
+        "publishedAt": "Sun, 14 Apr 2019 00:00:00 GMT"
+      },
+      {
+        "title": "Node.js — Node.js 版本",
+        "url": "https://nodejs.org/zh-cn/about/previous-releases",
+        "summary": "Skip to content\n\n# Node.js 版本\n\nCommercial support for versions past the Maintenance LTS phase is available through our OpenJS Ecosystem Sustainability Program partners\n\nNode.js 的大版本在发布后的 6 个月内的时间属于 当前版本 状态，为使库作者对其进行适配。 6 个月后，奇数版本（9、11 等）将变为 不受支持 状态，偶数版本（10、12 等）将进入 活跃的LTS 状态，可正常使用。 LTS 状态代表该版本受到“长期支持”，在接下来的 30 个月内，关键错误将被及时修复。 生产环境下的应用程序应该仅使用 活跃的LTS 或 维护中的LTS 版本。\n\n## 发布计划\n\n可以通过 GitHub 了解 Node.js 的详细发版计划。\n\n## 需要特定版本分支的最新版？ [...] | Node.js | 代号 | First released | Last updated | Status |\n ---  --- \n| v26   |  | Current |  |\n| v25   |  | EOL |  |\n| v24 | Krypton |  |  | LTS |  |\n| v23   |  | EOL |  |\n| v22 | Jod |  |  | LTS |  |\n| v21   |  | EOL |  |\n| v20 | Iron |  |  | EOL |  |\n| v19   |  | EOL |  |\n| v18 | Hydrogen |  |  | EOL |  |\n| v17   |  | EOL |  |\n| v16 | Gallium |  |  | EOL |  |\n| v15   |  | EOL |  |\n| v14 | Fermium |  |  | EOL |  |\n| v13   |  | EOL |  |\n| v12 | Erbium |  |  | EOL |  |\n| v11   |  | EOL |  | [...] | v10 | Dubnium |  |  | EOL |  |\n| v9   |  | EOL |  |\n| v8 | Carbon |  |  | EOL |  |\n| v7   |  | EOL |  |\n| v6 | Boron |  |  | EOL |  |\n| v5   |  | EOL |  |\n| v4 | Argon |  |  | EOL |  |\n| v0   |  | EOL |  |",
+        "publishedAt": null
+      }
+    ],
+    [
+      {
+        "title": "Node.js — Node.js Releases",
+        "url": "https://nodejs.org/en/about/previous-releases#release-schedule",
+        "summary": "additional months of Alpha phase). LTS release status is \"long-term support\", which typically guarantees that critical bugs will be fixed for a total of 30 months. Production applications should only use Active LTS or Maintenance LTS releases. [...] Major Node.js versions enter Current release status for six months, which gives library authors time to add support for them. Historically (up to Node.js 26), odd-numbered releases (9, 11, etc.) become unsupported after six months, and even-numbered releases (10, 12, etc.) move to Active LTS status and are ready for general use. Starting with Node.js 27, the release cycle will be annual and every major version will move to LTS status after its six-month Current phase (and six additional months [...] | Node.js | Codename | First released | Last updated | Status |\n ---  --- \n| v26   |  | Current |  |\n| v25   |  | EOL |  |\n| v24 | Krypton |  |  | LTS |  |\n| v23   |  | EOL |  |\n| v22 | Jod |  |  | LTS |  |\n| v21   |  | EOL |  |\n| v20 | Iron |  |  | EOL |  |\n| v19   |  | EOL |  |\n| v18 | Hydrogen |  |  | EOL |  |\n| v17   |  | EOL |  |\n| v16 | Gallium |  |  | EOL |  |\n| v15   |  | EOL |  |\n| v14 | Fermium |  |  | EOL |  |\n| v13   |  | EOL |  |\n| v12 | Erbium |  |  | EOL |  |",
+        "publishedAt": null
+      },
+      {
+        "title": "Node.js — Node.js Releases",
+        "url": "https://nodejs.org/en/about/previous-releases#official-vs-community-installation-methods",
+        "summary": "additional months of Alpha phase). LTS release status is \"long-term support\", which typically guarantees that critical bugs will be fixed for a total of 30 months. Production applications should only use Active LTS or Maintenance LTS releases. [...] Major Node.js versions enter Current release status for six months, which gives library authors time to add support for them. Historically (up to Node.js 26), odd-numbered releases (9, 11, etc.) become unsupported after six months, and even-numbered releases (10, 12, etc.) move to Active LTS status and are ready for general use. Starting with Node.js 27, the release cycle will be annual and every major version will move to LTS status after its six-month Current phase (and six additional months",
+        "publishedAt": null
+      },
+      {
+        "title": "Node.js — Node.js Releases",
+        "url": "https://nodejs.org/en/about/previous-releases#official-installation-methods",
+        "summary": "additional months of Alpha phase). LTS release status is \"long-term support\", which typically guarantees that critical bugs will be fixed for a total of 30 months. Production applications should only use Active LTS or Maintenance LTS releases. [...] Major Node.js versions enter Current release status for six months, which gives library authors time to add support for them. Historically (up to Node.js 26), odd-numbered releases (9, 11, etc.) become unsupported after six months, and even-numbered releases (10, 12, etc.) move to Active LTS status and are ready for general use. Starting with Node.js 27, the release cycle will be annual and every major version will move to LTS status after its six-month Current phase (and six additional months [...] | Node.js | Codename | First released | Last updated | Status |\n ---  --- \n| v26   |  | Current |  |\n| v25   |  | EOL |  |\n| v24 | Krypton |  |  | LTS |  |\n| v23   |  | EOL |  |\n| v22 | Jod |  |  | LTS |  |\n| v21   |  | EOL |  |\n| v20 | Iron |  |  | EOL |  |\n| v19   |  | EOL |  |\n| v18 | Hydrogen |  |  | EOL |  |\n| v17   |  | EOL |  |\n| v16 | Gallium |  |  | EOL |  |\n| v15   |  | EOL |  |\n| v14 | Fermium |  |  | EOL |  |\n| v13   |  | EOL |  |\n| v12 | Erbium |  |  | EOL |  |",
+        "publishedAt": null
+      },
+      {
+        "title": "Node.js — Node.js Releases",
+        "url": "https://nodejs.org/en/about/previous-releases#looking-for-the-latest-release-of-a-version-branch",
+        "summary": "additional months of Alpha phase). LTS release status is \"long-term support\", which typically guarantees that critical bugs will be fixed for a total of 30 months. Production applications should only use Active LTS or Maintenance LTS releases. [...] Major Node.js versions enter Current release status for six months, which gives library authors time to add support for them. Historically (up to Node.js 26), odd-numbered releases (9, 11, etc.) become unsupported after six months, and even-numbered releases (10, 12, etc.) move to Active LTS status and are ready for general use. Starting with Node.js 27, the release cycle will be annual and every major version will move to LTS status after its six-month Current phase (and six additional months [...] | Node.js | Codename | First released | Last updated | Status |\n ---  --- \n| v26   |  | Current |  |\n| v25   |  | EOL |  |\n| v24 | Krypton |  |  | LTS |  |\n| v23   |  | EOL |  |\n| v22 | Jod |  |  | LTS |  |\n| v21   |  | EOL |  |\n| v20 | Iron |  |  | EOL |  |\n| v19   |  | EOL |  |\n| v18 | Hydrogen |  |  | EOL |  |\n| v17   |  | EOL |  |\n| v16 | Gallium |  |  | EOL |  |\n| v15   |  | EOL |  |\n| v14 | Fermium |  |  | EOL |  |\n| v13   |  | EOL |  |\n| v12 | Erbium |  |  | EOL |  |",
+        "publishedAt": null
+      },
+      {
+        "title": "Node.js — Node.js Releases",
+        "url": "https://nodejs.org/tr/about/previous-releases",
+        "summary": "additional months of Alpha phase). LTS release status is \"long-term support\", which typically guarantees that critical bugs will be fixed for a total of 30 months. Production applications should only use Active LTS or Maintenance LTS releases. [...] Major Node.js versions enter Current release status for six months, which gives library authors time to add support for them. Historically (up to Node.js 26), odd-numbered releases (9, 11, etc.) become unsupported after six months, and even-numbered releases (10, 12, etc.) move to Active LTS status and are ready for general use. Starting with Node.js 27, the release cycle will be annual and every major version will move to LTS status after its six-month Current phase (and six additional months [...] | Node.js | Codename | First released | Last updated | Status |\n ---  --- \n| v26   |  | Current |  |\n| v25   |  | EOL |  |\n| v24 | Krypton |  |  | LTS |  |\n| v23   |  | EOL |  |\n| v22 | Jod |  |  | LTS |  |\n| v21   |  | EOL |  |\n| v20 | Iron |  |  | EOL |  |\n| v19   |  | EOL |  |\n| v18 | Hydrogen |  |  | EOL |  |\n| v17   |  | EOL |  |\n| v16 | Gallium |  |  | EOL |  |\n| v15   |  | EOL |  |\n| v14 | Fermium |  |  | EOL |  |\n| v13   |  | EOL |  |\n| v12 | Erbium |  |  | EOL |  |",
+        "publishedAt": null
+      }
+    ]
+  ],
+  "output": {
+    "claims": [
+      {
+        "text": "Node.js 官方版本表把 v24（Krypton）和 v22（Jod）标为 LTS，v26 标为 Current，v20 及更早的偶数版本标为 EOL。",
+        "evidence": [
+          {
+            "id": "W5",
+            "quoteIndex": 7
+          },
+          {
+            "id": "W5",
+            "quoteIndex": 8
+          },
+          {
+            "id": "W5",
+            "quoteIndex": 9
+          },
+          {
+            "id": "W6",
+            "quoteIndex": 1
+          },
+          {
+            "id": "W6",
+            "quoteIndex": 2
+          },
+          {
+            "id": "W6",
+            "quoteIndex": 3
+          },
+          {
+            "id": "W6",
+            "quoteIndex": 4
+          }
+        ]
+      },
+      {
+        "text": "在所给官方页面片段中，未明确区分 v24 与 v22 各自属于 Active LTS 还是 Maintenance LTS，只能确认它们都是 LTS 版本线。",
+        "evidence": [
+          {
+            "id": "W5",
+            "quoteIndex": 7
+          },
+          {
+            "id": "W5",
+            "quoteIndex": 8
+          },
+          {
+            "id": "W6",
+            "quoteIndex": 2
+          },
+          {
+            "id": "W6",
+            "quoteIndex": 3
+          }
+        ]
+      },
+      {
+        "text": "Node.js 大版本发布后先进入 6 个月的 Current 状态；历史上（截至 Node.js 26）偶数版本随后进入 Active LTS，奇数版本则变为不受支持。",
+        "evidence": [
+          {
+            "id": "W6",
+            "quoteIndex": 7
+          },
+          {
+            "id": "W6",
+            "quoteIndex": 8
+          },
+          {
+            "id": "W5",
+            "quoteIndex": 4
+          }
+        ]
+      },
+      {
+        "text": "Active LTS 指处于长期支持活跃阶段的版本线，Maintenance LTS 指处于维护阶段的版本线；官方建议生产应用只使用 Active LTS 或 Maintenance LTS。",
+        "evidence": [
+          {
+            "id": "W6",
+            "quoteIndex": 5
+          },
+          {
+            "id": "W5",
+            "quoteIndex": 5
+          }
+        ]
+      },
+      {
+        "text": "LTS 通常保证关键错误在总计约 30 个月内得到修复；从 Node.js 27 起改为年度发布周期，每个大版本在 6 个月 Current 阶段后都将进入 LTS。",
+        "evidence": [
+          {
+            "id": "W6",
+            "quoteIndex": 5
+          },
+          {
+            "id": "W6",
+            "quoteIndex": 9
+          }
+        ]
+      },
+      {
+        "text": "官方版本状态页链接为 https://nodejs.org/en/about/previous-releases （英文）及其锚点 #release-schedule；中文对应页为 https://nodejs.org/zh-cn/about/previous-releases。",
+        "evidence": [
+          {
+            "id": "W6",
+            "quoteIndex": 0
+          },
+          {
+            "id": "W5",
+            "quoteIndex": 1
+          }
+        ]
+      },
+      {
+        "text": "按所给搜索结果的查询时间，本次查询发生在 2026-11-06T04:39 UTC 前后。",
+        "evidence": [
+          {
+            "id": "W6",
+            "quoteIndex": 0
+          },
+          {
+            "id": "W5",
+            "quoteIndex": 1
+          }
+        ]
+      }
+    ],
+    "issues": [
+      {
+        "kind": "insufficient",
+        "text": "来源只把 v24、v22 笼统标为 LTS，没有分别标明哪个是 Active LTS、哪个是 Maintenance LTS，因此无法从所给证据确定各自阶段。",
+        "evidence": [
+          {
+            "id": "W5",
+            "quoteIndex": 7
+          },
+          {
+            "id": "W5",
+            "quoteIndex": 8
+          },
+          {
+            "id": "W6",
+            "quoteIndex": 2
+          },
+          {
+            "id": "W6",
+            "quoteIndex": 3
+          }
+        ]
+      },
+      {
+        "kind": "insufficient",
+        "text": "部分博客页面出现“Node.js 24.22.2 (LTS)”和“Node.js 26.13.0 (LTS)”等补丁版本条目，但这些是具体发布记录，不能替代版本状态表中的 Active/Maintenance 阶段划分。",
+        "evidence": [
+          {
+            "id": "W1",
+            "quoteIndex": 8
+          },
+          {
+            "id": "W1",
+            "quoteIndex": 9
+          },
+          {
+            "id": "W3",
+            "quoteIndex": 4
+          },
+          {
+            "id": "W3",
+            "quoteIndex": 5
+          }
+        ]
+      }
+    ]
+  }
+}

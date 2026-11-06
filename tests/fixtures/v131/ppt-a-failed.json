@@ -1,0 +1,129 @@
+{
+  "provenance": "Redacted synthetic ORCHID acceptance; exact model content/quotes retained. Historical failed original remains unchanged outside Git.",
+  "request": "生成 5 页中文 PPT，主题《如何提高团队沟通效率》，面向企业新员工。",
+  "plan": {
+    "slides": [
+      {
+        "kind": "cover",
+        "items": []
+      },
+      {
+        "kind": "summary",
+        "items": [
+          {
+            "kind": "recommendation",
+            "text": "建议围绕清晰表达、主动倾听、及时反馈三个习惯展开整场沟通培训",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议结合新员工常见场景举例，让方法易于理解和上手",
+            "sourceIds": []
+          }
+        ]
+      },
+      {
+        "kind": "background",
+        "items": [
+          {
+            "kind": "recommendation",
+            "text": "建议培训目标设定为让新员工掌握表达与倾听的基本方法",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议说明高效沟通对团队协作与工作推进的价值",
+            "sourceIds": []
+          }
+        ]
+      },
+      {
+        "kind": "next",
+        "items": [
+          {
+            "kind": "recommendation",
+            "text": "建议表达时先说结论再讲要点，避免信息冗长",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议倾听时复述确认理解一致，减少误解",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议对沟通结果及时反馈并记录待办事项",
+            "sourceIds": []
+          }
+        ]
+      },
+      {
+        "kind": "references",
+        "items": []
+      }
+    ]
+  },
+  "output": {
+    "content": [
+      {
+        "items": [
+          {
+            "kind": "recommendation",
+            "text": "建议围绕清晰表达、主动倾听、及时反馈三个习惯展开整场沟通培训",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议结合新员工常见场景举例，让方法易于理解和上手",
+            "sourceIds": []
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "kind": "recommendation",
+            "text": "建议培训目标设定为让新员工掌握表达与倾听的基本方法",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议说明高效沟通对团队协作与工作推进的价值",
+            "sourceIds": []
+          }
+        ]
+      },
+      {
+        "items": [
+          {
+            "kind": "recommendation",
+            "text": "建议表达时先说结论再讲要点，避免信息冗长",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议倾听时复述确认理解一致，减少误解",
+            "sourceIds": []
+          },
+          {
+            "kind": "recommendation",
+            "text": "建议对沟通结果及时反馈并记录待办事项",
+            "sourceIds": []
+          }
+        ]
+      }
+    ]
+  },
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "request",
+      "text": "生成 5 页中文 PPT，主题《如何提高团队沟通效率》，面向企业新员工。",
+      "title": "用户要求（用户陈述）",
+      "locator": {
+        "conversationId": "00000000-0000-4000-8000-000000000001"
+      },
+      "classification": "fact"
+    }
+  ]
+}
