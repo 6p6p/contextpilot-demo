@@ -1,5 +1,7 @@
 # ContextPilot specification
 
+MVP v1.3 Part A：搜索改为逐项归纳及证据复核，锚点去重和有界补搜；check224通过，真实API未调用。Part B继续进行。见[记录](docs/mvp-v1.3-verification.md)。
+
 MVP v1.2：FIX-01–07已完成本地修复：官方多源证据与有界补搜、单次Demo登录/PPT可选选材、GFM表格、会议归档与讨论分类、邮件状态标题、PDF限定范围。check/test217、Corpus17、真实DB+外部替身10、生产浏览器E2E4通过；0010经批准仅新增meetings.archived_at。真实模型/搜索/PPT A/B仍待人工验收，未Push/部署/清理/发信。根因、真实快照边界、Run ID、迁移及复测见[本轮记录](docs/mvp-v1.2-verification.md)。
 
 MVP v1.1 Phase B：对话中心布局、安全Markdown与容器滚动、服务端会话改名/归档、PDF软移除、待办忽略/恢复、草稿复核和记忆刷新反馈已实现。0009经批准仅新增3个可空字段，旧内容校验不变。check/test199、生产E2E3、真实DB+外部替身9项通过；来源/文件保留，未执行物理清理。旧Railway结构兼容但没有新管理语义，本轮不部署。详细范围、Run ID与待人工复测见[本轮记录](docs/mvp-v1.1-verification.md)，UX状态见[backlog](docs/ux-backlog.md)。
