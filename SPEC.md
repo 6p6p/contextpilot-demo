@@ -1,5 +1,7 @@
 # ContextPilot specification
 
+MVP v1.1 Phase A：新增受约束的官方多源版本/状态归纳、会议注入行过滤/行动分类、项目绑定记忆与当前上下文优先、最新待办草稿预览及旧版本复核保护。验证与局限见[本轮记录](docs/mvp-v1.1-verification.md)；真实模型人工复测仍待完成，邮件关闭，不Push/部署。
+
 Stage B round1：记忆选择协议显式JSON/4096/non-thinking；只发布验证过的事实ID，不将reasoning内容当回答；空/结构化length响应在content校验前明确拒绝。网页优先官方候选，模型选稳定ID和服务端原文索引，旧quote模式仍逐字校验，时效/冲突约束不变。全站Demo认证状态以React Context供PPT展示，后端验证不变。PDF模式明确独占RAG；草稿仍由有风险的完成会议产生、确认不等于发送。变更与现场未验证边界见docs/stage-b-round1-fixes.md。
 
 ## Shared Supabase acceptance tracking (latest authorization)

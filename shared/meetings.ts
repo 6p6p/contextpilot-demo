@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const evidenceSchema = z.object({ startLine: z.number().int().positive(), endLine: z.number().int().positive(), quote: z.string().min(1).max(1500) });
 export const factSchema = z.object({ value: z.string().min(1).max(300), evidence: evidenceSchema });
-export const actionSchema = z.object({ task: z.string().min(1).max(300), owner: z.string().min(1).max(100).nullable(), dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(), evidence: evidenceSchema });
+export const actionSchema = z.object({ task: z.string().min(1).max(300), owner: z.string().min(1).max(100).nullable(), dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(), evidence: evidenceSchema, category:z.enum(['action','question']).optional() });
 export const riskSchema = z.object({ type: z.enum(['delivery', 'financial', 'security', 'compliance', 'operational', 'other']), level: z.enum(['low', 'medium', 'high', 'critical']), description: z.string().min(1).max(500), impact: z.string().min(1).max(500), evidence: z.array(evidenceSchema).min(1).max(5) });
 export const meetingAnalysisSchema = z.object({
   topic: factSchema.nullable(), meetingDate: factSchema.nullable(), location: factSchema.nullable(),
@@ -19,7 +19,7 @@ export const meetingDetailSchema = z.object({
   analysis: z.object({ id: z.uuid(), version: z.number(), result: meetingAnalysisSchema, model: z.string() }).nullable(),
   versions: z.array(z.object({ id: z.uuid(), version: z.number() })),
   risks: z.array(z.object({ id: z.uuid(), type: z.string(), level: z.string(), description: z.string(), impact: z.string(), evidence: z.array(evidenceSchema) })),
-  todos: z.array(z.object({ id: z.uuid(), analysisId: z.uuid(), task: z.string(), owner: z.string().nullable(), dueDate: z.string().nullable(), status: z.enum(['open', 'in_progress', 'done']), version: z.number(), origin: z.enum(['meeting_action', 'risk_followup']), evidence: evidenceSchema })),
+  todos: z.array(z.object({ id: z.uuid(), analysisId: z.uuid(), task: z.string(), owner: z.string().nullable(), dueDate: z.string().nullable(), status: z.enum(['open', 'in_progress', 'done']), version: z.number(), origin: z.enum(['meeting_action', 'risk_followup','meeting_question']), evidence: evidenceSchema })),
   draft: z.object({ id: z.uuid(), analysisId: z.uuid(), version: z.number(), recipients: z.array(z.string()), subject: z.string(), body: z.string(), state: z.enum(['draft', 'confirmed']), deliveryState: z.enum(['not_sent','queued','processing','accepted','delivered','failed','unknown']), stale: z.boolean() }).nullable(),
 });
 export type MeetingDetail = z.infer<typeof meetingDetailSchema>;

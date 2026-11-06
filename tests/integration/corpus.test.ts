@@ -155,6 +155,13 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
     expect(detail.meeting.status).toBe('ready'); expect(detail.risks[0]).toMatchObject({ level: 'high' });
     const todo = detail.todos.find(t => t.task === analysis.actions[0].task)!;
     await meetingService.updateTodo(todo.id, { version: todo.version, owner: '林岚', dueDate: '2026-11-09', status: 'in_progress' });
+    const changed=await meetingService.detail(run.roots.meetings[0]);
+    expect(changed.draft!.stale).toBe(true);
+    const originalBody=changed.draft!.body;
+    const preview=await meetingService.draftPreview(changed.draft!.id);
+    expect(preview.body).toContain('林岚');expect(preview.body).toContain('2026-11-09');
+    expect((await meetingService.detail(run.roots.meetings[0])).draft!.body).toBe(originalBody);
+    await expect(meetingService.confirmDraft(changed.draft!.id,changed.draft!.version)).rejects.toMatchObject({code:'DRAFT_TODOS_STALE'});
     const draft = await meetingService.updateDraft(detail.draft!.id, { version: detail.draft!.version, recipients: ['reviewer@example.invalid'], subject: 'CORPUS人工编辑草稿', body: '仅用于草稿确认验收，不发送。' });
     expect((await meetingService.confirmDraft(draft.id, draft.version)).sent).toBe(false);
     await meetingService.reanalyze(run.roots.meetings[0]); await meetingService.processOne();

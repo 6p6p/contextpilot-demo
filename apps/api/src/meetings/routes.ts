@@ -25,6 +25,7 @@ export function registerMeetingRoutes(app: FastifyInstance, database: Database |
   app.post('/api/meetings/:id/reanalyze', async (request, reply) => reply.code(202).send(await requireService().reanalyze(id(request.params))));
   app.patch('/api/meeting-todos/:id', async request => ({ todo: await requireService().updateTodo(id(request.params), request.body) }));
   app.patch('/api/email-drafts/:id', async request => ({ draft: await requireService().updateDraft(id(request.params), request.body) }));
+  app.get('/api/email-drafts/:id/latest-preview',async request=>requireService().draftPreview(id(request.params)));
   app.post('/api/email-drafts/:id/confirm', async request => {
     const { version } = z.object({ version: z.number().int().positive() }).parse(request.body);
     return requireService().confirmDraft(id(request.params), version);

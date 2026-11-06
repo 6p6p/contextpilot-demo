@@ -28,7 +28,7 @@ function TodoEditor({ todo, currentAnalysis, reload, onError }: { todo: MeetingD
     catch (error) { onError(error instanceof Error ? error.message : '待办保存失败。'); }
     finally { setSaving(false); }
   }
-  return <article className="meeting-todo" data-todo-id={todo.id}><strong>{todo.task}</strong><small>{todo.origin === 'risk_followup' ? '风险跟进建议，非会议原文指令' : '会议行动项'}{todo.analysisId !== currentAnalysis ? ' · 来自旧分析，保留人工数据' : ''}</small>
+  return <article className="meeting-todo" data-todo-id={todo.id}><strong>{todo.origin==='meeting_question'?'[待确认] ':todo.origin==='risk_followup'?'[AI建议] ':'[明确行动] '}{todo.task}</strong><small>{todo.origin === 'risk_followup' ? '风险跟进建议，非会议原文指令' : todo.origin==='meeting_question'?'待确认问题，尚非分配行动':'会议明确行动项'}{todo.analysisId !== currentAnalysis ? ' · 来自旧分析，保留人工数据' : ''}</small>
     <EvidenceView evidence={todo.evidence} />
     <div className="meeting-form-row"><label>负责人<input aria-label="待办负责人" value={owner} placeholder="未知，待确认" onChange={e => setOwner(e.target.value)} /></label><label>截止日期<input aria-label="待办截止日期" type="date" value={date} onChange={e => setDate(e.target.value)} /></label><label>处理状态<select aria-label="待办处理状态" value={status} onChange={e => setStatus(e.target.value as typeof status)}><option value="open">待处理</option><option value="in_progress">进行中</option><option value="done">已完成</option></select></label><button disabled={saving} onClick={() => { void save(); }}>保存待办</button></div>
   </article>;
@@ -49,8 +49,8 @@ function DraftEditor({ draft, reload, onError }: { draft: NonNullable<MeetingDet
     } catch (error) { onError(error instanceof Error ? error.message : '草稿操作失败。'); }
     finally { setBusy(false); }
   }
-  return <section id="meeting-email-draft" className="mail-draft" aria-label="会议邮件草稿"><h3>邮件草稿 · v{draft.version}</h3><p>版本确认本身不发送邮件，需在下方单独确认真实发送。{draft.state === 'confirmed' ? '此版本已确认；发送情况以历史为准。' : '待人工复核。'}</p>{draft.stale ? <p className="chat-error">分析版本已变化，请复核内容并保存后再确认。</p> : null}
-    <label>收件人（由用户明确指定）<input aria-label="草稿收件人" value={recipients} onChange={e => setRecipients(e.target.value)} placeholder="多个邮箱用逗号分隔" /></label>
+  return <section id="meeting-email-draft" className="mail-draft" aria-label="会议邮件草稿"><h3>邮件草稿 · v{draft.version}</h3><p>版本确认本身不发送邮件，需在下方单独确认真实发送。{draft.state === 'confirmed' ? '此版本已确认；发送情况以历史为准。' : '待人工复核。'}</p>{draft.stale ? <p className="chat-error">来源或待办已变化，旧正文不代表最新状态；请更新预览、复核并保存后再确认。</p> : null}
+    <button type="button" disabled={busy} onClick={()=>{setBusy(true);void api(`/email-drafts/${draft.id}/latest-preview`).then(data=>{setSubject(data.subject);setBody(data.body);}).catch(()=>onError('最新待办预览失败')).finally(()=>setBusy(false));}}>按最新待办更新预览（需复核保存）</button><label>收件人（由用户明确指定）<input aria-label="草稿收件人" value={recipients} onChange={e => setRecipients(e.target.value)} placeholder="多个邮箱用逗号分隔" /></label>
     <label>主题<input aria-label="草稿主题" value={subject} onChange={e => setSubject(e.target.value)} /></label>
     <label>正文<textarea aria-label="草稿正文" rows={9} value={body} onChange={e => setBody(e.target.value)} /></label>
     <div className="meeting-actions"><button disabled={busy} onClick={() => { void save(false); }}>复核并保存草稿</button><button disabled={busy || dirty || draft.stale || !draft.recipients.length} onClick={() => { void save(true); }}>确认此版本（不发送）</button></div>

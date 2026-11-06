@@ -35,6 +35,7 @@ export function conflictingLts(question:string,sources:WebSource[]){
  const versions=new Set<string>();
  for(const s of eligible.filter(s=>!s.publishedAt||Date.parse(s.publishedAt)===newest)){
   for(const m of s.summary.matchAll(/Active\s+LTS(?:\s+(?:is|version|Node\.js)|\s*[:|=-]){0,5}\s*v?(\d+(?:\.\d+){0,2})|v?(\d+(?:\.\d+){0,2})\s*(?:is\s+)?(?:the\s+)?(?:latest\s+)?Active\s+LTS/gi))versions.add(m[1]??m[2]);
+  for(const m of s.summary.matchAll(/\bv?(\d+(?:\.\d+){0,2})\s*[—–:=-]\s*Active\s+LTS/gi))versions.add(m[1]);
  }
  return versions.size>1;
 }

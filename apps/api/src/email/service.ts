@@ -5,6 +5,7 @@ import type { Database } from '../knowledge/service.js';
 import type { Env } from '../config/env.js';
 import type { EmailPayload } from '../../../../shared/email.js';
 import { PublicError } from '../errors.js';
+import {changedTodos} from '../meetings/draft-state.js';
 import { providerEventStatus, mailboxIdentity, type EmailProvider, type SendOutcome } from './provider.js';
 export type EmailConfig = Pick<Env, 'EMAIL_DELIVERY_ENABLED' | 'EMAIL_SCOPE' | 'EMAIL_FROM' | 'EMAIL_ALLOWED_RECIPIENTS' | 'EMAIL_MODE' | 'RESEND_DOMAIN_ID'>;
 export const payloadHash = (payload: EmailPayload) => createHash('sha256').update(JSON.stringify([payload.sender, payload.recipients, payload.subject, payload.body])).digest('hex');
@@ -46,6 +47,7 @@ export function createEmailService(database: Database, provider: EmailProvider |
         if (repeat) { if (repeat.scope !== config.EMAIL_SCOPE) throw new PublicError(409, 'EMAIL_ALREADY_RECORDED', '此版本已有记录。'); return repeat.id; }
         if (!draft || draft.version !== version || draft.state !== 'confirmed') throw new PublicError(409, 'EMAIL_CONFIRMATION_REQUIRED', '必须先复核并确认当前保存版本；修改后旧确认无效。');
         if (meeting.status !== 'ready' || meeting.currentAnalysisId !== draft.analysisId) throw new PublicError(409, 'DRAFT_ANALYSIS_STALE', '会议分析已变化，需重新复核草稿。');
+        if(await changedTodos(tx,draftId))throw new PublicError(409,'DRAFT_TODOS_STALE','待办已变化，需重新复核保存草稿。');
         const [confirmation] = await tx.select().from(emailDraftConfirmations).where(and(eq(emailDraftConfirmations.draftId, draftId), eq(emailDraftConfirmations.version, version)));
         if (!confirmation || !matchesConfirmation(draft, confirmation.snapshot)) throw new PublicError(409, 'EMAIL_CONFIRMATION_MISMATCH', '确认快照与草稿不一致，未创建发送任务。');
         validateRecipients(draft.recipients, config.EMAIL_ALLOWED_RECIPIENTS);
@@ -82,6 +84,7 @@ export function createEmailService(database: Database, provider: EmailProvider |
         const [confirmation] = await tx.select().from(emailDraftConfirmations).where(eq(emailDraftConfirmations.id, row.confirmationId));
         try {
           validateRecipients(row.recipients, config.EMAIL_ALLOWED_RECIPIENTS);
+          if(await changedTodos(tx,row.draftId))throw new PublicError(409,'DRAFT_TODOS_STALE','待办已变化，未调用邮件服务。');
           if (!draft || draft.state !== 'confirmed' || draft.version !== row.version || meeting.status !== 'ready' || meeting.currentAnalysisId !== row.analysisId || !confirmation || !matchesConfirmation(draft, confirmation.snapshot) || !matchesConfirmation({ ...row, analysisId: row.analysisId }, confirmation.snapshot) || payloadHash(row) !== row.payloadHash) throw new PublicError(409, 'EMAIL_FROZEN_VERSION_INVALID', '发送前校验失败，未调用邮件服务。');
         } catch (error) {
           await tx.update(emailDeliveries).set({ status: 'failed', errorCode: error instanceof PublicError ? error.code : 'EMAIL_VALIDATION_FAILED' }).where(eq(emailDeliveries.id, row.id));

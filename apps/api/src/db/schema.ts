@@ -94,7 +94,7 @@ export const meetingTodos = pgTable('meeting_todos', {
   id: uuid().primaryKey().defaultRandom(), meetingId: uuid('meeting_id').notNull().references(() => meetings.id, { onDelete: 'restrict' }),
   analysisId: uuid('analysis_id').notNull().references(() => meetingAnalyses.id, { onDelete: 'restrict' }), sourceKey: text('source_key').notNull(),
   task: text().notNull(), owner: text(), dueDate: text('due_date'), status: text({ enum: ['open', 'in_progress', 'done'] }).notNull().default('open'),
-  origin: text({ enum: ['meeting_action', 'risk_followup'] }).notNull().default('meeting_action'),
+  origin: text({ enum: ['meeting_action', 'risk_followup', 'meeting_question'] }).notNull().default('meeting_action'),
   evidence: jsonb().$type<Evidence>().notNull(), riskIds: jsonb('risk_ids').$type<string[]>().notNull().default([]),
   version: integer().notNull().default(1), userEdited: boolean('user_edited').notNull().default(false),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

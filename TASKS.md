@@ -1,5 +1,7 @@
 # Development tasks
 
+MVP v1.1 Phase A：新增受约束的官方多源版本/状态归纳、会议注入行过滤/行动分类、项目绑定记忆与当前上下文优先、最新待办草稿预览及旧版本复核保护。验证与局限见[本轮记录](docs/mvp-v1.1-verification.md)；真实模型人工复测仍待完成，邮件关闭，不Push/部署。
+
 ## Stage B round1 defect repair — 2026-11-06
 
 - [x] 只读核查原Run：16消息、8记忆任务ready、10条带来源事实；不修改原业务数据。

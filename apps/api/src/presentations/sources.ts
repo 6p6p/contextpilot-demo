@@ -7,6 +7,7 @@ import type { createRetriever } from '../knowledge/retrieval.js';
 import type { MemoryService } from '../memory/service.js';
 import { publicQuery, type SearchProvider } from '../search/service.js';
 import { PublicError } from '../errors.js';
+import {untrustedInstruction} from '../evidence/policy.js';
 import {officialWebSources} from './evidence.js';
 import { isPresentationIntent, presentationNeedsWeb } from './intent.js';
 export function presentationSourceQuery(request:string,kind:'pdf'|'memory') {
@@ -34,10 +35,11 @@ export function createPresentationSources(database:Database,retrieve:ReturnType<
       const risks=await database.db.select().from(meetingRisks).where(eq(meetingRisks.analysisId,analysis.id));
       for(const risk of risks) {
         const evidence=await database.db.select().from(riskEvidence).where(eq(riskEvidence.riskId,risk.id));
+        if(evidence.some(e=>untrustedInstruction(e.quote)))continue;
         add({kind:'meeting_risk',title:`${meeting.filename} · 风险评估`,classification:'analysis',text:`${risk.description}\n潜在影响：${risk.impact}`,riskLevel:risk.level as PptSource['riskLevel'],locator:{...locator,riskId:risk.id,evidence}});
       }
       const todos=await database.db.select().from(meetingTodos).where(eq(meetingTodos.meetingId,meeting.id));
-      for(const todo of todos)add({kind:'todo',title:`${meeting.filename} · 已保存待办`,classification:todo.origin==='risk_followup'?'recommendation':'fact',text:todo.task,owner:todo.owner,dueDate:todo.dueDate,locator:{...locator,todoId:todo.id,todoVersion:todo.version,todoAnalysisId:todo.analysisId,origin:todo.origin,status:todo.status,userEdited:todo.userEdited,evidence:todo.evidence}});
+      for(const todo of todos.filter(t=>t.origin!=='meeting_question'&&!untrustedInstruction(t.evidence.quote)))add({kind:'todo',title:`${meeting.filename} · 已保存待办`,classification:todo.origin==='risk_followup'?'recommendation':'fact',text:todo.task,owner:todo.owner,dueDate:todo.dueDate,locator:{...locator,todoId:todo.id,todoVersion:todo.version,todoAnalysisId:todo.analysisId,origin:todo.origin,status:todo.status,userEdited:todo.userEdited,evidence:todo.evidence}});
     } else if(/根据.{0,30}会议|这次会议|本次会议|上述会议/.test(job.request))throw new PublicError(400,'PPT_MEETING_SELECTION_REQUIRED','请在聊天区 PPT 资料中明确选择本次会议，不会猜测最近一场会议。');
     if(job.context.knowledgeMode) {
       if(!retrieve)throw new PublicError(503,'PPT_PDF_NOT_CONFIGURED','PDF 检索服务未配置。');

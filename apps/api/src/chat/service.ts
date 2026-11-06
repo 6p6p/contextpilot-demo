@@ -9,6 +9,7 @@ import type { createDatabase } from '../db/client.js';
 import type { ChatModel } from '../llm/adapter.js';
 import { PublicError } from '../errors.js';
 import { buildContext } from './context.js';
+import {useCurrentContext} from '../evidence/policy.js';
 import type { KnowledgeAnswerer } from '../knowledge/retrieval.js';
 
 export function createChatService(database: NonNullable<ReturnType<typeof createDatabase>>, model: ChatModel | null, knowledge?: KnowledgeAnswerer | null, memory?: MemoryService | null, search?: SearchProvider | null, presentations?: PresentationService | null) {
@@ -64,7 +65,8 @@ export function createChatService(database: NonNullable<ReturnType<typeof create
         const recent = await db.select().from(messages).where(and(eq(messages.conversationId, id), sql`${messages.ordinal} < ${assistant.ordinal}`)).orderBy(desc(messages.ordinal)).limit(40);
         const useSearch = needsSearch(input.content, input.searchMode ?? 'auto');
         const web = input.searchMode === 'off' && needsSearch(input.content, 'auto') ? { content: '联网搜索已关闭，无法确认最新信息。请切换自动或必须联网模式。', model: 'web-disabled-gate', webSources: [] } : useSearch ? await answerWithSearch(input.content, search ?? null, model) : null;
-        const candidates = !web && !input.knowledgeMode && memory ? await memory.retrieve(input.content) : [];
+        const chronological=[...recent].reverse();
+        const candidates = !web && !input.knowledgeMode && memory && !useCurrentContext(input.content,chronological) ? await memory.retrieve(input.content) : [];
         const result = input.knowledgeMode ? { ...await knowledge!.answer(input.content, model), memorySources: [] } : web ? { content: '', model: web.model, sources: [], memorySources: [] } : candidates.length ? await answerWithMemory(input.content, buildContext(recent.reverse()), model, candidates) : { ...await model.complete(buildContext(recent.reverse())), sources: [], memorySources: [] };
         await db.update(messages).set({ content: [result.content, web?.content].filter(Boolean).join('\n\n'), webSources: web?.webSources ?? [], model: result.model, sources: result.sources, memorySources: result.memorySources, status: 'completed', updatedAt: new Date() }).where(and(eq(messages.id, assistant.id), eq(messages.status, 'processing')));
       } catch (error) {
