@@ -1,5 +1,7 @@
 # ContextPilot
 
+最终收尾（2026-11-06）：公开知识直接 DeepSeek，实时问题使用 Tavily → 单次自然回答；不经过 Claim/Quote、版本冲突门禁或二次审计。真实 required/auto/off、来源持久化及重启恢复已验证；最终回答诚实说明检索未给出具体 LTS 阶段，不能宣称精确当前版本已核实。check/test 258、Corpus 17、真实 PG+外部 STUB 7、生产 E2E 4 通过。Cookie 同键跨实例风险确认，历史键是否与 Railway 共用未知，需用户后续核实/轮换；本轮未改生产配置。PPT 按用户验收结论冻结，没有重新生成。详情、实际答案、用量及轮换步骤见[最终收尾记录](docs/mvp-final-closeout.md)。未 Push/部署/清理/发信；以下为历史阶段记录。
+
 MVP v1.3.2：公开联网改为Tavily正文参考→单次DeepSeek自然回答，旧Claim管线只用于离线审计；PPT意图误路由、主题词/否定语义误拒已修复。两类真实5/10页PPT及独立复测/私有下载/重启恢复通过；Node.js当前阶段查询仍FAIL（检索页面版本过时/细分证据不足），未宣称整体通过。真实DeepSeek12/Tavily Basic6/Embedding与Resend0，费用保守≤¥0.599；原生PowerPoint/WPS打开待人工验收。文件、失败证据及安全事项见[报告](docs/mvp-v1.3.2-verification.md)。未Push/部署/清理/发信。
 
 MVP v1.3.1：完成搜索上限/无损格式规范化、主题brief/培训成品校验、关键事实正文覆盖及当前人工待办发布保护。check/test248、Corpus17、真实PG+外部全STUB12、Chrome生产E2E4通过；旧失败文件/快照及上轮未提交报告一并保留。修复后真实搜索/PPT-A/PPT-B与原生打开仍NOT_RUN，未新增付费调用、未改Schema/前端、未Push/部署/清理。详情及复测入口见[记录](docs/mvp-v1.3.1-verification.md)。下文v1.3为历史真实失败结论。

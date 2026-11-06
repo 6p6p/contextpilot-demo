@@ -222,6 +222,13 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
       else expect(last.webSources.find(s => s.id === 'W2')).toMatchObject({ url: web[1].url, queriedAt: web[1].queriedAt, publishedAt: web[1].publishedAt });
     }
     await service.send(run.roots.conversations[0], { content: '什么是二分查找', clientRequestId: randomUUID(), searchMode: 'auto' }); expect(calls).toBe(2);
+    const publicSearch=vi.fn(async(_query:string)=>web);
+    const internalAnswer=vi.fn(async()=>({content:'内部资料由严格知识库接口处理（边界STUB）。',model:'RAG-BOUNDARY-STUB',sources:[]}));
+    const mixed=createChatService(database,stub('公开信息由真实检索上下文归纳（模型STUB）。'),{answer:internalAnswer} as any,null,{search:publicSearch});
+    await mixed.send(run.roots.conversations[2],{content:'根据私有PDF回答负责人；联网查询 Node.js 当前官方信息。',knowledgeMode:true,searchMode:'required',clientRequestId:randomUUID()});
+    expect(internalAnswer).toHaveBeenCalledTimes(1);expect(publicSearch.mock.calls[0][0]).toBe('Node.js 当前官方信息');
+    const combined=(await mixed.history(run.roots.conversations[2])).at(-1)!;
+    expect(combined.content).toContain('内部资料：');expect(combined.content).toContain('公开资料：');expect(combined.webSources).toHaveLength(web.length);
     const failed = createChatService(database, stub(searchSelection), null, null, { async search() { throw new Error('CORPUS_SEARCH_FAILURE'); } });
     await failed.send(run.roots.conversations[2], { content: searchQuestion, clientRequestId: randomUUID(), searchMode: 'required' });
     expect((await failed.history(run.roots.conversations[2])).at(-1)).toMatchObject({ status: 'failed', webSources: [] });

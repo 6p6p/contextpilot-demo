@@ -1,5 +1,17 @@
 # Development tasks
 
+## MVP 最终功能收尾（2026-11-06）
+
+- [x] 公开搜索仅单次自然回答，移除残留版本排序/领域提示，模型接收实际 URL/时间；保留来源、隐私、认证和限额边界。
+- [x] 内部 PDF 与公开查询分开处理，公开子句回归，内部模块及 PPT 冻结。
+- [x] check/test 258、Corpus 17、共享 PG+外部 STUB T01–T07 共7项、生产 E2E 4项通过；没有新 PPT/真实邮件/Schema/部署。
+- [x] 真实 DeepSeek 4、Tavily Basic 3，费用保守≤¥0.288，历史/重启恢复通过；原推断回答保留，最终明确阶段信息不足。
+- [x] Cookie 签名/有效期/同键实例范围检查与日志脱敏回归；报告已知风险及用户轮换步骤。
+- [ ] 用户后续核实/轮换本地与 Railway DEMO_ACCESS_KEY，并验证生产旧会话失效；本轮未操作生产，不宣称风险关闭。
+- [ ] 精确 Active/Maintenance 当前阶段仍未由检索证据确认；保留不确定性，不继续扩展审核系统或无界复测。
+
+详见[最终收尾记录](docs/mvp-final-closeout.md)。本轮完成后停止，以下保留历史任务状态。
+
 MVP v1.3.2：Part A已独立提交76329f0；PPT真实5/10页及稳定性文件完成，PG/私有Storage/下载鉴权/刷新与重启恢复通过。搜索链路真实可用，但Node.js当前LTS阶段准确性未通过，原生PowerPoint/WPS仍待人工。当前模型/搜索调用已停止在12/6，未发生确认的余额不足；不Push/部署/清理/发信。保留全部失败记录及Cookie事件的必要用户处置说明，见[报告](docs/mvp-v1.3.2-verification.md)。
 
 MVP v1.3.1：三个验收阻塞完成本地定向修复，新增16项固定回归；check/test248、Corpus17、共享PG+外部全STUB12及Chrome生产E2E4通过。首轮数据库旧对象数断言失败已如实保留，复跑未改Golden且既有行hash变化0。两Run共150条新增合成记录全部保留，无清理/DDL/外部付费调用。修复后的搜索/PPT-A/PPT-B Live及PowerPoint/WPS打开仍NOT_RUN，原v1.3失败报告和文件不覆盖；三项复测入口见[记录](docs/mvp-v1.3.1-verification.md)。提交后停止，不Push/部署。

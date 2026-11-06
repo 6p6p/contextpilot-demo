@@ -1,6 +1,8 @@
 export function redactOutput(line,secrets=[]) {
   for(const secret of secrets.filter(Boolean))line=line.split(secret).join('[REDACTED]');
-  return line.replace(/((?:cookie|set-cookie|authorization|apikey)["']?\s*:)\s*[^\r\n]*/gi,'$1 [REDACTED]').replace(/cp_(?:ppt|demo)=[^\s;"']+/g,'session=[REDACTED]');
+  return line.replace(/((?:cookie|set-cookie|authorization|apikey)["']?\s*:)\s*[^\r\n]*/gi,'$1 [REDACTED]')
+    .replace(/((?:\b[\w-]*(?:key|token|secret|password)\b)["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;}]+)/gi,'$1[REDACTED]')
+    .replace(/cp_(?:ppt|demo)=[^\s;"']+/g,'session=[REDACTED]');
 }
 export function relayRedacted(stream,target,secrets=[]) {
   let pending='';stream.setEncoding('utf8');

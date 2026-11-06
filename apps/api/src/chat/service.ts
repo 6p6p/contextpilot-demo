@@ -1,7 +1,7 @@
 import { isPresentationIntent, parsePresentationRequest } from '../presentations/intent.js';
 import type { PresentationService, PresentationInput } from '../presentations/service.js';
 import { needsSearch, type SearchProvider } from '../search/service.js';
-import {answerPublicSearch} from '../search/public.js';
+import {answerPublicSearch,explicitPublicClause} from '../search/public.js';
 import type { SearchMode } from '../../../../shared/search.js';
 import { answerWithMemory, type MemoryService } from '../memory/service.js';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
@@ -65,13 +65,16 @@ export function createChatService(database: NonNullable<ReturnType<typeof create
       const assistant = preparation.rows.find(m => m.role === 'assistant')!;
       try {
         const recent = await db.select().from(messages).where(and(eq(messages.conversationId, id), sql`${messages.ordinal} < ${assistant.ordinal}`)).orderBy(desc(messages.ordinal)).limit(40);
-        const useSearch = !input.knowledgeMode&&needsSearch(input.content, input.searchMode ?? 'auto');
-        const web = !input.knowledgeMode&&input.searchMode === 'off' && needsSearch(input.content, 'auto') ? { content: '联网搜索已关闭，无法确认最新信息。请切换自动或必须联网模式。', model: 'web-disabled-gate', webSources: [] } : useSearch ? await answerPublicSearch(input.content, search ?? null, model) : null;
+        const wantsSearch=needsSearch(input.content,input.searchMode??'auto');
+        const publicQuestion=input.knowledgeMode&&wantsSearch?explicitPublicClause(input.content):null;
+        const useSearch = wantsSearch&&(!input.knowledgeMode||Boolean(publicQuestion));
+        const web = !input.knowledgeMode&&input.searchMode === 'off' && needsSearch(input.content, 'auto') ? { content: '联网搜索已关闭，无法确认最新信息。请切换自动或必须联网模式。', model: 'web-disabled-gate', webSources: [] } : useSearch ? await answerPublicSearch(publicQuestion??input.content, search ?? null, model) : null;
         const chronological=[...recent].reverse();
         const publicDefinition=/^(?:请)?(?:什么是|解释|介绍|what is|explain)/i.test(input.content)&&! /项目|会议|PDF|记忆|刚才|我们|我司|内部|资料/i.test(input.content);
         const candidates = !publicDefinition && !web && !input.knowledgeMode && memory && !useCurrentContext(input.content,chronological) ? await memory.retrieve(input.content) : [];
         const result = input.knowledgeMode ? { ...await knowledge!.answer(input.content, model,input.documentIds), memorySources: [] } : web ? { content: '', model: web.model, sources: [], memorySources: [] } : candidates.length ? await answerWithMemory(input.content, buildContext(recent.reverse()), model, candidates) : { ...await model.complete(buildContext(recent.reverse()),{disableThinking:true}), sources: [], memorySources: [] };
-        await db.update(messages).set({ content: [result.content, web?.content].filter(Boolean).join('\n\n'), webSources: web?.webSources ?? [], model: result.model, sources: result.sources, memorySources: result.memorySources, status: 'completed', updatedAt: new Date() }).where(and(eq(messages.id, assistant.id), eq(messages.status, 'processing')));
+        const content=input.knowledgeMode&&web?`内部资料：\n${result.content}\n\n公开资料：\n${web.content}`:[result.content,web?.content,input.knowledgeMode&&wantsSearch&&!publicQuestion?'公开查询未执行：请用“；联网查询……”明确给出不含内部资料的独立公共问题。':input.knowledgeMode&&input.searchMode==='off'&&needsSearch(input.content,'auto')?'公开查询未执行：联网已关闭。':null].filter(Boolean).join('\n\n');
+        await db.update(messages).set({ content, webSources: web?.webSources ?? [], model: result.model, sources: result.sources, memorySources: result.memorySources, status: 'completed', updatedAt: new Date() }).where(and(eq(messages.id, assistant.id), eq(messages.status, 'processing')));
       } catch (error) {
         const code = error instanceof PublicError ? error.code : 'GENERATION_FAILED';
         await db.update(messages).set({ status: 'failed', errorCode: code, updatedAt: new Date() }).where(and(eq(messages.id, assistant.id), eq(messages.status, 'processing')));
