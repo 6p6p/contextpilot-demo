@@ -19,7 +19,7 @@ export const meetingDetailSchema = z.object({
   analysis: z.object({ id: z.uuid(), version: z.number(), result: meetingAnalysisSchema, model: z.string() }).nullable(),
   versions: z.array(z.object({ id: z.uuid(), version: z.number() })),
   risks: z.array(z.object({ id: z.uuid(), type: z.string(), level: z.string(), description: z.string(), impact: z.string(), evidence: z.array(evidenceSchema) })),
-  todos: z.array(z.object({ id: z.uuid(), analysisId: z.uuid(), task: z.string(), owner: z.string().nullable(), dueDate: z.string().nullable(), status: z.enum(['open', 'in_progress', 'done']), version: z.number(), origin: z.enum(['meeting_action', 'risk_followup','meeting_question']), evidence: evidenceSchema })),
+  todos: z.array(z.object({ id: z.uuid(), analysisId: z.uuid(), task: z.string(), owner: z.string().nullable(), dueDate: z.string().nullable(), status: z.enum(['open', 'in_progress', 'done']), version: z.number(), origin: z.enum(['meeting_action', 'risk_followup','meeting_question']), evidence: evidenceSchema,ignored:z.boolean().default(false) })),
   draft: z.object({ id: z.uuid(), analysisId: z.uuid(), version: z.number(), recipients: z.array(z.string()), subject: z.string(), body: z.string(), state: z.enum(['draft', 'confirmed']), deliveryState: z.enum(['not_sent','queued','processing','accepted','delivered','failed','unknown']), stale: z.boolean() }).nullable(),
 });
 export type MeetingDetail = z.infer<typeof meetingDetailSchema>;

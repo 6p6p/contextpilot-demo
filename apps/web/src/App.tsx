@@ -2,9 +2,12 @@ import { MemoryPanel } from './MemoryPanel';
 import { useEffect, useState } from 'react';
 import { healthSchema, type Health } from '../../../shared/health';
 import { ChatWorkspace } from './ChatWorkspace';
+import {KnowledgeLibrary} from './KnowledgeLibrary';
 import { MeetingPanel } from './MeetingPanel';
 
+
 export function App() {
+  const [tool,setTool]=useState('chat');
   const [health, setHealth] = useState<Health | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -28,40 +31,17 @@ export function App() {
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [attempt]);
 
-  return <div className="workspace">
-    <aside className="sidebar">
-      <a className="brand" href="/">ContextPilot<span>AI 决策工作台</span></a>
-      <div className="workspace-label">南京信人智能 · 实操 Demo</div>
-      <nav aria-label="工作台模块">
-        <span className="nav-current" aria-current="page">工作台概览</span>
-        <a className="nav-chat" href="#chat">对话与历史</a>
-        <a className="nav-chat" href="#memory">长期记忆</a>
-        <a className="nav-chat" href="#meetings">会议与待办</a>
-        <a className="nav-chat" href="#chat">知识库与 PPT</a>
-      </nav>
-      <div className="sidebar-foot">单一演示工作区<br />面试演示</div>
+  return <div className="workspace ui-v2">
+    <aside className="sidebar"><a className="brand" href="#" onClick={e=>{e.preventDefault();setTool('chat');}}>ContextPilot<span>AI 决策助手</span></a>
+      <nav aria-label="工作台模块">{[['chat','对话'],['knowledge','知识库'],['meetings','会议与待办'],['memory','长期记忆'],['ppt','PPT 文件']].map(([key,label])=><button key={key} type="button" aria-pressed={tool===key} onClick={()=>setTool(key)}>{label}</button>)}</nav>
+      <div className="sidebar-foot">私有演示工作区 · 邮件发送关闭</div>
     </aside>
-    <main>
-      <header><span>CONTEXT → DECISION</span><span className="phase">ContextPilot Demo</span></header>
-      <section className="intro"><p className="eyebrow">CONTEXT PILOT / WORKSPACE</p><h1>让上下文，成为决策的起点。</h1><p>创建会话，与真实模型交流。对话历史保存在 PostgreSQL，支持刷新恢复与会话切换。</p></section>
-      <section className="status-card" aria-labelledby="service-title">
-        <div><p className="eyebrow">SYSTEM CONNECTION</p><h2 id="service-title">服务连接</h2><p>由浏览器请求真实 Fastify 后端，不使用模拟响应。</p></div>
-        <div className="connection" role="status" aria-live="polite">
-          <strong>{error ? '后端连接失败' : health ? '后端已连接' : '正在检查后端…'}</strong>
-          {health ? <span>{health.database === 'not_configured' ? '数据库未配置' : '数据库已配置，连接未检查'}</span> : null}
-          {error ? <span>请检查 API 服务和本地代理配置。</span> : null}
-          <button onClick={() => setAttempt(value => value + 1)}>重新检查</button>
-        </div>
-      </section>
-      <ChatWorkspace />
-      <MeetingPanel />
-      <MemoryPanel />
-      <section className="roadmap" aria-label="能力规划">
-        {[
-          ['03', '记忆与输出', '跨会话记忆 · 联网搜索 · PPT'],
-        ].map(([number, title, description]) => <article key={number}><span className="number">{number}</span><h2>{title}</h2><p>{description}</p><span className="planned">在工作台中体验</span></article>)}
-      </section>
-      <footer>面试演示工作区 · 资料仅供演示。真实邮件发送保持关闭；联网搜索和 AI 生成受调用限额约束。</footer>
+    <main><header className="workspace-top"><h1>AI 决策助手</h1><div className="connection" role="status"><strong>{error?'后端连接失败':health?'后端已连接':'正在检查后端…'}</strong>{health?.database==='not_configured'?<span>数据库未配置</span>:null}<button onClick={()=>setAttempt(v=>v+1)}>重新检查</button></div></header>
+      <ChatWorkspace activeTool={tool} onChat={()=>setTool('chat')}>
+        <section className="tool-view" hidden={tool!=='knowledge'}><KnowledgeLibrary/></section>
+        <section className="tool-view" hidden={tool!=='meetings'}><MeetingPanel/></section>
+        <section className="tool-view" hidden={tool!=='memory'}><MemoryPanel/></section>
+      </ChatWorkspace>
     </main>
   </div>;
 }

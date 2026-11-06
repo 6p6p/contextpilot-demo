@@ -6,6 +6,11 @@ import {answerWithMemory} from '../../apps/api/src/memory/service.js';
 import {answerWithSearch} from '../../apps/api/src/search/service.js';
 import {conflictingLts} from '../../apps/api/src/search/evidence.js';
 import {latestDraftBody} from '../../apps/api/src/meetings/draft-state.js';
+import {extractMeeting} from '../../apps/api/src/memory/extraction.js';
+it('pending meeting questions do not become asserted long-term events',()=>{
+ const text='是否调整试点目标？';
+ expect(extractMeeting({...analysis,topic:null,meetingDate:null,location:null,decisions:[],risks:[],actions:[{task:'是否调整试点',owner:null,dueDate:null,category:'question',evidence:{quote:text,startLine:1,endLine:1}}]},text)).toEqual([]);
+});
 it('A4 latest preview separates assigned actions from advice and questions without inventing owners',()=>{
  const body=latestDraftBody([{task:'检查接口',owner:null,dueDate:null,origin:'meeting_action'},{task:'待确认上线',owner:null,dueDate:null,origin:'meeting_question'},{task:'跟进建议',owner:'林岚',dueDate:null,origin:'risk_followup'}]);
  expect(body).toContain('检查接口；负责人：未明确；截止日期：未明确');expect(body).not.toContain('待确认上线');expect(body).not.toContain('跟进建议；负责人');
@@ -13,6 +18,8 @@ it('A4 latest preview separates assigned actions from advice and questions witho
 it('A1 conflicting official table rows remain conflicting, not a synthesized certainty',()=>{
  const row={id:'W1',title:'status',url:'https://nodejs.org/en/about/previous-releases',summary:'v26 — Active LTS.',publishedAt:null,queriedAt:'2026-11-06T08:00:00Z',quote:''};
  expect(conflictingLts('Node.js 当前 LTS 官方',[row,{...row,id:'W2',summary:'v24 — Active LTS.'}])).toBe(true);
+ expect(conflictingLts('Node.js 当前 LTS 官方',[row,{...row,id:'W2',summary:'Node.js v26.13.0 is the latest Active LTS.'}])).toBe(false);
+ expect(conflictingLts('Node.js 当前 LTS 官方',[{...row,summary:'Node.js v26.13.0 is the latest Active LTS.'},{...row,id:'W2',summary:'Node.js v26.14.0 is the latest Active LTS.'}])).toBe(true);
 });
 it('A1 syntheses official release/status evidence without requiring a latest keyword',async()=>{
  const at='2026-11-06T08:00:00Z';

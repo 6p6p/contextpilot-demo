@@ -64,6 +64,13 @@
       "when": 1793786094155,
       "tag": "0008_deep_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793948400000,
+      "tag": "0009_demo_management",
+      "breakpoints": true
     }
   ]
 }

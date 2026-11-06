@@ -6,12 +6,13 @@ import type { Database } from './service.js';
 import type { Embedder } from './embedding.js';
 import type { ChatModel } from '../llm/adapter.js';
 import { PublicError } from '../errors.js';
+import {visible} from '../management.js';
 
 export interface RetrievedSource { sourceId: string; documentId: string; filename: string; page: number; text: string; similarity: number }
 export interface KnowledgeAnswerer { answer(question: string, model: ChatModel): Promise<{ content: string; model: string; sources: Citation[] }> }
 export function createRetriever(database: Database, embedder: Embedder, threshold: number) {
   return async (question: string): Promise<RetrievedSource[]> => {
-    const [ready] = await database.db.select({ id: documents.id }).from(documents).where(and(eq(documents.status, 'ready'), eq(documents.embeddingSpace, embedder.space))).limit(1);
+    const [ready] = await database.db.select({ id: documents.id }).from(documents).where(and(visible(documents,'removed_at'),eq(documents.status, 'ready'), eq(documents.embeddingSpace, embedder.space))).limit(1);
     if (!ready) return [];
     const [vector] = await embedder.embed([question]);
     const distance = cosineDistance(documentChunks.embedding, vector);
@@ -20,6 +21,7 @@ export function createRetriever(database: Database, embedder: Embedder, threshol
       text: documentChunks.text, similarity: sql<number>`1 - (${distance})`,
     }).from(documentChunks).innerJoin(documents, eq(documentChunks.documentId, documents.id)).where(and(
       eq(documents.status, 'ready'), eq(documentChunks.embeddingSpace, embedder.space), eq(documentChunks.dimensions, embedder.dimensions),
+      visible(documents,'removed_at'),
     )).orderBy(distance).limit(8);
     return rows.filter(row => Number(row.similarity) >= threshold);
   };

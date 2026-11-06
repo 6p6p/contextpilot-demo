@@ -1,4 +1,5 @@
 import { createPresentationAuth } from './presentations/auth.js';
+import {registerManagementRoutes} from './management.js';
 import {registerDemoAccess} from './demo/access.js';
 import {createDemoTransport} from './demo/limits.js';
 import { createPresentationService } from './presentations/service.js';
@@ -39,6 +40,7 @@ export function buildApp(env: Env, overrides: { emailProvider?: EmailProvider | 
   app.addHook('onRequest',async(request,reply)=>{reply.header('x-request-id',request.id);});
   registerDemoAccess(app,env);
   const database = createDatabase(env);
+  registerManagementRoutes(app,database);
   database?.pool.on('error', () => app.log.error('Idle database connection failed'));
   app.addHook('onClose', async () => { await database?.pool.end(); });
   const shutdown = new AbortController();

@@ -30,6 +30,6 @@ export function extractMeeting(analysis: MeetingAnalysis, text: string) {
   const add = (kind: ExtractedMemory['kind'], fact: MeetingAnalysis['topic']) => { if (fact) facts.push({ kind, content: fact.value, evidence: fact.evidence }); };
   add('topic', analysis.topic); add('time', analysis.meetingDate); add('place', analysis.location);
   analysis.participants.forEach(f => add('person', f)); analysis.topics.forEach(f => add('topic', f)); analysis.decisions.forEach(f => add('decision', f));
-  analysis.actions.forEach(a => { facts.push({ kind: 'event', content: a.task, evidence: a.evidence }); if (a.owner) facts.push({ kind: 'person', content: a.owner, evidence: a.evidence }); });
+  analysis.actions.filter(a=>a.category!=='question'&&!(a.owner===null&&/^(?:待确认|待讨论|是否)/.test(a.task))).forEach(a => { facts.push({ kind: 'event', content: a.task, evidence: a.evidence }); if (a.owner) facts.push({ kind: 'person', content: a.owner, evidence: a.evidence }); });
   return verifyMemories(facts, text);
 }

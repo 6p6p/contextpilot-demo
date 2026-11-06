@@ -1,3 +1,4 @@
+import {ActionDialog} from './ActionDialog';
 import { EmailDeliveryPanel } from './EmailDeliveryPanel';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
@@ -16,24 +17,26 @@ const json = (method: string, body: unknown): RequestInit => ({ method, headers:
 function EvidenceView({ evidence }: { evidence: Evidence }) {
   return <details className="citation"><summary>原文 L{evidence.startLine}–L{evidence.endLine}</summary><blockquote>{evidence.quote}</blockquote></details>;
 }
-function TodoEditor({ todo, currentAnalysis, reload, onError }: { todo: MeetingDetail['todos'][number]; currentAnalysis: string | null; reload: () => void; onError: (message: string) => void }) {
+function TodoEditor({ todo, currentAnalysis, reload, onError }: { todo: MeetingDetail['todos'][number]; currentAnalysis: string | null; reload: (notice?:string) => void; onError: (message: string) => void }) {
   const [owner, setOwner] = useState(todo.owner ?? '');
   const [date, setDate] = useState(todo.dueDate ?? '');
   const [status, setStatus] = useState(todo.status);
+  const [ignoring,setIgnoring]=useState(false);
   const [saving, setSaving] = useState(false);
   useEffect(() => { setOwner(todo.owner ?? ''); setDate(todo.dueDate ?? ''); setStatus(todo.status); }, [todo.id, todo.version, todo.owner, todo.dueDate, todo.status]);
   async function save() {
     setSaving(true);
-    try { await api(`/meeting-todos/${todo.id}`, json('PATCH', { version: todo.version, owner: owner.trim() || null, dueDate: date || null, status })); reload(); }
+    try { await api(`/meeting-todos/${todo.id}`, json('PATCH', { version: todo.version, owner: owner.trim() || null, dueDate: date || null, status })); reload('待办已保存，后续分析不会覆盖人工字段。'); }
     catch (error) { onError(error instanceof Error ? error.message : '待办保存失败。'); }
     finally { setSaving(false); }
   }
-  return <article className="meeting-todo" data-todo-id={todo.id}><strong>{todo.origin==='meeting_question'?'[待确认] ':todo.origin==='risk_followup'?'[AI建议] ':'[明确行动] '}{todo.task}</strong><small>{todo.origin === 'risk_followup' ? '风险跟进建议，非会议原文指令' : todo.origin==='meeting_question'?'待确认问题，尚非分配行动':'会议明确行动项'}{todo.analysisId !== currentAnalysis ? ' · 来自旧分析，保留人工数据' : ''}</small>
+  return <article className="meeting-todo" data-todo-id={todo.id} data-ignored={todo.ignored}><strong>{todo.origin==='meeting_question'?'[待确认] ':todo.origin==='risk_followup'?'[AI建议] ':'[明确行动] '}{todo.task}</strong><small>{todo.origin === 'risk_followup' ? '风险跟进建议，非会议原文指令' : todo.origin==='meeting_question'?'待确认问题，尚非分配行动':'会议明确行动项'}{todo.analysisId !== currentAnalysis ? ' · 来自旧分析，保留人工数据' : ''}</small>
     <EvidenceView evidence={todo.evidence} />
-    <div className="meeting-form-row"><label>负责人<input aria-label="待办负责人" value={owner} placeholder="未知，待确认" onChange={e => setOwner(e.target.value)} /></label><label>截止日期<input aria-label="待办截止日期" type="date" value={date} onChange={e => setDate(e.target.value)} /></label><label>处理状态<select aria-label="待办处理状态" value={status} onChange={e => setStatus(e.target.value as typeof status)}><option value="open">待处理</option><option value="in_progress">进行中</option><option value="done">已完成</option></select></label><button disabled={saving} onClick={() => { void save(); }}>保存待办</button></div>
+    {todo.ignored?<p>已忽略：不进入新的正式邮件或PPT待办清单，原文保留。</p>:null}<button type="button" disabled={saving} onClick={()=>setIgnoring(true)}>{todo.ignored?'恢复待办':'忽略 / 移除待办'}</button><div hidden={todo.ignored} className="meeting-form-row"><label>负责人<input aria-label="待办负责人" value={owner} placeholder="未知，待确认" onChange={e => setOwner(e.target.value)} /></label><label>截止日期<input aria-label="待办截止日期" type="date" value={date} onChange={e => setDate(e.target.value)} /></label><label>处理状态<select aria-label="待办处理状态" value={status} onChange={e => setStatus(e.target.value as typeof status)}><option value="open">待处理</option><option value="in_progress">进行中</option><option value="done">已完成</option></select></label><button disabled={saving} onClick={() => { void save(); }}>保存待办</button></div>
+    <ActionDialog open={ignoring} title={todo.ignored?'恢复待办':'忽略待办'} description="保留原始会议证据与人工字段；忽略后不进入新的正式邮件和PPT待办清单。" onClose={()=>setIgnoring(false)} onConfirm={async()=>{await api(`/meeting-todos/${todo.id}/ignore`,json('POST',{version:todo.version,restore:todo.ignored}));reload(todo.ignored?'待办已恢复':'待办已忽略，历史证据仍保留');}}/>
   </article>;
 }
-function DraftEditor({ draft, reload, onError }: { draft: NonNullable<MeetingDetail['draft']>; reload: () => void; onError: (message: string) => void }) {
+function DraftEditor({ draft, reload, onError }: { draft: NonNullable<MeetingDetail['draft']>; reload: (notice?:string) => void; onError: (message: string) => void }) {
   const [recipients, setRecipients] = useState(draft.recipients.join(', '));
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
@@ -45,7 +48,7 @@ function DraftEditor({ draft, reload, onError }: { draft: NonNullable<MeetingDet
     try {
       if (confirm) await api(`/email-drafts/${draft.id}/confirm`, json('POST', { version: draft.version }));
       else await api(`/email-drafts/${draft.id}`, json('PATCH', { version: draft.version, recipients: recipients.split(/[,，;；]/).map(s => s.trim()).filter(Boolean), subject, body }));
-      reload();
+      reload(confirm?'此版本已确认，未发送邮件。':'草稿新版本已保存，请复核后确认。');
     } catch (error) { onError(error instanceof Error ? error.message : '草稿操作失败。'); }
     finally { setBusy(false); }
   }
@@ -58,6 +61,8 @@ function DraftEditor({ draft, reload, onError }: { draft: NonNullable<MeetingDet
   </section>;
 }
 export function MeetingPanel() {
+  const [notice,setNotice]=useState('');
+  const [listError,setListError]=useState('');
   const [list, setList] = useState<z.infer<typeof listSchema>['meetings']>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<MeetingDetail | null>(null);
@@ -67,13 +72,13 @@ export function MeetingPanel() {
   const [revision, setRevision] = useState(0);
   const [transcript, setTranscript] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
-  const reload = () => setRevision(value => value + 1);
+  const reload = (message?:string) => {if(message)setNotice(message);setRevision(value => value + 1);};
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     async function load() {
-      try { const data = listSchema.parse(await api('/meetings', { signal: controller.signal })); if (!controller.signal.aborted) setList(data.meetings); }
-      catch { /* Health/initial configuration errors stay outside the meeting business panel. */ }
+      try { const data = listSchema.parse(await api('/meetings', { signal: controller.signal })); if (!controller.signal.aborted){setList(data.meetings);setListError('');} }
+      catch { if(!controller.signal.aborted)setListError('会议列表读取失败，请检查连接后刷新。'); }
       finally { if (!controller.signal.aborted) timer = setTimeout(() => { void load(); }, 3000); }
     }
     void load(); return () => { controller.abort(); clearTimeout(timer); };
@@ -106,7 +111,7 @@ export function MeetingPanel() {
   const result = detail?.analysis?.result;
   return <section id="meetings" className="meeting-panel" aria-label="会议分析与风险待办"><div className="chat-heading"><h2>会议分析与风险待办</h2><label className="upload-label">{uploading ? '上传中…' : '上传会议 TXT'}<input ref={input} aria-label="上传会议 TXT" type="file" accept=".txt,text/plain" disabled={uploading} onChange={e => { const file = e.target.files?.[0]; if (file) void upload(file); }} /></label></div>
     <p>UTF-8 TXT · 1 MiB / 64000 字符上限 · 风险均需原文证据 · 邮件须人工确认版本并单独确认发送</p>
-    {error ? <p role="alert" className="chat-error">{error}</p> : null}
+    {error||listError ? <p role="alert" className="chat-error">{error||listError}</p> : null}{notice?<p role="status">{notice}</p>:null}
     <ul className="meeting-list">{list.map(row => <li key={row.id}><button data-meeting-id={row.id} aria-pressed={row.id === selected} onClick={() => { setSelected(row.id); setError(''); }}>{row.filename} · {labels[row.status]}</button></li>)}</ul>
     {detail ? <div data-selected-meeting={detail.meeting.id}><div className="meeting-actions"><strong>{labels[detail.meeting.status]} · {detail.meeting.lineCount} 行 · 已保留 {detail.versions.length} 个分析版本</strong><button disabled={restarting || detail.meeting.status === 'processing' || detail.meeting.status === 'uploaded'} onClick={() => { void reanalyze(); }}>重新分析（保留人工编辑）</button><button onClick={() => { void api(`/meetings/${selected}/transcript`).then(data => setTranscript(data.transcript)).catch(() => setError('原文加载失败。')); }}>查看带行号原文</button></div>
       {detail.meeting.status === 'failed' ? <p className="chat-error">{detail.meeting.errorMessage}（{detail.meeting.errorCode}）</p> : null}

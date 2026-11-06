@@ -6,6 +6,7 @@ import type { PrivateStorage } from '../knowledge/storage.js';
 import type { ChatModel } from '../llm/adapter.js';
 import { PublicError } from '../errors.js';
 import {untrustedInstruction} from '../evidence/policy.js';
+import {visible} from '../management.js';
 import {changedTodos,latestDraftBody} from './draft-state.js';
 import { analyzeTranscript, decodeTranscript, sameAction, taskKey, validDate } from './analysis.js';
 import { draftPatchSchema, todoPatchSchema, type MeetingAction } from '../../../../shared/meetings.js';
@@ -22,7 +23,7 @@ export function createMeetingService(database: Database, storage: PrivateStorage
     const analyses = await db.select().from(meetingAnalyses).where(eq(meetingAnalyses.meetingId, id)).orderBy(desc(meetingAnalyses.version));
     const risks = row.currentAnalysisId ? await db.select().from(meetingRisks).where(eq(meetingRisks.analysisId, row.currentAnalysisId)) : [];
     const evidence = risks.length ? await db.select().from(riskEvidence).where(sql`${riskEvidence.riskId} in (select id from meeting_risks where analysis_id = ${row.currentAnalysisId})`) : [];
-    const todos = await db.select().from(meetingTodos).where(eq(meetingTodos.meetingId, id)).orderBy(asc(meetingTodos.updatedAt));
+    const todos = await db.select({id:meetingTodos.id,analysisId:meetingTodos.analysisId,task:meetingTodos.task,owner:meetingTodos.owner,dueDate:meetingTodos.dueDate,status:meetingTodos.status,version:meetingTodos.version,origin:meetingTodos.origin,evidence:meetingTodos.evidence,updatedAt:meetingTodos.updatedAt,ignored:sql<boolean>`to_jsonb(${meetingTodos})->>'dismissed_at' is not null`}).from(meetingTodos).where(eq(meetingTodos.meetingId, id)).orderBy(asc(meetingTodos.updatedAt));
     const [draft] = await db.select().from(emailDrafts).where(eq(emailDrafts.meetingId, id));
     const [delivery] = draft ? await db.select({ status: emailDeliveries.status }).from(emailDeliveries).where(and(eq(emailDeliveries.draftId, draft.id), eq(emailDeliveries.version, draft.version))).limit(1) : [];
     // Explicit projection: never expose bucket, object key or credentials.
@@ -70,7 +71,7 @@ export function createMeetingService(database: Database, storage: PrivateStorage
       return updated;
       });
     },
-    async draftPreview(id:string){const [draft]=await db.select().from(emailDrafts).where(eq(emailDrafts.id,id));if(!draft)throw new PublicError(404,'DRAFT_NOT_FOUND','草稿不存在。');const data=await detail(draft.meetingId);return {version:draft.version,subject:draft.subject,body:latestDraftBody(data.todos.filter(t=>!untrustedInstruction(t.evidence.quote)),data.risks.filter(r=>r.evidence.every(e=>!untrustedInstruction(e.quote)))),sourceChanged:data.draft!.stale};},
+    async draftPreview(id:string){const [draft]=await db.select().from(emailDrafts).where(eq(emailDrafts.id,id));if(!draft)throw new PublicError(404,'DRAFT_NOT_FOUND','草稿不存在。');const data=await detail(draft.meetingId);return {version:draft.version,subject:draft.subject,body:latestDraftBody(data.todos.filter(t=>!t.ignored&&!untrustedInstruction(t.evidence.quote)),data.risks.filter(r=>r.evidence.every(e=>!untrustedInstruction(e.quote)))),sourceChanged:data.draft!.stale};},
     async updateDraft(id: string, input: unknown) {
       const patch = draftPatchSchema.parse(input);
       return db.transaction(async tx => {
@@ -83,7 +84,7 @@ export function createMeetingService(database: Database, storage: PrivateStorage
         const [active] = await tx.select({ id: emailDeliveries.id }).from(emailDeliveries).where(and(eq(emailDeliveries.draftId, id), sql`${emailDeliveries.status} in ('queued','processing','unknown')`)).limit(1);
         if (active) throw new PublicError(409, 'EMAIL_PREVIOUS_UNRESOLVED', '此草稿已有待发送、处理中或未知发送，内容已冻结；请先核查发送结果。');
         const risks = await tx.select({ id: meetingRisks.id }).from(meetingRisks).where(eq(meetingRisks.analysisId, meeting.currentAnalysisId));
-        const todos = await tx.select({ id: meetingTodos.id }).from(meetingTodos).where(eq(meetingTodos.meetingId, meeting.id));
+        const todos = await tx.select({ id: meetingTodos.id }).from(meetingTodos).where(and(eq(meetingTodos.meetingId, meeting.id),visible(meetingTodos,'dismissed_at')));
         return (await tx.update(emailDrafts).set({ recipients: patch.recipients, subject: patch.subject, body: patch.body, version: draft.version + 1, state: 'draft', userEdited: true, analysisId: meeting.currentAnalysisId, riskIds: risks.map(r => r.id), todoIds: todos.map(t => t.id), updatedAt: sql`clock_timestamp()` }).where(eq(emailDrafts.id, id)).returning())[0];
       });
     },
@@ -140,7 +141,7 @@ export function createMeetingService(database: Database, storage: PrivateStorage
           const todos = [];
           for (const action of result.actions) {
             const previous = existing.find(todo => todo.origin !== 'risk_followup' && sameAction({ ...todo, dueDate: todo.dueDate } as MeetingAction, action));
-            const origin=action.category==='question'||/^(?:待确认|待讨论|是否|确认是否)/.test(action.task)?'meeting_question' as const:'meeting_action' as const;
+            const origin=action.category==='question'||(action.owner===null&&/^(?:待确认|待讨论|是否)/.test(action.task))?'meeting_question' as const:'meeting_action' as const;
             const sourceKey = previous?.sourceKey ?? taskKey(action);
             if (seen.has(sourceKey)) continue;
             seen.add(sourceKey);
@@ -157,10 +158,11 @@ export function createMeetingService(database: Database, storage: PrivateStorage
             const [saved] = await tx.insert(meetingTodos).values({ meetingId: claimed.id, analysisId: analysis.id, sourceKey, task: `复核并跟进风险：${risk.description}`, origin: 'risk_followup', owner: null, dueDate: null, evidence: risk.evidence[0], riskIds: related }).onConflictDoUpdate({ target: [meetingTodos.meetingId, meetingTodos.sourceKey], set: { analysisId: analysis.id, riskIds: related } }).returning();
             todos.push(saved);
           }
+          const activeTodos=await tx.select().from(meetingTodos).where(and(eq(meetingTodos.meetingId,claimed.id),visible(meetingTodos,'dismissed_at')));
           // No address inference or outbound mail tool. Existing edited drafts are never overwritten.
-          if (risks.length) await tx.insert(emailDrafts).values({ meetingId: claimed.id, analysisId: analysis.id, riskIds: risks.map(r => r.id), todoIds: todos.map(t => t.id), recipients: [],
+          if (risks.length) await tx.insert(emailDrafts).values({ meetingId: claimed.id, analysisId: analysis.id, riskIds: risks.map(r => r.id), todoIds: activeTodos.map(t => t.id), recipients: [],
             subject: `会议风险跟进：${result.topic?.value ?? claimed.filename}`,
-            body: `请复核以下潜在风险与待办（AI 分析，需人工确认）：\n\n${risks.map((r, i) => `${i + 1}. [${r.level}] ${r.description}\n潜在影响：${r.impact}\n依据：${r.evidence.map(e => `L${e.startLine}–${e.endLine} ${e.quote}`).join('\n')}`).join('\n\n')}\n\n待办：\n${todos.map(t => `${t.origin==='risk_followup'?'[建议] ':t.origin==='meeting_question'?'[待确认] ':'[明确行动] '}${t.task}；负责人：${t.owner ?? '未知'}；截止日期：${t.dueDate ?? '未知'}`).join('\n')}\n\n本草稿由AI准备，真实发送必须人工复核并单独确认。`,
+            body: `请复核以下潜在风险与待办（AI 分析，需人工确认）：\n\n${risks.map((r, i) => `${i + 1}. [${r.level}] ${r.description}\n潜在影响：${r.impact}\n依据：${r.evidence.map(e => `L${e.startLine}–${e.endLine} ${e.quote}`).join('\n')}`).join('\n\n')}\n\n待办：\n${activeTodos.map(t => `${t.origin==='risk_followup'?'[建议] ':t.origin==='meeting_question'?'[待确认] ':'[明确行动] '}${t.task}；负责人：${t.owner ?? '未知'}；截止日期：${t.dueDate ?? '未知'}`).join('\n')}\n\n本草稿由AI准备，真实发送必须人工复核并单独确认。`,
           }).onConflictDoNothing({ target: emailDrafts.meetingId });
           await tx.update(meetings).set({ status: 'ready', currentAnalysisId: analysis.id, errorCode: null, errorMessage: null, leaseUntil: null, updatedAt: new Date() }).where(owns);
         });

@@ -4,6 +4,12 @@ import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import JSZip from 'jszip';
+import Fastify from 'fastify';
+import {registerDemoAccess} from '../../apps/api/src/demo/access.js';
+import {registerManagementRoutes} from '../../apps/api/src/management.js';
+import {parseEnv} from '../../apps/api/src/config/env.js';
+import {createPresentationSources} from '../../apps/api/src/presentations/sources.js';
+import {PublicError} from '../../apps/api/src/errors.js';
 import { eq, inArray } from 'drizzle-orm';
 import { configuredDatabase, newRun, saveRun, snapshot, inventory, localStorage, digest, runDirectory, tables } from '../support/corpus-db.js';
 import * as schema from '../../apps/api/src/db/schema.js';
@@ -83,6 +89,7 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
     }
   });
   function testCase(id: string, name: string, action: () => Promise<void>) {
+    run.results[id]??={result:'NOT_RUN',dependency:'real PostgreSQL; all external providers STUB',reason:'not executed'};
     it(`${id} ${name}`, async context => {
       if (halted) { run.results[id].reason = 'prior failure; further writes stopped'; await saveRun(run); context.skip(); return; }
       let failure: unknown;
@@ -269,5 +276,42 @@ describe('Corpus Stage A: shared PostgreSQL / external STUB only', () => {
     await writeFile(resolve(runDirectory(run), 'restart-receipt.json'), child.stdout);
     expect((await database.db.select().from(schema.presentationJobs).where(eq(schema.presentationJobs.id, pptId)))[0].context.artifactPublication?.state).toBe('published');
     expect((await database.db.select().from(schema.documentChunks).where(inArray(schema.documentChunks.documentId, run.roots.documents))).length).toBeGreaterThan(0);
+  });
+  testCase('M01','authenticated archive/rename/remove/ignore retain old evidence and files',async()=>{
+    const key='synthetic-management-access-1234567890';
+    const app=Fastify();registerDemoAccess(app,parseEnv({NODE_ENV:'test',DEMO_ACCESS_KEY:key}));registerManagementRoutes(app,database);
+    app.setErrorHandler((e,_r,reply)=>reply.code(e instanceof PublicError?e.statusCode:500).send({code:e instanceof PublicError?e.code:'TEST_ERROR'}));
+    try{
+      const target=run.roots.conversations[0];
+      expect((await app.inject({method:'DELETE',url:`/api/conversations/${target}`})).statusCode).toBe(401);
+      const login=await app.inject({method:'POST',url:'/api/demo-session',payload:{accessKey:key}});const cookie=String(login.headers['set-cookie']).split(';')[0];
+      const request=(method:'PATCH'|'DELETE'|'POST',url:string,payload?:Record<string,unknown>)=>app.inject({method,url,headers:{cookie},payload});
+      expect((await request('PATCH',`/api/conversations/${target}`,{title:`CORPUS renamed ${run.runId}`})).statusCode).toBe(200);
+      expect((await database.db.select().from(schema.conversations).where(eq(schema.conversations.id,target)))[0].title).toContain('CORPUS renamed');
+      const oldHistory=await chat().history(target);
+      expect((await request('DELETE',`/api/conversations/${target}`)).statusCode).toBe(200);
+      expect((await chat().list()).some(c=>c.id===target)).toBe(false);
+      expect(await chat().history(target)).toHaveLength(oldHistory.length);
+      await expect(chat().send(target,{content:'不能向归档会话写入',clientRequestId:randomUUID(),searchMode:'off'})).rejects.toMatchObject({code:'CONVERSATION_NOT_FOUND'});
+      expect(await memory().retrieve('ORCHID-7421 林岚')).toEqual([]);
+      const document=run.roots.documents[0];
+      expect((await request('DELETE',`/api/documents/${document}`)).statusCode).toBe(200);
+      const docs=createDocumentService(database,storage,embedder);
+      expect((await docs.list()).some(d=>d.id===document)).toBe(false);
+      expect((await docs.download(document)).bytes.length).toBeGreaterThan(0);
+      expect((await createRetriever(database,embedder,0.5)('code')).some(d=>d.documentId===document)).toBe(false);
+      const detail=await meetingService.detail(run.roots.meetings[0]),todo=detail.todos.find(t=>t.task===analysis.actions[0].task)!;
+      expect((await request('POST',`/api/meeting-todos/${todo.id}/ignore`,{version:todo.version})).statusCode).toBe(200);
+      expect((await meetingService.detail(run.roots.meetings[0])).todos.find(t=>t.id===todo.id)?.ignored).toBe(true);
+      expect((await meetingService.draftPreview(detail.draft!.id)).body).not.toContain(todo.task);
+      expect((await request('POST',`/api/meeting-todos/${todo.id}/ignore`,{version:todo.version})).statusCode).toBe(409);
+      const row=(await database.db.select().from(schema.presentationJobs).where(eq(schema.presentationJobs.id,pptId)))[0];
+      const collected=await createPresentationSources(database,createRetriever(database,embedder,0.5),memory(),null)({...row,request:'根据这次会议生成5页PPT',context:{...row.context,meetingId:run.roots.meetings[0],knowledgeMode:true,useMemory:true,searchMode:'off',webQuery:null}});
+      expect(collected.filter(s=>s.kind==='todo').some(s=>s.locator.todoId===todo.id)).toBe(false);
+      expect(collected.filter(s=>s.kind==='pdf').some(s=>s.locator.documentId===document)).toBe(false);
+      const download=createPresentationService(database,storage,stub('unused'),async()=>[],{PPT_SCOPE:run.scope,PPT_MAX_TOKENS:8192});
+      expect(digest((await download.download(pptId)).bytes)).toBe(row.sha256);
+      expect(run.objects).toHaveLength(7);
+    }finally{await app.close();}
   });
 });

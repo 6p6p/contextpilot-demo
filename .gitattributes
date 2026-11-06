@@ -1,2 +1,4 @@
 # PDF xref offsets and compressed streams must preserve exact bytes on Windows.
 *.pdf binary
+# 0009 was applied with LF bytes; keep its migration checksum stable on Windows.
+drizzle/0009_demo_management.sql text eol=lf

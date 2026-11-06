@@ -4,7 +4,9 @@ import { MemorySources } from './MemoryPanel';
 import { useEffect, useRef, useState } from 'react';
 import { conversationSchema, conversationsResponse, messagesResponse, type Conversation, type ChatMessage } from '../../../shared/chat';
 import './chat.css';
-import { KnowledgeLibrary } from './KnowledgeLibrary';
+import {ActionDialog} from './ActionDialog';
+import {AnswerContent} from './SafeMarkdown';
+import type {ReactNode} from 'react';
 
 async function request(path: string, options?: RequestInit) {
   const response = await fetch(`/api${path}`, options);
@@ -15,7 +17,9 @@ async function request(path: string, options?: RequestInit) {
   }
   return data;
 }
-export function ChatWorkspace() {
+export function ChatWorkspace({activeTool='chat',onChat,children}:{activeTool?:string;onChat?:()=>void;children?:ReactNode}) {
+  const [management,setManagement]=useState<{kind:'rename'|'archive';conversation:Conversation}|null>(null);
+  const [newTitle,setNewTitle]=useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -56,7 +60,7 @@ export function ChatWorkspace() {
     try { localStorage.setItem('contextpilot.conversation', selected); } catch { /* Optional preference only. */ }
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
-    setMessages([]);
+    if(lastConversation.current!==selected)setMessages([]);
     setLoading(true);
     setError('');
     async function load() {
@@ -80,7 +84,7 @@ export function ChatWorkspace() {
       const conversation = conversationSchema.parse((data as { conversation: unknown }).conversation);
       listVersion.current += 1;
       setConversations(current => [conversation, ...current]);
-      setSelected(conversation.id); setDraft('');
+      setSelected(conversation.id); setDraft('');onChat?.();
     } catch (cause) { setError(cause instanceof Error ? cause.message : '创建失败。'); }
     finally { setCreating(false); }
   }
@@ -88,7 +92,7 @@ export function ChatWorkspace() {
     event.preventDefault();
     if (!selected || !draft.trim() || sending || creating || loading) return;
     const id = selected;
-    setSending(true); setError('');
+    stickToBottom.current=true;setSending(true); setError('');
     try {
       const result = messagesResponse.parse(await request(`/conversations/${id}/messages`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
@@ -104,24 +108,30 @@ export function ChatWorkspace() {
       setError(`${cause instanceof Error ? cause.message : '发送失败。'} 如网络中断，请先重新加载历史确认结果，避免重复发送。`);
     } finally { setSending(false); }
   }
+  const scroller=useRef<HTMLDivElement>(null),stickToBottom=useRef(true),lastConversation=useRef(selected);
+  useEffect(()=>{if(lastConversation.current!==selected){stickToBottom.current=true;lastConversation.current=selected;}if(!loading&&stickToBottom.current&&scroller.current)scroller.current.scrollTop=scroller.current.scrollHeight;},[messages,sending,loading,selected]);
   const pending = messages.some(m => m.status === 'processing');
-  return <><KnowledgeLibrary /><section id="chat" className="chat-workspace" aria-label="AI 对话工作台">
+  return <><section id="chat" className="chat-workspace" aria-label="AI 对话工作台">
     <aside className="conversation-list">
       <h2>历史会话</h2>
       <button onClick={() => { void create(); }} disabled={creating || sending || loading}>{creating ? '创建中…' : '新建会话'}</button>
-      <ul>{conversations.map(conversation => <li key={conversation.id}><button aria-pressed={selected === conversation.id} disabled={sending || creating} onClick={() => { setSelected(conversation.id); setDraft(''); }}>{conversation.title}</button></li>)}</ul>
+      <ul>{conversations.map(conversation => <li key={conversation.id}><button aria-pressed={selected === conversation.id} disabled={sending || creating} onClick={() => { setSelected(conversation.id); setDraft('');onChat?.(); }}>{conversation.title}</button><span className="history-actions"><button type="button" disabled={sending||creating} aria-label={`重命名 ${conversation.title}`} onClick={()=>{setNewTitle(conversation.title);setManagement({kind:'rename',conversation});}}>改名</button><button type="button" disabled={sending||creating} aria-label={`删除 ${conversation.title}`} onClick={()=>setManagement({kind:'archive',conversation})}>移除</button></span></li>)}</ul>
       {!conversations.length && !loading ? <p>暂无会话，创建后开始对话。</p> : null}
     </aside>
     <div className="chat-panel">
-      <div className="chat-heading"><h2>AI 对话</h2><button disabled={sending || creating} onClick={() => setRefresh(value => value + 1)}>重新加载历史</button></div>
+      <div className="chat-heading"><h2>{activeTool==='chat'||activeTool==='ppt'?'AI 对话':'辅助工作区'}</h2><button disabled={sending || creating} onClick={() => setRefresh(value => value + 1)}>重新加载历史</button></div>
       {error ? <p className="chat-error" role="alert">{error}</p> : null}
-      <PresentationPanel context={presentationContext} onChange={setPresentationContext} refresh={refresh}/>
-      <div className="chat-messages" aria-label="聊天消息" aria-busy={loading || sending || pending}>
+      {children}
+      <div className="chat-surface" hidden={activeTool!=='chat'&&activeTool!=='ppt'}>
+      <PresentationPanel openRequested={activeTool==='ppt'} context={presentationContext} onChange={setPresentationContext} refresh={refresh}/>
+      <div ref={scroller} onScroll={()=>{if(!loading&&scroller.current)stickToBottom.current=scroller.current.scrollHeight-scroller.current.clientHeight-scroller.current.scrollTop<100;}} className="chat-messages" aria-label="聊天消息" aria-busy={loading || sending || pending}>
         {loading ? <p>正在加载历史…</p> : null}
+        {!loading&&!selected?<div className="chat-empty"><h2>从一个项目问题开始</h2><p>先创建对话，再按需使用知识库、会议、记忆、搜索与PPT。</p><button type="button" disabled={creating} onClick={()=>{void create();}}>创建第一段对话</button></div>:null}
         {!loading && selected && !messages.length ? <p>发送第一条消息。历史保存在云端数据库中。</p> : null}
         {messages.map(message => <article className={`chat-message ${message.role}`} key={message.id} aria-label={message.role === 'user' ? '用户消息' : 'AI 消息'}>
           <strong>{message.role === 'user' ? '你' : 'ContextPilot'}</strong>
-          <div className="message-content">{message.status === 'processing' ? '正在生成回复…' : message.status === 'failed' ? `回复失败（${message.errorCode || 'UNKNOWN'}），原消息已保存。` : message.content}</div>
+          <div className="message-content">{message.status === 'processing' ? '正在生成回复…' : message.status === 'failed' ? `回复失败（${message.errorCode || 'UNKNOWN'}），原消息已保存。` : <AnswerContent text={message.content} compactWeb={message.webSources.length>0}/>}</div>
+          {message.status==='failed'?<button type="button" disabled={sending||loading} onClick={()=>{const question=messages.find(m=>m.role==='user'&&m.clientRequestId===message.clientRequestId);if(question)setDraft(question.content);}}>重新编辑问题（不会自动重试）</button>:null}
           {message.webSources.map((source, i) => <details className="citation" key={`${source.id}-${i}`}><summary>网页 [{source.id}] {source.title} · {source.quote ? '已引用' : '仅检索'}</summary><a href={source.url} target="_blank" rel="noopener noreferrer">{source.url}</a><p>查询时间：{source.queriedAt}{source.publishedAt ? ` · 发布时间：${source.publishedAt}` : ''}</p>{source.quote ? <blockquote>{source.quote}</blockquote> : null}<p>{source.summary}</p></details>)}
           {message.memorySources.length ? <p>本回答使用以下历史记忆：</p> : null}
           {message.memorySources.map(m => <MemorySources key={m.id} memory={m} />)}
@@ -137,6 +147,11 @@ export function ChatWorkspace() {
         <textarea id="chat-input" value={draft} onChange={event => setDraft(event.target.value)} maxLength={4000} rows={3} disabled={!selected || creating || sending || loading || pending} placeholder="输入消息，开始多轮对话…" />
         <div className="composer-actions"><small>{knowledgeMode ? '仅按当前问题检索全部已就绪 PDF · 回答附原文证据' : '普通对话 · 自动召回历史记忆 · 联网按所选模式 · 仅输入公共短查询'}</small><button type="submit" disabled={!selected || !draft.trim() || creating || sending || loading || pending}>发送消息</button></div>
       </form>
+      </div>
     </div>
-  </section></>;
+  </section><ActionDialog open={Boolean(management)} title={management?.kind==='rename'?'重命名会话':'删除会话（归档）'} description={management?.kind==='rename'?'修改标题，不改变对话内容。':'从历史列表和新的记忆检索中移除；保留消息、历史引用和PPT文件，不执行物理删除。'} onClose={()=>setManagement(null)} onConfirm={async()=>{
+    if(!management)return;const {conversation,kind}=management;
+    await request(`/conversations/${conversation.id}`,kind==='rename'?{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({title:newTitle})}:{method:'DELETE'});
+    if(kind==='archive'&&selected===conversation.id){setSelected(null);setMessages([]);}setRefresh(v=>v+1);
+  }}>{management?.kind==='rename'?<label>会话名称<input autoFocus value={newTitle} maxLength={100} onChange={e=>setNewTitle(e.target.value)}/></label>:null}</ActionDialog></>;
 }

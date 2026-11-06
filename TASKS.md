@@ -1,5 +1,7 @@
 # Development tasks
 
+MVP v1.1 Phase B：对话中心布局、安全Markdown与容器滚动、服务端会话改名/归档、PDF软移除、待办忽略/恢复、草稿复核和记忆刷新反馈已实现。0009经批准仅新增3个可空字段，旧内容校验不变。check/test199、生产E2E3、真实DB+外部替身9项通过；来源/文件保留，未执行物理清理。旧Railway结构兼容但没有新管理语义，本轮不部署。详细范围、Run ID与待人工复测见[本轮记录](docs/mvp-v1.1-verification.md)，UX状态见[backlog](docs/ux-backlog.md)。
+
 MVP v1.1 Phase A：新增受约束的官方多源版本/状态归纳、会议注入行过滤/行动分类、项目绑定记忆与当前上下文优先、最新待办草稿预览及旧版本复核保护。验证与局限见[本轮记录](docs/mvp-v1.1-verification.md)；真实模型人工复测仍待完成，邮件关闭，不Push/部署。
 
 ## Stage B round1 defect repair — 2026-11-06

@@ -1,5 +1,7 @@
 # Stage B人工验收第一轮缺陷修复
 
+后续MVP v1.1业务质量与UI/UX v2已按独立阶段完成，见[最新验收记录](mvp-v1.1-verification.md)。此处保留第一轮问题及当时证据，不将后续Mock/DB通过冒充真实人工复测。
+
 2026-11-06，沿用Run ID `cee51f13-79e6-42d6-9caa-dc21b81cf079`与原始问题，Corpus v1 Golden/SHA未改。没有真实模型/Embedding/Tavily/Resend/云Storage调用，未改既有数据/Schema/.env/生产配置，未清理验收资料。
 
 ## 实证与限制

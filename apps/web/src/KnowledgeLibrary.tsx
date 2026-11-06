@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import {ActionDialog} from './ActionDialog';
 import { documentsResponse, type KnowledgeDocument } from '../../../shared/documents';
 
 const labels = { uploaded: '已上传，等待处理', processing: '解析与向量化中', ready: '可用于知识问答', failed: '处理失败' };
 export function KnowledgeLibrary() {
+  const [removing,setRemoving]=useState<KnowledgeDocument|null>(null);
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [error, setError] = useState('');
   const [listError, setListError] = useState('');
@@ -41,10 +43,11 @@ export function KnowledgeLibrary() {
     <p>私有存储 · 最多 6 MB / 100 页 · 不支持扫描件 OCR。处理完成后勾选“使用 PDF 知识库”提问。</p>
     {error || listError ? <p role="alert" className="chat-error">{error || listError}</p> : null}
     <ul className="document-list">{documents.map(document => <li key={document.id} data-document-id={document.id}>
-      <strong>{document.filename}</strong><span>{labels[document.status]}</span>
+      <strong>{document.filename}</strong><button type="button" onClick={()=>setRemoving(document)}>移除文件</button><span>{labels[document.status]}</span>
       {document.status === 'ready' ? <small>{document.pageCount} 页 · {document.chunkCount} 个片段</small> : null}
       {document.status === 'failed' ? <p>{document.errorMessage}（{document.errorCode}）</p> : null}
     </li>)}</ul>
-    {!documents.length ? <p>尚无已上传文件。</p> : null}
+    {!documents.length&&!listError ? <p>尚无已上传文件。</p> : null}
+  <ActionDialog open={Boolean(removing)} title="移除 PDF" description="停止此文件参与新的RAG和PPT检索；原文件、向量和历史引用保留，不删除Storage对象。" onClose={()=>setRemoving(null)} onConfirm={async()=>{if(!removing)return;const r=await fetch(`/api/documents/${removing.id}`,{method:'DELETE'});if(!r.ok){const d=await r.json();throw new Error(d.error?.message??'移除失败');}setRefresh(v=>v+1);}}/>
   </section>;
 }

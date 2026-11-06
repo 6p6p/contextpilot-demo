@@ -9,6 +9,7 @@ const variableVector = customType<{ data: number[]; driverData: string }>({
 
 export const conversations = pgTable('conversations', {
   id: uuid().primaryKey().defaultRandom(),
+  archivedAt: timestamp('archived_at',{withTimezone:true}),
   title: text().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -40,6 +41,7 @@ export const messages = pgTable('messages', {
 ]).enableRLS();
 
 export const documents = pgTable('documents', {
+  removedAt: timestamp('removed_at',{withTimezone:true}),
   id: uuid().primaryKey(), filename: text().notNull(), objectKey: text('object_key').notNull(),
   storageOrigin: text('storage_origin').notNull(), storageBucket: text('storage_bucket').notNull(),
   size: integer().notNull(), sha256: text().notNull(),
@@ -91,6 +93,7 @@ export const riskEvidence = pgTable('risk_evidence', {
   startLine: integer('start_line').notNull(), endLine: integer('end_line').notNull(), quote: text().notNull(),
 }, t => [check('risk_evidence_lines_check', sql`${t.startLine} >= 1 and ${t.endLine} >= ${t.startLine}`)]).enableRLS();
 export const meetingTodos = pgTable('meeting_todos', {
+  dismissedAt: timestamp('dismissed_at',{withTimezone:true}),
   id: uuid().primaryKey().defaultRandom(), meetingId: uuid('meeting_id').notNull().references(() => meetings.id, { onDelete: 'restrict' }),
   analysisId: uuid('analysis_id').notNull().references(() => meetingAnalyses.id, { onDelete: 'restrict' }), sourceKey: text('source_key').notNull(),
   task: text().notNull(), owner: text(), dueDate: text('due_date'), status: text({ enum: ['open', 'in_progress', 'done'] }).notNull().default('open'),

@@ -3,6 +3,7 @@ import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
 import type { createDatabase } from '../db/client.js';
 import { documents, documentChunks } from '../db/schema.js';
 import { PublicError } from '../errors.js';
+import {visible} from '../management.js';
 import type { PrivateStorage } from './storage.js';
 import type { Embedder } from './embedding.js';
 import { chunkPages, parsePdf, validatePdf } from './pdf.js';
@@ -30,7 +31,7 @@ export function createDocumentService(database: Database, storage: PrivateStorag
   }
   return {
     get, download,
-    list: () => db.select(publicFields).from(documents).orderBy(desc(documents.createdAt)).limit(100),
+    list: () => db.select(publicFields).from(documents).where(visible(documents,'removed_at')).orderBy(desc(documents.createdAt)).limit(100),
     async upload(filename: string, mime: string, bytes: Buffer) {
       validatePdf(filename, mime, bytes);
       if (!storage || !embedder) throw new PublicError(503, 'KNOWLEDGE_NOT_CONFIGURED', '请先配置私有 Storage 和独立 Embedding 服务。');
@@ -60,6 +61,7 @@ export function createDocumentService(database: Database, storage: PrivateStorag
       const claimed = await db.transaction(async tx => {
         const [row] = await tx.select().from(documents).where(and(
           eq(documents.storageReady, true), eq(documents.embeddingSpace, embedder.space),
+          visible(documents,'removed_at'),
           eq(documents.storageOrigin, storage.origin), eq(documents.storageBucket, storage.bucket),
           sql`${documents.attempts} < 2`,
           or(eq(documents.status, 'uploaded'), and(eq(documents.status, 'processing'), lt(documents.leaseUntil, now))),

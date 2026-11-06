@@ -10,6 +10,7 @@ import type { ChatModel } from '../llm/adapter.js';
 import { PublicError } from '../errors.js';
 import { buildContext } from './context.js';
 import {useCurrentContext} from '../evidence/policy.js';
+import {visible} from '../management.js';
 import type { KnowledgeAnswerer } from '../knowledge/retrieval.js';
 
 export function createChatService(database: NonNullable<ReturnType<typeof createDatabase>>, model: ChatModel | null, knowledge?: KnowledgeAnswerer | null, memory?: MemoryService | null, search?: SearchProvider | null, presentations?: PresentationService | null) {
@@ -28,7 +29,7 @@ export function createChatService(database: NonNullable<ReturnType<typeof create
     return rows.reverse();
   }
   return {
-    list: () => db.select().from(conversations).orderBy(desc(conversations.updatedAt)).limit(100),
+    list: () => db.select().from(conversations).where(visible(conversations,'archived_at')).orderBy(desc(conversations.updatedAt)).limit(100),
     async create(title: string) { return (await db.insert(conversations).values({ title }).returning())[0]; },
     history,
     async send(id: string, input: PresentationInput & {clientRequestId:string}) {
@@ -38,7 +39,7 @@ export function createChatService(database: NonNullable<ReturnType<typeof create
       if (!isPpt && input.knowledgeMode && !knowledge) throw new PublicError(503, 'KNOWLEDGE_NOT_CONFIGURED', '尚未配置 Embedding 知识检索服务。');
       await expire(id);
       const preparation = await db.transaction(async tx => {
-        const [conversation] = await tx.select().from(conversations).where(eq(conversations.id, id)).for('update');
+        const [conversation] = await tx.select().from(conversations).where(and(eq(conversations.id, id),visible(conversations,'archived_at'))).for('update');
         if (!conversation) throw new PublicError(404, 'CONVERSATION_NOT_FOUND', '会话不存在。');
         const previous = await tx.select().from(messages).where(and(eq(messages.conversationId, id), eq(messages.clientRequestId, input.clientRequestId))).orderBy(asc(messages.ordinal));
         if (previous.length) {
