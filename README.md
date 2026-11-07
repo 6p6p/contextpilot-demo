@@ -1,6 +1,6 @@
 # ContextPilot
 
-工程复盘：[仓库审计](docs/REPOSITORY_AUDIT.md) · [源码架构](docs/ARCHITECTURE_REVIEW.md) · [中文面试指南](docs/INTERVIEW_GUIDE.md)。
+工程复盘：[源码架构](docs/ARCHITECTURE_REVIEW.md) 
 
 将对话、文档、会议和可追溯记忆串起来的 AI 决策工作台。
 
@@ -36,12 +36,13 @@ npm run check
 npm run dev
 ```
 
-访问 http://localhost:5173。未配置的集成会明确报告不可用；使用已有 PostgreSQL（含 vector）与私有 Bucket。新数据库需先审查 [迁移](drizzle/)，再手动执行 `npm run db:migrate`；应用启动不自动迁移。不要同时运行连接同一数据库的本地与 Railway Worker。
+访问 http://localhost:5173。
+未配置的集成会明确报告不可用；使用已有 PostgreSQL（含 vector）与私有 Bucket。新数据库需先审查 [迁移](drizzle/)，再手动执行 `npm run db:migrate`；应用启动不自动迁移。不要同时运行连接同一数据库的本地与 Railway Worker。
 
 ## Notes
 
-共享口令保护单演示工作区，所有访客共享数据与配额；仅上传合成资料。真实邮件默认关闭，仅允许已授权白名单收件箱，必须复核确认；[管理员上线与收件验收](docs/email-release-check.md)。
+共享口令保护单演示工作区，所有访客共享数据与配额；仅上传合成资料。真实邮件默认关闭，仅允许已授权白名单收件箱，必须复核确认。
 
 模型输出需核对证据；PDF回答偏证据摘录，复杂综合可能不足。搜索时效取决于真实来源，PPT须人工打开检查。进程内AI限额不是账单硬上限；历史偶发上传500仍为观察项。
 
-详细内容：[架构与约束](SPEC.md)、[任务状态](TASKS.md)、[分层验收与本轮交付](docs/demo-kit-verification.md)。历史报告保留当时状态，不等于本轮公网复验结果。
+详细内容：[架构与约束](SPEC.md)、[任务状态](TASKS.md)。历史报告保留当时状态，不等于本轮公网复验结果。
