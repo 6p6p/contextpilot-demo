@@ -291,3 +291,15 @@ Phase3上传HTTP500降为观察项，不阻塞；历史数据库连接超时只�
 官方要求按问题对应机构映射，不以nodejs.org作通用规则；聊天一次Basic搜索增加域名/查询日期提示，优先近期官方证据。结论必须逐字匹配来源并通过权威/时间检查，再显示来源与查询时间；旧证据仅供对照，缺失/冲突明确无法确认，不编造版本或日期。全部实际元数据与既有引用ID约束保留。PPT原搜索调用不传新增可选提示，行为保持不变；未改数据库、邮件或PPT。
 
 新增7个固定Mock回归，npm run check通过164测试/类型/构建，生产smoke和生产E2E1通过。未付费搜索/模型调用，未访问真实数据库，暂不push/部署；记录和限制见docs/phase-9-verification.md末尾。
+
+
+## Final Demo Kit / email safety (2026-11-07)
+
+- [x] Audit Resend sender modes, allowlist, confirmation snapshot, idempotency and honest failure states.
+- [x] Replace unconditional production email prohibition with explicit configured opt-in; default false. Add persisted rolling-hour admission quota (5 tasks, all scopes, transaction advisory lock); no migration/UI/dependency changes.
+- [x] Package three existing synthetic PDFs + 11-line meeting TXT with original bytes/checksums; self-service T01–T06, 8–12-minute script and email receipt procedure.
+- [x] Simplify README and archive original chronology; check relative links and physical PDF pages.
+- [x] Offline check: 262 tests/types/build; production smoke; Chrome production E2E 7/7 on rerun (initial missing browser, then oversized-upload ECONNRESET retained in report).
+- [ ] Maintainer supplies canonical public HTTPS address for README (not present in tracked repository).
+- [ ] User final review, subsequent authorized publication/configuration and one explicitly authorized real inbox receipt. No live calls or production data writes in this task.
+- [ ] New quota concurrency/restart integration verification against approved PostgreSQL remains unrun; unit SQL/gate tests are not a real-DB proof.

@@ -51,6 +51,7 @@ describe('Demo service-side boundary, all external services absent',()=>{
   expect(()=>parseEnv({NODE_ENV:'production'})).toThrow('DEMO_ACCESS_KEY');
   expect(()=>parseEnv({HOST:'0.0.0.0'})).toThrow('DEMO_ACCESS_KEY');
   expect(()=>parseEnv({NODE_ENV:'production',DEMO_ACCESS_KEY:key,EMAIL_DELIVERY_ENABLED:'true'})).toThrow('EMAIL_DELIVERY_ENABLED');
+  expect(parseEnv({NODE_ENV:'production',DEMO_ACCESS_KEY:key,EMAIL_DELIVERY_ENABLED:'true',RESEND_API_KEY:'synthetic-only',EMAIL_FROM:'onboarding@resend.dev',EMAIL_ALLOWED_RECIPIENTS:'owner@example.invalid'}).EMAIL_DELIVERY_ENABLED).toBe(true);
   expect(parseEnv({NODE_ENV:'production',DEMO_ACCESS_KEY:key,PORT:'4567'})).toMatchObject({HOST:'0.0.0.0',PORT:4567,EMAIL_DELIVERY_ENABLED:false});
  });
  it('global login attempts are bounded and production cookie is secure',async()=>{

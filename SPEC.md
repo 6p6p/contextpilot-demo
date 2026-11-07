@@ -238,3 +238,10 @@ Phase3上传HTTP500降为观察项，不阻塞；历史数据库连接超时只�
 官方要求按问题对应机构映射，不以nodejs.org作通用规则；聊天一次Basic搜索增加域名/查询日期提示，优先近期官方证据。结论必须逐字匹配来源并通过权威/时间检查，再显示来源与查询时间；旧证据仅供对照，缺失/冲突明确无法确认，不编造版本或日期。全部实际元数据与既有引用ID约束保留。PPT原搜索调用不传新增可选提示，行为保持不变；未改数据库、邮件或PPT。
 
 新增7个固定Mock回归，npm run check通过164测试/类型/构建，生产smoke和生产E2E1通过。未付费搜索/模型调用，未访问真实数据库，暂不push/部署；记录和限制见docs/phase-9-verification.md末尾。
+
+
+## Final Demo Kit and explicit email opt-in (2026-11-07)
+
+This supersedes the historical unconditional production email prohibition only: default remains false; production may explicitly enable email with RESEND_API_KEY, EMAIL_FROM and a nonempty server recipient allowlist. Existing mode/sender validation, exact-version confirmation, permanent draft/version dedup and unknown-result barriers remain mandatory. New task admission is serialized by a PostgreSQL transaction advisory lock across all scopes/configurations and limited to five email_deliveries records in a rolling hour, including failed/unknown records. This is an enqueue quota, not a provider billing cap or strict attempt-time rate. No schema/dependency/UI change.
+
+Public-facing instructions are in demo/ and the concise README; original README chronology is archived in docs/development-history.md. Four synthetic upload materials are byte-identical copies of existing fixtures/Corpus with checksums. No seed/import script or historical IDs are required. Live execution and one actual mailbox receipt remain user-owned; this work does not authorize sending, production writes, deployment or push.

@@ -1,0 +1,26 @@
+[
+  {
+    "file": "rag-project.pdf",
+    "source": "tests/fixtures/rag-project.pdf",
+    "sha256": "5b7cdd99564636ae7de2e8b90d79d9a53ffed7c63b4b97acfe1adb36a90a81d0",
+    "bytes": 2354
+  },
+  {
+    "file": "rag-owner.pdf",
+    "source": "tests/fixtures/rag-owner.pdf",
+    "sha256": "97fb6d57b2cd119ec9d7fbb5e035d037ad889dbe1772566f75d5f35dd6c9a11e",
+    "bytes": 2390
+  },
+  {
+    "file": "project-brief.pdf",
+    "source": "tests/corpus/v1/project-brief.pdf",
+    "sha256": "01e177c442cf0578847d571dcd182632c53ab52d3e58e14854a8ab5ee18a653f",
+    "bytes": 2713
+  },
+  {
+    "file": "meeting.txt",
+    "source": "tests/corpus/v1/meeting.txt",
+    "sha256": "c33bfedd21f49a154590fc411e004316593f588471ba62e7b204f14e44dd48c0",
+    "bytes": 858
+  }
+]

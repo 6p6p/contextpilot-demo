@@ -62,7 +62,7 @@ export function parseEnv(source: NodeJS.ProcessEnv) {
   }
   if(result.data.NODE_ENV==='production'){
     if(!result.data.DEMO_ACCESS_KEY)throw new Error('Production requires DEMO_ACCESS_KEY');
-    if(result.data.EMAIL_DELIVERY_ENABLED)throw new Error('Demo production requires EMAIL_DELIVERY_ENABLED=false');
+    if(result.data.EMAIL_DELIVERY_ENABLED && (!result.data.RESEND_API_KEY || !result.data.EMAIL_FROM || !result.data.EMAIL_ALLOWED_RECIPIENTS.length))throw new Error('EMAIL_DELIVERY_ENABLED requires RESEND_API_KEY, EMAIL_FROM and EMAIL_ALLOWED_RECIPIENTS');
     if(!source.HOST)result.data.HOST='0.0.0.0';
   }
   if(!['127.0.0.1','localhost','::1'].includes(result.data.HOST)&&!result.data.DEMO_ACCESS_KEY)throw new Error('Non-loopback HOST requires DEMO_ACCESS_KEY');

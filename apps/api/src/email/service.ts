@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { and, desc, eq, lt, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, lt, inArray, isNull, sql } from 'drizzle-orm';
 import { emailDeliveries, emailDrafts, emailDraftConfirmations, meetings } from '../db/schema.js';
 import type { Database } from '../knowledge/service.js';
 import type { Env } from '../config/env.js';
@@ -17,6 +17,15 @@ export function matchesConfirmation(draft: { recipients: string[]; subject: stri
   return JSON.stringify([draft.recipients, draft.subject, draft.body, draft.analysisId]) === JSON.stringify([snapshot.recipients, snapshot.subject, snapshot.body, snapshot.analysisId]);
 }
 const publicFields = { id: emailDeliveries.id, draftId: emailDeliveries.draftId, version: emailDeliveries.version, sender: emailDeliveries.sender, recipients: emailDeliveries.recipients, subject: emailDeliveries.subject, body: emailDeliveries.body, status: emailDeliveries.status, providerMessageId: emailDeliveries.providerMessageId, providerEvent: emailDeliveries.providerEvent, errorCode: emailDeliveries.errorCode, requestId: emailDeliveries.requestId, providerRequestId: emailDeliveries.providerRequestId, createdAt: emailDeliveries.createdAt, attemptedAt: emailDeliveries.attemptedAt, acceptedAt: emailDeliveries.acceptedAt, checkedAt: emailDeliveries.checkedAt };
+// Call inside the enqueue transaction. One lock covers every scope/configuration.
+// Failed/unknown records count too; restart or scope changes cannot reset the quota.
+export async function reserveEmailSlot(tx: Pick<Database['db'], 'execute'>) {
+  await tx.execute(sql`select pg_advisory_xact_lock(7421, 593)`);
+  const result = await tx.execute(sql`select count(*)::int as total from ${emailDeliveries} where ${emailDeliveries.createdAt} >= now() - interval '1 hour'`);
+  const total = Number(result.rows[0]?.total);
+  if (!Number.isSafeInteger(total) || total < 0) throw new PublicError(503, 'EMAIL_QUOTA_UNAVAILABLE', '邮件额度暂时无法核实，未创建发送任务。');
+  if (total >= 5) throw new PublicError(429, 'EMAIL_HOURLY_LIMIT', '演示邮件每滚动小时最多创建5个发送任务，请稍后再试。');
+}
 export function createEmailService(database: Database, provider: EmailProvider | null, config: EmailConfig, shutdown?: AbortSignal) {
   const db = database.db;
   const identity = createHash('sha256').update(JSON.stringify([config.EMAIL_SCOPE, config.EMAIL_FROM, config.EMAIL_MODE, config.RESEND_DOMAIN_ID])).digest('hex');
@@ -53,6 +62,7 @@ export function createEmailService(database: Database, provider: EmailProvider |
         validateRecipients(draft.recipients, config.EMAIL_ALLOWED_RECIPIENTS);
         const [unresolved] = await tx.select({ id: emailDeliveries.id }).from(emailDeliveries).where(and(eq(emailDeliveries.draftId, draftId), inArray(emailDeliveries.status, ['queued','processing','unknown']))).limit(1);
         if (unresolved) throw new PublicError(409, 'EMAIL_PREVIOUS_UNRESOLVED', '此前发送仍处理中或结果未知，必须先人工核查，不能创建新版本重发。');
+        await reserveEmailSlot(tx);
         const payload: EmailPayload = { sender: config.EMAIL_FROM!, recipients: draft.recipients, subject: draft.subject, body: draft.body };
         const [saved] = await tx.insert(emailDeliveries).values({ scope: config.EMAIL_SCOPE, configIdentity: identity, draftId, confirmationId: confirmation.id, version, analysisId: draft.analysisId, ...payload, payloadHash: payloadHash(payload), idempotencyKey: `contextpilot/email/${draftId}/v${version}`, requestId }).returning();
         return saved.id;
