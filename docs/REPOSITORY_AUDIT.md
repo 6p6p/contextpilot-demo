@@ -1,97 +1,88 @@
-# 仓库最终审计与清理记录
+# Repository Cleanup — 实际清理记录
 
-日期：2026-11-07；源码基线 2170fac；初始工作区干净，Git 跟踪 274 个文件。审计只新增文档和补文档索引，没有删除文件、修改业务/UI/测试/依赖/Schema，没有读取真实 .env、调用业务服务、访问云数据、部署或推送。
+2026-11-07；清理基线 ac43dac。上一轮为只读审计与总结，本轮获得明确删除及小范围测试修复授权。未改业务运行行为、依赖、数据库/迁移、Railway 配置、UI 或云端资源；未读取真实 .env、发送邮件、部署或 Push。
 
-## 1. 仓库结构与分类 A：明确保留
+## 1. Git 跟踪清单
 
-| 路径/类别 | 当前作用与保留理由 |
-| --- | --- |
-| apps/api/src | Fastify 入口，chat/knowledge/meetings/memory/search/email/presentations 业务模块；config/db/demo/evidence 支撑真实路径 |
-| apps/web/src | React 工作台、资料/会议/记忆/PPT 面板、附件多选、访问控制、Markdown 和基础交互组件；入口 main/App 有实际依赖 |
-| shared | 八份前后端契约；没有 packages 目录，不能按 monorepo 模板凭空添加 |
-| drizzle/*.sql、meta、drizzle.config.ts | 增量建库/演进与生成状态；保留全部，未执行任何迁移 |
-| package.json / lock / tsconfig / Vite / Vitest / Playwright | 构建与各测试层入口，锁定依赖；没有为精简改版本 |
-| railway.json / .railwayignore / .npmrc | 单服务构建、启动、健康检查、忽略本地证据、构建期 devDependencies；删除可能破坏部署 |
-| prod-ca-2021.crt / scripts/copy-database-ca.mjs | 严格 TLS 的公开 CA 与构建复制，不是私钥；不能因扩展名 crt 删除 |
-| demo/ | 当前面试 Demo Kit、操作指南、验收表与四份合成材料；与 tests 原件有意重复，提供独立下载用途 |
-| tests/unit、integration、*-live、e2e、support、fixtures、corpus | 不同证据层；替身明确标注，冻结失败 JSON 有回归价值，不能按 STUB/CORPUS 名称删除 |
-| scripts/ | 验收/夹具生成/隔离/遥测/脱敏/迁移预检；非 npm script 不等于无调用者，历史操作入口也有复现价值 |
-| README / SPEC / TASKS / AGENTS | 项目入口、规范、状态与执行边界；AGENTS 有阶段性旧文字，列 C 而不擅自改授权规则 |
-| docs/assignment.txt | 原始任务文件，本轮不修改 |
-| docs 历史验收、development-history | 包含失败、真实服务边界、修复定位与授权证据，不能用新总结覆盖原结论 |
+计数来自 git ls-files，不计算 node_modules、dist、.acceptance、缓存和浏览器产物。tests 数量包含 fixture/README/支持代码，不能当作测试用例数。
 
-依赖核对：React/react-dom 用于前端；Fastify/static 用于 API 和生产静态站点；pg/Drizzle/Zod 用于持久化和契约；pdfjs/PptxGenJS/JSZip/Resend 对应解析、生成、校验和邮件；dotenv 用于运行配置。开发依赖对应 TS/Vite/Vitest/Playwright/tsx/Drizzle/concurrently 与类型。未确认可安全移除的依赖。`ContextProvider` 等未见调用的接口也不因少量死声明触发本轮代码清理。
+| 类别 | 清理前 | 清理后 |
+| --- | ---: | ---: |
+| 全仓 Git 文件 | 277 | 269 |
+| docs 文件 | 32（31 Markdown + assignment.txt） | 24（23 Markdown + assignment.txt） |
+| tests 文件 | 79（61 TS 测试/支持文件） | 79 |
+| scripts 文件 | 25 | 25 |
 
-## 2. 分类 B：确认无用且已安全删除
+根目录保留 README、SPEC、当前 TASKS、AGENTS、package/lock、TypeScript/Vite/Vitest/Playwright、Railway、公开 CA 与忽略配置。不存在 packages/；apps/api 和 apps/web 分工不变，shared 为共享契约。无跟踪的构建/缓存/临时截图可删除。.gitignore 已覆盖 .env、certs、.acceptance、node_modules、dist、test-results、日志等，本轮不修改。
 
-**无。实际删除 0 个文件。** 没有文件同时满足“无引用、无操作用途、无复现/验收价值、删除风险低”的条件。不能把减少行数当交付指标。
+## 2. 实际删除：8 份文档
 
-特别核实：`search/service.ts:answerWithSearch` 已不在普通聊天主路径，但 `tests/unit/corpus-v1.test.ts`、search-current/search-v13/v131 等直接调用，且 `synthesis.ts`、`format.ts` 是其依赖。因此旧审核链和日志不能独立安全删除。Demo 的重复 PDF/TXT 通过 manifest 绑定原件，删除会损害独立演示。
+每份均检查了全仓 Git 跟踪文本中的文件名引用；运行代码、package scripts 与部署配置不加载这些文档。下表记录删除前引用关系，已删除文件之间的引用随文件消失，保留文件的链接已修复。旧全文可用 git show ac43dac:<路径> 查看，不新建 archive。
 
-本地可见 node_modules、dist、.npm-cache、test-results、.acceptance、certs 和 .env 均不在跟踪清单；忽略规则已有覆盖。没有进入 .acceptance/certs/.env 清理或检查内容，也没有删除本轮生成的失败 trace。它们不属于 GitHub 仓库冗余。
-
-## 3. 分类 C：需要人工决定
-
-| 具体路径 | 原作用 / 现在的问题 | 引用、删除影响与建议 |
+| 删除路径 | 原作用 | 删除理由、替代与引用修复 |
 | --- | --- | --- |
-| docs/phase-1-verification.md 至 phase-9-verification.md、phase-2/3-setup.md | 分阶段实现与服务接入记录，早期“待发布/不支持”容易误读为当前状态 | development-history/SPEC/TASKS 等依赖历史说明；建议后续统一历史导航，不删除原证据 |
-| docs/corpus-stage-b-manual.md | 历史人工验收交接，含机器绝对路径和 Run ID | 是 Stage A→B 的证据入口；可人工决定将路径改为相对示例，但须保留历史定位意义 |
-| docs/phase-2-setup.md | 服务配置指导，使用本地绝对 .env 路径 | 不是凭据；可后续改为“仓库根目录”，不应因此删除配置说明 |
-| docs/mvp-v1.*-verification.md、mvp-final-closeout.md、stage-b-round1-fixes.md | 多轮真实失败/修复/复测，文字重复但证据不同 | v131/v132 fixtures 与实际修复呼应；保留，未来可建历史索引，不能合并丢失 FAIL |
-| docs/ux-backlog.md | 历史 UI 改进待办 | 需人工对照最终 UI 决定关闭/归档；本轮不重设计或修改 UI |
-| scripts/phase7-preflight.ts、phase8-*、repair-phase8.ts、stage-b-round1-audit.ts | 阶段性受控验收/修复脚本 | 有环境/授权和历史数据前提；未运行，保留复现用途，未来逐个维护者确认后才删 |
-| scripts/migrate-demo-management.ts、migrate-meeting-archive.ts、migrate-ppt-page-budget.ts | 审查后的定向迁移操作入口 | SQL 已有迁移并不证明这些操作脚本无用；删除前核对部署手册，不执行验证 |
-| apps/api/src/search/{service,synthesis,format}.ts 的旧审核路径与相关测试 | 当前公开聊天已经简化，旧路径增加阅读成本 | 测试仍引用；若要移至历史回放模块，需独立批准代码/测试变更，本轮不改 |
-| AGENTS.md 的 Phase 4 授权段 | 历史阶段指令与已完成项目状态并存 | 是执行规则而非无用 README，维护者应明确更新，审计不能自行删除限制 |
+| docs/phase-1-verification.md | 初始环境、依赖兼容与脚手架验收 | Node/依赖由 package/lock 与 compatibility 测试直接证明；当前架构/本轮 check 覆盖交付说明。仅 TASKS/旧审计提及；TASKS 改为当前清单。旧 14 项计数与未实现功能列表不再占工作树 |
+| docs/phase-2-setup.md | 聊天/数据库接入说明 | 配置项由 .env.example 与 railway-deployment 提供，当前链路由架构复盘覆盖；独有连接/编码/双段 TLS/测试授权边界合入 ARCHITECTURE_REVIEW 第8节。旧审计及 phase-2-verification 的历史关联不再需要独立 setup |
+| docs/phase-2-verification.md | 早期真实聊天/PG 验收 | 当前聊天实现、后续 Phase5 回归与架构复盘覆盖功能/故障机制；独有 pooler TLS 未核实事项保留第8节，不把历史计数当当前结果。删除前由 TASKS/phase-2-setup 引用，已消除 |
+| docs/phase-3-setup.md | 早期 PDF 配置、处理流程与夹具说明 | .env.example、架构 PDF 节、Demo Kit 和保留的 phase-3-verification 覆盖；夹具重生成与授权说明合入第8节。仅 development-history 链接，随该重复文件删除 |
+| docs/development-history.md | 原 README 全量阶段流水账 | 与 SPEC、Phase 验收和最终架构/面试总结重复，包含过时“不支持/待部署”描述；README/SPEC 改指源码总结，不再声称其是完整历史档案。历史全文由 Git 保留 |
+| docs/final-ui-verification.md | 完成后的视觉/交互改造报告 | 交互契约已在 SPEC，实际断点/IME/滚动/附件回归在 e2e；未全面验证的实体手机/系统IME/跨浏览器保留 TASKS/架构第8节。SPEC/stage-b 引导改当前契约或任务；development-history/ux-backlog 随删除消除 |
+| docs/pdf-multiselect-verification.md | PDF 下拉框局部 UI 交付报告 | SPEC 保留完整选择语义，ui-final 保留45项列表、键盘与精确 payload 回归；不重复保留旧测试计数/截图位置。SPEC 链接改当前源码复盘，TASKS 精简，development-history 删除 |
+| docs/ux-backlog.md | 多轮覆盖更新的 UI 历史待办 | 已完成状态由 SPEC/实际测试覆盖，未完成的 GFM 扩展、手机/跨浏览器、归档恢复/物理清理在 TASKS 保留。SPEC 与 stage-b-round1-fixes 引用修复，无悬空链接 |
 
-这些是维护/呈现建议，不是业务缺陷。没有移动文档导致链接失效，也没有修改 Git 历史。
+删除不影响构建、测试、部署、Demo 材料或数据库复现；没有删除原始验收输入、失败 JSON、Run manifest 脚本或迁移。并非认定这些历史从未有用，而是当前阅读入口已有替代，旧逐轮细节留 Git 即可。
 
-## 4. 缺陷、风险与证据等级
+## 3. 删除的代码与保留的旧路径
 
-### P2：开发模式 E2E 的健康检查用例稳定失败，生产模式通过
+- 删除 apps/api/src/chat/context.ts 中 ContextSource、ContextProvider 两个未使用接口（及空行）。全仓源码/测试/脚本搜索只有定义，没有 import、类型引用或动态使用；当前知识/记忆通过实际 service 接口接入。这是类型声明清理，没有运行时输出变化。
+- TASKS 从 318 行历史流水账精简成当前能力、已完成项和未决风险；独有安全处置、上传500、人工设备检查、产品边界未删除。
+- 无 npm 依赖删除：每个运行依赖分别有 React/Fastify/PG/Zod/PDF/PPT/Resend/dotenv 使用；开发依赖对应构建、类型、测试、夹具/迁移开发命令。没有确认无用的 React 组件、API 或配置项。
 
-证据：`tests/e2e/workspace.spec.ts:3` 的测试 route 对 `/api/demo-session` 第二次及后续 GET 强制返回 503；`apps/web/src/main.tsx` 使用 StrictMode；`DemoAccess.tsx` 在 effect 中请求会话，清理时 abort。开发 StrictMode 会重复 effect，第一次被取消而第二次可能被替身拒绝，App 不挂载，因而没有 `/api/health`。这是与稳定超时一致的代码原因，具体网络顺序仍须 trace 确认，不能据此宣称公网业务坏了。
+搜索审核调用图：
 
-验证：Chrome 全开发套件 6/7；定向 `npm run test:e2e -- -- --grep 'workspace displays health'` 再次 30 秒超时；Chrome 生产 7/7。建议后续只修测试注入：先允许父级探测完成，再对真正冗余子请求注入失败，保留原意图。当前用户冻结业务逻辑，本轮未修改测试或关闭 StrictMode，失败明确保留。文档提交不意味着全套验收通过。
+```text
+当前公共聊天：chat/service → search/public:answerPublicSearch
+                        → service:publicQuery/createSearchProvider
+                        → evidence:searchIntent/officialSource
+旧回放路径：Corpus / search*.test / v131-regressions / mvp-quality 等
+          → service:answerWithSearch → synthesis:synthesizeSearch
+                                  → format:normalizeSynthesis / synthesisContract
+                                  → evidence:conflictingLts/ltsStates/currentConclusion 等
+PPT：presentations/evidence 独立引文规则，仍被 plan/coverage 使用
+RAG：knowledge/retrieval 独立 verifyEvidence，不走旧搜索审核
+```
 
-### P2：历史安全处置尚无本轮确认
+Claim/Quote Schema、Prompt、转换和旧版本冲突判定不再参与普通搜索，但 Corpus 和多个保留回归仍直接调用。用户要求保留 Corpus 且不损失覆盖，因此本轮不通过删除测试制造“无引用”，也不大规模迁移模块。其去留仍需决定是继续维护历史回放，还是另批将业务不变量迁移到当前路径后退休旧协议。不同模块同名 quoteOptions 处理的来源类型不同，不能当作重复函数直接合并。
 
-`docs/mvp-final-closeout.md` 记录过历史测试 Cookie 与生产键是否共用未知、轮换待确认。现有 HMAC 同键可跨进程验证，所以若当时共用生产键且 Cookie 未过期，确有访问风险；当前状态不能从代码推断。建议维护者确认是否曾复用并完成轮换记录；本轮不读取/修改密钥、不测试旧 Cookie。
+## 4. 全部剩余文档与脚本的决定
 
-### 已知限制与观察项（不伪装新发现或已修复）
-
-- Phase3 偶发上传 500 仍 OPEN；本轮没有根因证据，不借 TLS/PPT 修复关闭它。
-- 搜索结果新鲜度、自然综合语义准确性仍受供应商/模型影响。旧 Corpus 通过不证明当前普通搜索逐 Claim 审核。
-- 单工作区无用户资源隔离；软删除不是擦除；进程限额不是账户预算硬上限。
-- README Live Demo 仍为待维护者补充地址，没有可验证部署 URL；用户确认上线与仓库发布元数据缺失同时成立。本轮未编造 URL 或访问云端。
-- 历史部署启动错误的具体缺失变量/命令，本轮未见充分云端证据；最新启动诊断补丁不应被写成已验证完整根因。
-
-## 5. 公开仓库敏感信息与链接检查
-
-仅扫描 Git 跟踪的文本源文件/文档/配置，不扫描真实 .env、凭据目录、忽略的原始验收文件或 Git 历史对象。使用文件名/类别输出，不回显可疑值。未发现私钥 PEM 块或长 cp_demo Cookie 常量；跟踪清单无真实 .env、dist、node_modules、.acceptance、test-results、certs。连接 URI 模式命中 phase-2-setup（USER/ENCODED_PASSWORD/HOST 占位符）、production-smoke、database-config/startup-diagnostic（合成不可用地址）。公开 CA 构建测试通过。
-
-绝对路径命中 SPEC/TASKS、phase-2-setup、corpus-stage-b-manual、development-history、phase-9、railway-deployment；含历史本机路径和 `/app` 部署示例，不是已确认凭据泄露，但可影响专业呈现，归 C。无真实 secret 值的完备证明：模式扫描不能发现所有随机令牌，也未审计已发布 Git 历史/远程日志。未执行历史重写。
-
-应用目录 25 处 console 调用主要为 CLI 状态、启动错误、LLM 形状/截断和旧搜索阶段诊断；不等于 25 处无用调试。未发现必须删除的正文转储；保留现有诊断。服务 logger 对 Cookie/authorization 脱敏，测试启动输出也有 redact-output；这不保证任何未来日志天然安全。
-
-README 与 demo/*.md 的本地 Markdown 链接目标均存在；四个 demo/files 文件 SHA、字节数及与 manifest source 原件字节比较全部通过。外部网址本轮不做网络可达性或内容时效背书。三份新文档使用仓库相对链接，代码定位用真实路径与函数名；不新建根目录零散总结。
-
-## 6. 实际验证与清理前后结果
-
-环境：Node v24.15.0、npm 11.12.1。所有命令在仓库根目录，默认隔离外部服务；没有运行 DB integration/live、真实邮件、迁移或线上测试。
-
-| 验证 | 结果与证据边界 |
+| 保留路径/组 | 独立价值与原因 |
 | --- | --- |
-| 修改前 npm run check | PASS：33 文件、265 测试、类型检查、API/Web 构建 |
-| npm run test:corpus | PASS：17/17，旧搜索协议及外部 STUB 的固定回归，不是新 Live 验收 |
-| 默认浏览器开发与生产 E2E | 各 7 项在启动浏览器时失败，Chromium headless shell 缺失，未进入业务 |
-| PLAYWRIGHT_CHANNEL=chrome 开发 E2E | 6 PASS / 1 FAIL，health 用例 30 秒等待超时；定向复跑仍 FAIL |
-| PLAYWRIGHT_CHANNEL=chrome 生产 E2E | 7/7 PASS；真实编译服务/浏览器边界，业务 UI 多为 fixtures |
-| npm run test:production:smoke | PASS：2 类配置存在检查、8 种启动拒绝、邮件 opt-in 启动、严格 CA 启动、鉴权/限流/脱敏/ready503，外部业务 0 |
-| 文件/链接/差异 | Demo 4/4 哈希与原件一致；README/Demo 本地链接无缺失；git diff --check PASS |
+| ARCHITECTURE_REVIEW / INTERVIEW_GUIDE / 本文件 | 当前源码解释、面试问答、实际清理记录，各有用途 |
+| assignment.txt | 原始任务，明确禁止修改 |
+| demo-kit-verification / email-release-check | Demo 材料校验与现行邮件 opt-in/真实收件操作边界，不能用架构概述替代 |
+| phase-3/4/5/6/7/8/9-verification | 分别保存 PDF上传500、会议证据、记忆双池竞争、实际收件、真实搜索调用、云文件一致性、TLS/部署诊断的原始证据；包含不能被最终概述完整替代的失败/Run/分层结果 |
+| mvp-v1.1 / v1.2 / v1.3 / v1.3.1 / v1.3.2-verification | 管理迁移、语义分类、真实失败、冻结fixture、PPT必需正文覆盖与后续受限Live，版本之间不是重复通过记录 |
+| mvp-final-closeout / stage-b-round1-fixes | 搜索自然综合取舍、Cookie处置及截断诊断的失败边界；stage-b 原UX引用改为当前 TASKS |
+| corpus-v1-acceptance / corpus-stage-a-verification / corpus-stage-b-manual | Golden 证据层、共享库隔离/受控Run与手动验收步骤不同；保留，不能把旧 WAITING 当当前功能状态 |
+| railway-deployment | 实际运行/变量/CA/构建说明，虽含历史准备语句已有历史标记；本轮不伪造云端复验结果 |
 
-本轮没有删除或业务代码变更，所以不声称“清理提升了测试表现”。文档完成后再次运行 check：33 文件、265 测试、类型及双构建 PASS；README/SPEC/TASKS/Demo 与三份新文档本地链接复查无缺失。真实 PG、云端六能力、原生 PPT 打开均 NOT_RUN；当前凭据有效性、邮件开关/白名单和部署提交一致性未核实，无新增凭据请求。
+25 个 scripts 均保留：package.json 直接调用 corpus/e2e/smoke/redact/build；acceptance-manifest/telemetry、corpus-db/audit/restart/prepare/cleanup-dry-run、夹具生成、meeting/presentation-fixtures 被验收脚本/测试或对应报告使用。phase7-preflight、phase8-cloud/source-audit、repair-phase8、stage-b-round1-audit 有对应 Phase7/8/Stage B 报告的明确操作引用，且可能涉及保留任务/文件身份，不是无用临时截图。三个定向 migrate 脚本是已审查增量 SQL 的操作入口，不执行它们来验证删除安全。
 
-## 7. 交付文件与停止点
+存在争议但未删除：上述旧搜索审核链、历史阶段/Corpus证据文档、阶段修复与定向迁移脚本。人工判断点是是否继续保留历史协议/原始验收细节，而非已确认死文件。当前没有其他确认无引用且低风险的源码文件候选。
 
-新增本文件、`ARCHITECTURE_REVIEW.md`、`INTERVIEW_GUIDE.md`；修改 README/SPEC/TASKS 只补入口与审计状态。没有删除、移动、改名。按照用户要求创建本地文档提交，明确保留开发 E2E 失败，不把提交当无条件通过的发布许可；不 push、不部署。人工决策集中在分类 C、生产密钥历史处置与开发测试替身修复。
+## 5. 开发 E2E 根因与最小修复
+
+清理前定向 Chrome 开发 E2E 复现 30秒超时。读取本次测试 trace 的网络事件（不读取Cookie/header）：第一次 GET /api/demo-session 状态 -1（取消），第二次503，随后没有 health。main.tsx 使用 StrictMode，DemoAccess 的 effect 清理会 abort；原测试按“第二次GET”注入失败，把父级重跑错当冗余子探测，父级停留 checking，App 不挂载。这是测试注入缺陷，不是实证的线上健康故障。
+
+workspace.spec.ts 仅将注入门槛改为 #chat 已挂载；保留父级正常请求到真实 API，进入后仍拒绝冗余 GET。新增浏览器 fetch 返回503断言，随后原来的无第二PPT口令、健康状态、按钮、鉴权、413/布局等断言全部保留。未跳过测试、延长超时、关闭 StrictMode 或修改产品。定向重跑 1/1 PASS（1.5秒），再运行完整开发/生产套件。
+
+## 6. 清理后验证
+
+Node 24.15.0 / npm 11.12.1。check：33文件、265项、类型检查与双构建 PASS；Corpus：17/17 PASS。Chrome 开发 E2E 7/7 PASS（8.8秒），生产 E2E 7/7 PASS（6.9秒）；production smoke PASS（2类配置存在检查、8种启动失败、鉴权/限流/日志脱敏/严格CA启动/ready503，外部业务调用0）。全仓本地Markdown链接无缺失；Demo四文件的SHA、大小及与原件字节一致性4/4 PASS；git diff --check PASS。旧协议 Corpus 是显式外部STUB，不证明当前供应商或公共回答语义准确率。
+
+所有 tests/79 文件、drizzle 迁移/meta、Demo Kit 四份 PDF/TXT 与 SHA 清单保留；Railway启动配置、公开CA复制脚本、所有依赖与锁文件未改。默认测试外部服务隔离，不启动加载真实配置的Worker；真实PG/live/六业务线上复验、原生PPT打开均 NOT_RUN，不能用本轮替身测试声称已完成。
+
+敏感信息检查仅针对当前Git跟踪文件：不打开真实.env/凭据目录，不扫描忽略原始业务产物，不重写Git历史。公开CA不是私钥；连接串模式仅命中 production-smoke、database-config/startup-diagnostic 三份合成测试；未发现私钥块、长Demo Cookie 或供应商Token模式，跟踪清单无真实.env/忽略产物。完整随机Token发现不可能由正则完备保证，历史Cookie生产键是否复用仍由维护者确认。Phase3上传500继续OPEN，README演示地址待维护者补齐。
+
+完成本地独立commit后停止，不Push、不部署、不改云端数据或邮件配置。

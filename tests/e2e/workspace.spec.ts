@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
 
 test('workspace displays health from the actual backend', async ({ page }) => {
-  let sessionChecks=0;
   // The authenticated parent owns session state. A redundant child probe must not
   // reintroduce a second PPT password when that extra request is unavailable.
+  // StrictMode may cancel and repeat the parent's bootstrap request in dev.
+  // Inject failure only after the workspace mounts, not by request ordinal.
   await page.route('**/api/demo-session',async route=>{
-    if(route.request().method()==='GET'&&++sessionChecks>1)return route.fulfill({status:503,json:{error:{message:'synthetic session probe failure'}}});
+    if(route.request().method()==='GET'&&await page.locator('#chat').count()>0)return route.fulfill({status:503,json:{error:{message:'synthetic session probe failure'}}});
     return route.continue();
   });
   const errors: string[] = [];
@@ -28,6 +29,7 @@ test('workspace displays health from the actual backend', async ({ page }) => {
   await expect(page.getByText('后端已连接')).toHaveCount(0);
   await expect(page.getByRole('status')).toContainText('数据库未配置');
   await expect(page.getByRole('button',{name:'添加上下文'})).toBeVisible();
+  expect(await page.evaluate(async()=> (await fetch('/api/demo-session')).status)).toBe(503);
   await expect(page.getByLabel('PPT 访问口令')).toHaveCount(0);await expect(page.getByRole('button',{name:'解锁 PPT',exact:true})).toHaveCount(0);
 
   await page.unroute('**/api/demo-session');

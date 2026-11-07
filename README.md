@@ -44,4 +44,4 @@ npm run dev
 
 模型输出需核对证据；PDF回答偏证据摘录，复杂综合可能不足。搜索时效取决于真实来源，PPT须人工打开检查。进程内AI限额不是账单硬上限；历史偶发上传500仍为观察项。
 
-详细内容：[架构与约束](SPEC.md)、[任务状态](TASKS.md)、[分层验收与本轮交付](docs/demo-kit-verification.md)、[阶段开发历史](docs/development-history.md)。历史报告保留当时状态，不等于本轮公网复验结果。
+详细内容：[架构与约束](SPEC.md)、[任务状态](TASKS.md)、[分层验收与本轮交付](docs/demo-kit-verification.md)。历史报告保留当时状态，不等于本轮公网复验结果。

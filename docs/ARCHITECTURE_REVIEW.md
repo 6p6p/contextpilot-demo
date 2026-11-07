@@ -158,3 +158,15 @@ PDF/TXT/网页是 untrusted data；提示限制、Zod、逐字证据、选定来
 | 启动失败反复重启 | 最新 2170fac 增加环境/应用/插件/listen 阶段诊断；用户所述具体 Railway 缺失变量本轮未读云端确认 | startupDiagnostic 只输出允许字段，CA 不可读定位字段；startup-diagnostic 测试和 production smoke。根因须根据脱敏部署日志判断，不能把通用诊断补丁写成已证实某个缺失 startCommand；railway.json 当前已有 startCommand |
 
 历史原文入口：`phase-5-verification.md`、`phase-9-verification.md`、`mvp-v1.3.1-verification.md`、`mvp-v1.3.2-verification.md`、`mvp-final-closeout.md`、`demo-kit-verification.md`。本轮验证清单见 [仓库审计](REPOSITORY_AUDIT.md)。
+
+
+## 8. 本地接入与前端回归补充
+
+此节保留已删除早期 setup/UI 报告中仍适用的独有操作边界；旧版本全文可从清理前提交 ac43dac 读取，不把早期计数或未实现状态当成当前说明。
+
+- 配置只在仓库根目录本地 .env 填写，参考 .env.example；不要覆盖已有配置，不使用 VITE_* 存储后端密钥。数据库 URI 从供应商 Connect 面板取得，Direct/Session pooler 用户名不同；密码仅编码一次，URL 不带 query/hash，保持真实 DNS 主机和严格证书验证。
+- 历史 Phase2 本机到 pooler 的 TLS encrypted/authorized 已验证，但 pg_stat_ssl 当时显示 pooler→数据库未启用 SSL；这两个连接段不能混为一谈。当前云端 SSL enforcement 未在本轮核实，修改可能重启数据库，应由维护者另行检查，不能靠关闭客户端校验解决。
+- LLM_BASE_URL 和 EMBEDDING_BASE_URL 是 API 前缀，服务端分别追加 /chat/completions、/embeddings。Embedding 输出必须与配置维度一致，不自动请求降维。Storage 使用已有私有 Bucket 和后端权限，文件大小/MIME 限制需匹配 PDF、TXT、PPTX；没有前端匿名公开上传策略。
+- 手动审查迁移后再执行 db:migrate；db:check/db:tls/db:status 需有真实数据库授权，启动不自动迁移。integration 使用真实 PG 与标注外部替身；live 会创建持久记录并可能计费，运行前需要预算/数据授权。不要同端口并行测试，或让本地与 Railway 同配置 Worker 同时消费验收队列。
+- PDF 合成夹具说明见 tests/fixtures 与 demo/files/SHA256.json；重生成入口 scripts/generate-rag-fixtures.py 需要 ReportLab，正常构建和演示不需要 Python。没有保险合同号的夹具问题应返回证据不足。
+- 前端具体交互契约保留在 SPEC.md；PDF 多选/45项列表/嵌套 Escape/请求 ID 范围、IME 防误发/失败保留/上传中切会话等有 tests/e2e/ui-final.spec.ts 与 workspace.spec.ts 的实际回归。UI fixtures 不证明真实模型结果；实体手机软键盘、系统 IME 与跨浏览器专项仍需人工，当前后续项见 TASKS.md。

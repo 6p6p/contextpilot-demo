@@ -1,8 +1,8 @@
 # ContextPilot specification
 
-PDF选择交互补充（2026-11-07）：默认收起；显示选中数量，展开支持文件名搜索、多选/取消/清空及260px内部滚动；关闭不清除document IDs，不可用项禁用，原附件标签仍可移除。会议单选与后端契约不变，嵌套Escape只关闭最内层。见[记录](docs/pdf-multiselect-verification.md)。
+PDF选择交互补充（2026-11-07）：默认收起；显示选中数量，展开支持文件名搜索、多选/取消/清空及260px内部滚动；关闭不清除document IDs，不可用项禁用，原附件标签仍可移除。会议单选与后端契约不变，嵌套Escape只关闭最内层。见[源码复盘](docs/ARCHITECTURE_REVIEW.md)。
 
-Final UI契约（2026-11-06）：单侧栏导航及独立滚动历史，240–260px桌面宽度、800px以下抽屉；消息约800px居中，用户浅灰气泡，AI自然Markdown，底部自增高圆角输入区。加号统一可选资料与既有搜索/PDF设置；Enter发送、Shift+Enter换行、IME防误发、发送锁和失败输入保留。历史菜单复用改名/软归档，不提供后端未支持的物理删除。引用、资料ID/范围、人工待办和PPT私有下载状态不变；文件标题仅作前端显示派生，技术文件名/错误码可展开。无Schema/API/AI流程/依赖变更。浏览器证据及未验证范围见[UI记录](docs/final-ui-verification.md)。
+Final UI契约（2026-11-06）：单侧栏导航及独立滚动历史，240–260px桌面宽度、800px以下抽屉；消息约800px居中，用户浅灰气泡，AI自然Markdown，底部自增高圆角输入区。加号统一可选资料与既有搜索/PDF设置；Enter发送、Shift+Enter换行、IME防误发、发送锁和失败输入保留。历史菜单复用改名/软归档，不提供后端未支持的物理删除。引用、资料ID/范围、人工待办和PPT私有下载状态不变；文件标题仅作前端显示派生，技术文件名/错误码可展开。无Schema/API/AI流程/依赖变更。交互回归见 tests/e2e/ui-final.spec.ts；实体手机及跨浏览器未全面验证，见 [当前任务](TASKS.md)。
 
 最终公开问答契约（2026-11-06）：普通公共知识直接模型回答；required/auto 实时问答为 Tavily 真实元数据/有界正文 → 单次 DeepSeek 自然归纳，不使用 Claim/Quote、版本冲突规则或二次模型事实审核。服务端从实际结果发布链接和查询时间，失败明确报告，空结果最多补搜一次。模型可以合理概括，未知具体状态不能按惯例补全；没有逐句事后验证。内部资料引用约束不变；混合 PDF/公开请求仅发送用户明确独立的公共子句，缺安全子句时提示改写，不发送历史/记忆/文件原文。PPT 按用户确认冻结，Schema/前端/邮件不变。Cookie 是最多8小时的无状态签名，同键不绑定实例，退出不全局撤销；轮换生产 Demo 键须用户后续操作。实际结果及风险见[最终记录](docs/mvp-final-closeout.md)。以下为历史阶段契约。
 
@@ -14,7 +14,7 @@ MVP v1.3真实验收（2026-11-06）：0011已获批执行，旧68条PPT任务ha
 
 MVP v1.2：FIX-01–07已完成本地修复：官方多源证据与有界补搜、单次Demo登录/PPT可选选材、GFM表格、会议归档与讨论分类、邮件状态标题、PDF限定范围。check/test217、Corpus17、真实DB+外部替身10、生产浏览器E2E4通过；0010经批准仅新增meetings.archived_at。真实模型/搜索/PPT A/B仍待人工验收，未Push/部署/清理/发信。根因、真实快照边界、Run ID、迁移及复测见[本轮记录](docs/mvp-v1.2-verification.md)。
 
-MVP v1.1 Phase B：对话中心布局、安全Markdown与容器滚动、服务端会话改名/归档、PDF软移除、待办忽略/恢复、草稿复核和记忆刷新反馈已实现。0009经批准仅新增3个可空字段，旧内容校验不变。check/test199、生产E2E3、真实DB+外部替身9项通过；来源/文件保留，未执行物理清理。旧Railway结构兼容但没有新管理语义，本轮不部署。详细范围、Run ID与待人工复测见[本轮记录](docs/mvp-v1.1-verification.md)，UX状态见[backlog](docs/ux-backlog.md)。
+MVP v1.1 Phase B：对话中心布局、安全Markdown与容器滚动、服务端会话改名/归档、PDF软移除、待办忽略/恢复、草稿复核和记忆刷新反馈已实现。0009经批准仅新增3个可空字段，旧内容校验不变。check/test199、生产E2E3、真实DB+外部替身9项通过；来源/文件保留，未执行物理清理。旧Railway结构兼容但没有新管理语义，本轮不部署。详细范围、Run ID与待人工复测见[本轮记录](docs/mvp-v1.1-verification.md)，当前未决项见 [TASKS](TASKS.md)。
 
 MVP v1.1 Phase A：新增受约束的官方多源版本/状态归纳、会议注入行过滤/行动分类、项目绑定记忆与当前上下文优先、最新待办草稿预览及旧版本复核保护。验证与局限见[本轮记录](docs/mvp-v1.1-verification.md)；真实模型人工复测仍待完成，邮件关闭，不Push/部署。
 
@@ -244,7 +244,7 @@ Phase3上传HTTP500降为观察项，不阻塞；历史数据库连接超时只�
 
 This supersedes the historical unconditional production email prohibition only: default remains false; production may explicitly enable email with RESEND_API_KEY, EMAIL_FROM and a nonempty server recipient allowlist. Existing mode/sender validation, exact-version confirmation, permanent draft/version dedup and unknown-result barriers remain mandatory. New task admission is serialized by a PostgreSQL transaction advisory lock across all scopes/configurations and limited to five email_deliveries records in a rolling hour, including failed/unknown records. This is an enqueue quota, not a provider billing cap or strict attempt-time rate. No schema/dependency/UI change.
 
-Public-facing instructions are in demo/ and the concise README; original README chronology is archived in docs/development-history.md. Four synthetic upload materials are byte-identical copies of existing fixtures/Corpus with checksums. No seed/import script or historical IDs are required. Live execution and one actual mailbox receipt remain user-owned; this work does not authorize sending, production writes, deployment or push.
+Public-facing instructions are in demo/ and the concise README; the source-based engineering summary is in docs/ARCHITECTURE_REVIEW.md; earlier README chronology remains available in Git history. Four synthetic upload materials are byte-identical copies of existing fixtures/Corpus with checksums. No seed/import script or historical IDs are required. Live execution and one actual mailbox receipt remain user-owned; this work does not authorize sending, production writes, deployment or push.
 
 
 ## Startup diagnosis (2026-11-07)

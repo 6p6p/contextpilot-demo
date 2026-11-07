@@ -60,7 +60,7 @@ MVP v1.3最终两项修复及聊天原生PPT复测步骤见[最新记录](mvp-v1
 - 受控数据库Corpus完整T01–T08：见下方最终Run回执。全部外部依赖替身，只新增独立合成对象、不修改Stage A/Stage B历史记录；继续保留Manifest和本地Storage替身文件，无清理。
 - React技能检查：Context只有认证布尔值，无口令持久化；无条件Hook，移除冗余请求；提示使用status，草稿入口原生锚点；不引入UI/设计框架。
 
-UX v2六项见[backlog](ux-backlog.md)。人工复测从[原指南](corpus-stage-b-manual.md)继续：先关闭PDF/搜索测试多轮与记忆，再只做一次required搜索；费用授权与账单仍独立，不默认启用真实调用。全部现场成功项尚未确认前，不关闭Stage B。
+UX v2交互契约见 [SPEC](../SPEC.md)，剩余人工项见 [当前任务](../TASKS.md)。人工复测从[原指南](corpus-stage-b-manual.md)继续：先关闭PDF/搜索测试多轮与记忆，再只做一次required搜索；费用授权与账单仍独立，不默认启用真实调用。全部现场成功项尚未确认前，不关闭Stage B。
 
 最终数据库Run：`b9261bfb-cc22-459b-aa9d-25fb786318b8`，8项PASS、183.10秒。新增66记录（4会话/32消息/3PDF/6chunk/2会议/2分析/2风险/2证据/3待办/1草稿/1确认/4记忆任务/3记忆/1PPT任务/0发送），7个本地Storage替身对象。首尾旧记录哈希变化0，实际云Storage/模型/Embedding/Tavily/Resend调用各0。Manifest位于`.acceptance/corpus-stage-a/<RunID>/manifest.json`，独立进程恢复receipt同目录。未运行清理，没有修改原Stage A或人工Stage B资料。此轮只读原Stage B检查不计入新增记录数。
 

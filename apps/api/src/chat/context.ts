@@ -1,9 +1,6 @@
 import type { ModelMessage } from '../llm/adapter.js';
 
 // Context boundaries remain bounded; attributed memory selection lives in memory/service.
-export interface ContextSource { text: string; sourceId: string; kind: 'knowledge' | 'memory' }
-export interface ContextProvider { retrieve(query: string): Promise<ContextSource[]> }
-
 export function buildContext(history: { role: 'user' | 'assistant'; content: string; status: string }[]): ModelMessage[] {
   const selected: ModelMessage[] = [];
   let characters = 0;
