@@ -26,6 +26,7 @@ import { createEmbedder } from './knowledge/embedding.js';
 import { registerDocumentRoutes } from './knowledge/routes.js';
 import { createRetriever, createKnowledgeAnswerer } from './knowledge/retrieval.js';
 import { registerMeetingRoutes } from './meetings/routes.js';
+import { createMeetingModel } from './meetings/model.js';
 
 // In-process dependency injection for isolated tests; no HTTP/env mock-provider switch.
 export function buildApp(env: Env, overrides: { emailProvider?: EmailProvider | null } = {}) {
@@ -58,7 +59,7 @@ export function buildApp(env: Env, overrides: { emailProvider?: EmailProvider | 
   }
   registerEmailRoutes(app, database, overrides.emailProvider === undefined ? createResendProvider(env) : overrides.emailProvider, env, shutdown.signal);
   registerDocumentRoutes(app, database, storage, embedder, shutdown.signal);
-  registerMeetingRoutes(app, database, storage, createChatModel({ ...env, LLM_MAX_TOKENS: env.MEETING_MAX_TOKENS, LLM_TIMEOUT_MS: env.MEETING_TIMEOUT_MS }, cancellableFetch, { jsonMode: true }), shutdown.signal, memory?.scope);
+  registerMeetingRoutes(app, database, storage, createMeetingModel(env, cancellableFetch), shutdown.signal, memory?.scope);
   const search=createSearchProvider(env,cancellableFetch);
   const retrieve=database&&embedder?createRetriever(database,embedder,env.RAG_MIN_SIMILARITY):null;
   const pptAuth=createPresentationAuth(env);

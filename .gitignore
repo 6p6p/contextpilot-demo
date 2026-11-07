@@ -10,3 +10,8 @@ coverage/
 *.log
 certs/
 .acceptance/
+
+# Local development audit and interview documents
+/docs/REPOSITORY_AUDIT.md
+/docs/ARCHITECTURE_REVIEW.md
+/docs/INTERVIEW_GUIDE.md

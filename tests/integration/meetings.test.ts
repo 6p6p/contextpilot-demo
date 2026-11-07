@@ -7,6 +7,7 @@ import { parseEnv } from '../../apps/api/src/config/env.js';
 import { createMeetingService } from '../../apps/api/src/meetings/service.js';
 import type { MeetingAnalysis } from '../../shared/meetings.js';
 import type { PrivateStorage } from '../../apps/api/src/knowledge/storage.js';
+import { PublicError } from '../../apps/api/src/errors.js';
 
 describe('real PostgreSQL meeting transactions (stub Storage and LLM)', () => {
   let database: NonNullable<ReturnType<typeof createDatabase>>;
@@ -29,8 +30,9 @@ describe('real PostgreSQL meeting transactions (stub Storage and LLM)', () => {
     expect(detail.meeting.status).toBe('ready');
     expect(detail.todos.find(t => t.task === '补充回款风险台账')).toMatchObject({ owner: null, dueDate: null });
     const todo = detail.todos.find(t => t.task === '联系供应商确认交付计划')!;
-    await service.updateTodo(todo.id, { version: todo.version, owner: '人工指定', dueDate: '2026-11-08', status: 'in_progress' });
     await expect(service.confirmDraft(detail.draft!.id, detail.draft!.version)).rejects.toMatchObject({ code: 'RECIPIENT_REQUIRED' });
+    await service.updateTodo(todo.id, { version: todo.version, owner: '人工指定', dueDate: '2026-11-08', status: 'in_progress' });
+    await expect(service.confirmDraft(detail.draft!.id, detail.draft!.version)).rejects.toMatchObject({ code: 'DRAFT_TODOS_STALE' });
     const draft = await service.updateDraft(detail.draft!.id, { version: detail.draft!.version, recipients: ['reviewer@example.invalid'], subject: '人工主题', body: '人工复核内容，不发送' });
     expect((await service.confirmDraft(draft.id, draft.version)).sent).toBe(false);
     await service.reanalyze(uploaded.meeting.id); await service.processOne();
@@ -47,5 +49,22 @@ describe('real PostgreSQL meeting transactions (stub Storage and LLM)', () => {
     await service.processOne();
     expect((await service.detail(row.meeting.id)).meeting).toMatchObject({ status: 'failed', errorCode: 'MEETING_INVALID_OUTPUT' });
     expect((await service.detail(row.meeting.id)).versions).toHaveLength(0);
+  });
+  it('keeps a truncated attempt unpublished and allows an explicit fresh analysis', async () => {
+    let truncated = true;
+    const service = createMeetingService(database, storage, { async complete() {
+      if (truncated) throw new PublicError(502, 'LLM_OUTPUT_TRUNCATED', 'Synthetic length limit');
+      return { model: 'stub-only', content: JSON.stringify({ topic: null, meetingDate: null, location: null, participants: [], topics: [], decisions: [], risks: [], actions: [] }) };
+    } });
+    const text = `合成截断恢复测试 ${randomUUID()}`;
+    const row = await service.upload('truncated-output.txt', 'text/plain', Buffer.from(text));
+    await service.processOne();
+    const failed = await service.detail(row.meeting.id);
+    expect(failed.meeting).toMatchObject({ status: 'failed', errorCode: 'LLM_OUTPUT_TRUNCATED', currentAnalysisId: null });
+    expect(failed.versions).toHaveLength(0); expect(failed.todos).toHaveLength(0); expect(failed.draft).toBeNull();
+    expect(await service.transcript(row.meeting.id)).toBe(text);
+    truncated = false; await service.reanalyze(row.meeting.id); await service.processOne();
+    const recovered = await service.detail(row.meeting.id);
+    expect(recovered.meeting.status).toBe('ready'); expect(recovered.versions).toHaveLength(1);
   });
 });
