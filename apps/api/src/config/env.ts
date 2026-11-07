@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ConfigurationError } from './startup-diagnostic.js';
 
 const optionalDatabaseUrl = z.preprocess(
   value => value === '' ? undefined : value,
@@ -58,28 +59,31 @@ export function parseEnv(source: NodeJS.ProcessEnv) {
   const result = schema.safeParse(source);
   if (!result.success) {
     // Report field names only: validation errors must never echo credentials.
-    throw new Error(`Invalid environment fields: ${result.error.issues.map(issue => issue.path.join('.')).join(', ')}`);
+    throw new ConfigurationError(`Invalid environment fields: ${result.error.issues.map(issue => issue.path.join('.')).join(', ')}`, [...new Set(result.error.issues.map(issue => String(issue.path[0])))]);
   }
   if(result.data.NODE_ENV==='production'){
-    if(!result.data.DEMO_ACCESS_KEY)throw new Error('Production requires DEMO_ACCESS_KEY');
-    if(result.data.EMAIL_DELIVERY_ENABLED && (!result.data.RESEND_API_KEY || !result.data.EMAIL_FROM || !result.data.EMAIL_ALLOWED_RECIPIENTS.length))throw new Error('EMAIL_DELIVERY_ENABLED requires RESEND_API_KEY, EMAIL_FROM and EMAIL_ALLOWED_RECIPIENTS');
+    if(!result.data.DEMO_ACCESS_KEY)throw new ConfigurationError('Production requires DEMO_ACCESS_KEY', ['DEMO_ACCESS_KEY']);
+    if(result.data.EMAIL_DELIVERY_ENABLED) {
+      const missing = (['RESEND_API_KEY', 'EMAIL_FROM', 'EMAIL_ALLOWED_RECIPIENTS'] as const).filter(field => !result.data[field]?.length);
+      if(missing.length)throw new ConfigurationError('EMAIL_DELIVERY_ENABLED requires RESEND_API_KEY, EMAIL_FROM and EMAIL_ALLOWED_RECIPIENTS', missing);
+    }
     if(!source.HOST)result.data.HOST='0.0.0.0';
   }
-  if(!['127.0.0.1','localhost','::1'].includes(result.data.HOST)&&!result.data.DEMO_ACCESS_KEY)throw new Error('Non-loopback HOST requires DEMO_ACCESS_KEY');
+  if(!['127.0.0.1','localhost','::1'].includes(result.data.HOST)&&!result.data.DEMO_ACCESS_KEY)throw new ConfigurationError('Non-loopback HOST requires DEMO_ACCESS_KEY', ['DEMO_ACCESS_KEY']);
   if (result.data.DATABASE_URL) {
     const url = new URL(result.data.DATABASE_URL);
-    if (url.search || url.hash) throw new Error('DATABASE_URL must not contain query parameters or fragments; encode password and configure TLS separately');
-    if (!result.data.DATABASE_SSL && !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) throw new Error('Remote DATABASE_URL requires DATABASE_SSL=true');
+    if (url.search || url.hash) throw new ConfigurationError('DATABASE_URL must not contain query parameters or fragments; encode password and configure TLS separately', ['DATABASE_URL']);
+    if (!result.data.DATABASE_SSL && !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) throw new ConfigurationError('Remote DATABASE_URL requires DATABASE_SSL=true', ['DATABASE_URL', 'DATABASE_SSL']);
   }
   if (result.data.LLM_BASE_URL) {
     const url = new URL(result.data.LLM_BASE_URL);
-    if (url.username || url.password || url.search || url.hash || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(url.hostname)))) throw new Error('Invalid LLM_BASE_URL: use HTTPS without credentials or query parameters');
+    if (url.username || url.password || url.search || url.hash || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(url.hostname)))) throw new ConfigurationError('Invalid LLM_BASE_URL: use HTTPS without credentials or query parameters', ['LLM_BASE_URL']);
   }
   for (const field of ['SUPABASE_URL', 'EMBEDDING_BASE_URL', 'TAVILY_BASE_URL'] as const) {
     const value = result.data[field];
     if (!value) continue;
     const url = new URL(value);
-    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error(`Invalid ${field}: HTTPS without credentials or query required`);
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new ConfigurationError(`Invalid ${field}: HTTPS without credentials or query required`, [field]);
   }
   return result.data;
 }

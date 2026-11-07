@@ -245,3 +245,8 @@ Phase3上传HTTP500降为观察项，不阻塞；历史数据库连接超时只�
 This supersedes the historical unconditional production email prohibition only: default remains false; production may explicitly enable email with RESEND_API_KEY, EMAIL_FROM and a nonempty server recipient allowlist. Existing mode/sender validation, exact-version confirmation, permanent draft/version dedup and unknown-result barriers remain mandatory. New task admission is serialized by a PostgreSQL transaction advisory lock across all scopes/configurations and limited to five email_deliveries records in a rolling hour, including failed/unknown records. This is an enqueue quota, not a provider billing cap or strict attempt-time rate. No schema/dependency/UI change.
 
 Public-facing instructions are in demo/ and the concise README; original README chronology is archived in docs/development-history.md. Four synthetic upload materials are byte-identical copies of existing fixtures/Corpus with checksums. No seed/import script or historical IDs are required. Live execution and one actual mailbox receipt remain user-owned; this work does not authorize sending, production writes, deployment or push.
+
+
+## Startup diagnosis (2026-11-07)
+
+Production email opt-in still requires RESEND_API_KEY, EMAIL_FROM and nonempty EMAIL_ALLOWED_RECIPIENTS; false requires no new email variables. Startup errors now expose only fixed stage/type, allowlisted code and trusted configuration field names, never raw messages/stacks/causes/values. CA-read errors identify DATABASE_CA_CERT and still fail closed. Ready/plugin initialization and socket binding are separately diagnosed; failed startup closes an initialized app. No TLS, PORT, sender permission, quota or UI behavior is relaxed.

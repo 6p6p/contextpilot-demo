@@ -3,6 +3,12 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Env } from '../config/env.js';
 import { readFileSync } from 'node:fs';
 import * as schema from './schema.js';
+import { ConfigurationError } from '../config/startup-diagnostic.js';
+
+function readDatabaseCa(path: string) {
+  try { return readFileSync(path, 'utf8'); }
+  catch { throw new ConfigurationError('Configured database CA file cannot be read', ['DATABASE_CA_CERT']); }
+}
 
 export function databaseOptions(env: Env) {
   if (!env.DATABASE_URL) return null;
@@ -15,7 +21,7 @@ export function databaseOptions(env: Env) {
     statement_timeout: 15000,
     ssl: env.DATABASE_SSL ? {
       rejectUnauthorized: true,
-      ...(env.DATABASE_CA_CERT ? { ca: readFileSync(env.DATABASE_CA_CERT, 'utf8') } : {}),
+      ...(env.DATABASE_CA_CERT ? { ca: readDatabaseCa(env.DATABASE_CA_CERT) } : {}),
     } : undefined,
   };
 }

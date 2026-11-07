@@ -303,3 +303,11 @@ Phase3上传HTTP500降为观察项，不阻塞；历史数据库连接超时只�
 - [ ] Maintainer supplies canonical public HTTPS address for README (not present in tracked repository).
 - [ ] User final review, subsequent authorized publication/configuration and one explicitly authorized real inbox receipt. No live calls or production data writes in this task.
 - [ ] New quota concurrency/restart integration verification against approved PostgreSQL remains unrun; unit SQL/gate tests are not a real-DB proof.
+
+
+## Railway startup incident (2026-11-07)
+
+- Root cause confirmed by user: EMAIL_DELIVERY_ENABLED was changed to true while RESEND_API_KEY, EMAIL_FROM and EMAIL_ALLOWED_RECIPIENTS were not configured. parseEnv rejects before app/database/listen. Generic server catch previously concealed those missing fields. New quota runs only on enqueue, not at startup; database/TLS/PORT paths were unchanged from 1ca17eb.
+- Added safe stage/type/code/field startup diagnostics, field-aware configuration errors and unreadable-CA context; retained validation and strict TLS. No README/UI/cloud variable changes.
+- npm run check PASS: 33 files/265 tests, types and both builds. Production smoke PASS: 8 startup failure cases; email false and configured true startup; strict-TLS CA construction with unreachable local DB; ready503/auth/log-sanitization. External business calls and real emails: 0. Real PostgreSQL TLS handshake not tested.
+- User recovery: set EMAIL_DELIVERY_ENABLED=false to restore the prior email-disabled configuration, or explicitly configure the required email fields and sender mode/authorized mailbox before enabling. No automatic push/deployment/data operations; local commit only.
