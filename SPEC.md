@@ -250,3 +250,6 @@ Public-facing instructions are in demo/ and the concise README; original README 
 ## Startup diagnosis (2026-11-07)
 
 Production email opt-in still requires RESEND_API_KEY, EMAIL_FROM and nonempty EMAIL_ALLOWED_RECIPIENTS; false requires no new email variables. Startup errors now expose only fixed stage/type, allowlisted code and trusted configuration field names, never raw messages/stacks/causes/values. CA-read errors identify DATABASE_CA_CERT and still fail closed. Ready/plugin initialization and socket binding are separately diagnosed; failed startup closes an initialized app. No TLS, PORT, sender permission, quota or UI behavior is relaxed.
+# 最终工程复盘入口（2026-11-07）
+
+当前源码架构与边界见 [ARCHITECTURE_REVIEW](docs/ARCHITECTURE_REVIEW.md)，仓库分类、验证结果与未处理风险见 [REPOSITORY_AUDIT](docs/REPOSITORY_AUDIT.md)。本轮仅文档审计，未改业务、Schema、依赖或部署；既有历史记录按各自日期解释。

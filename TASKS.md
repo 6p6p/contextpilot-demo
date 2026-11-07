@@ -311,3 +311,8 @@ Phase3上传HTTP500降为观察项，不阻塞；历史数据库连接超时只�
 - Added safe stage/type/code/field startup diagnostics, field-aware configuration errors and unreadable-CA context; retained validation and strict TLS. No README/UI/cloud variable changes.
 - npm run check PASS: 33 files/265 tests, types and both builds. Production smoke PASS: 8 startup failure cases; email false and configured true startup; strict-TLS CA construction with unreachable local DB; ready503/auth/log-sanitization. External business calls and real emails: 0. Real PostgreSQL TLS handshake not tested.
 - User recovery: set EMAIL_DELIVERY_ENABLED=false to restore the prior email-disabled configuration, or explicitly configure the required email fields and sender mode/authorized mailbox before enabling. No automatic push/deployment/data operations; local commit only.
+# 最终审计与面试准备（2026-11-07）
+
+- 已生成 [仓库审计](docs/REPOSITORY_AUDIT.md)、[源码架构](docs/ARCHITECTURE_REVIEW.md)、[面试指南](docs/INTERVIEW_GUIDE.md)，保留历史验收与全部测试/迁移/Demo 材料，删除 0 文件。
+- check 265 项与 Corpus 17 项通过；Chrome 生产 E2E 7/7、production smoke 通过；开发 E2E 6/7，health 用例定向复跑仍失败，测试注入与 StrictMode 交互原因及后续验证见审计。
+- 当前不修改业务或测试来消除失败；真实服务/DB/邮件/云部署复验 NOT_RUN，Phase3 偶发上传500继续 OPEN。待人工决定历史文档整理、开发测试替身修复和历史 Cookie 处置；本地提交后停止，不 push/部署。

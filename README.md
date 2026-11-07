@@ -1,5 +1,7 @@
 # ContextPilot
 
+工程复盘：[仓库审计](docs/REPOSITORY_AUDIT.md) · [源码架构](docs/ARCHITECTURE_REVIEW.md) · [中文面试指南](docs/INTERVIEW_GUIDE.md)。
+
 将对话、文档、会议和可追溯记忆串起来的 AI 决策工作台。
 
 ## Live Demo
