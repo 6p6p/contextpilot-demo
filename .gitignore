@@ -15,3 +15,13 @@ certs/
 /docs/REPOSITORY_AUDIT.md
 /docs/ARCHITECTURE_REVIEW.md
 /docs/INTERVIEW_GUIDE.md
+/docs/assignment.txt
+
+# Historical verification records
+/docs/corpus-stage-*.md
+/docs/demo-kit-verification.md
+/docs/email-release-check.md
+/docs/mvp-final-closeout.md
+/docs/mvp-v*.md
+/docs/phase-*-verification.md
+/docs/stage-b-round1-fixes.md
