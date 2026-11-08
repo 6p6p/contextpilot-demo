@@ -12,7 +12,7 @@ import type { SearchMode } from '../../../../shared/search.js';
 import { PublicError } from '../errors.js';
 import { parsePresentationRequest } from './intent.js';
 import {assertCurrentPresentationTodos,type SourceCollector} from './sources.js';
-import {verifyContentQuality} from './coverage.js';
+import {contentPageCount,verifyContentQuality} from './coverage.js';
 import { planPresentation, verifyPlan, validatePresentationContent } from './plan.js';
 import { renderPresentation, PPTX_MIME, validatePptx } from './render.js';
 type Tx=Parameters<Parameters<Database['db']['transaction']>[0]>[0];
@@ -30,7 +30,7 @@ export function createPresentationService(database:Database,storage:PrivateStora
   const scope=eq(presentationJobs.scope,env.PPT_SCOPE);
   const configured=()=>{if(!storage||!storage.find||!model)throw new PublicError(503,'PPT_NOT_CONFIGURED','PPT 需要配置模型和支持核查的私有 Storage。');};
   const scoped=storage?and(scope,eq(presentationJobs.storageOrigin,storage.origin),eq(presentationJobs.storageBucket,storage.bucket)):scope;
-  const project=(row:typeof presentationJobs.$inferSelect)=>({id:row.id,assistantMessageId:row.assistantMessageId,conversationId:row.conversationId,filename:row.filename,pageCount:row.pageCount,status:row.status,errorCode:row.errorCode,errorMessage:row.errorMessage,retries:row.retries,size:row.size,createdAt:row.createdAt,updatedAt:row.updatedAt});
+  const project=(row:typeof presentationJobs.$inferSelect)=>({id:row.id,assistantMessageId:row.assistantMessageId,conversationId:row.conversationId,filename:row.filename,pageCount:row.pageCount,pageMode:parsePresentationRequest(row.request,{maxPages:30}).pageMode,status:row.status,errorCode:row.errorCode,errorMessage:row.errorMessage,retries:row.retries,size:row.size,createdAt:row.createdAt,updatedAt:row.updatedAt});
   async function row(id:string) {const [r]=await db.select().from(presentationJobs).where(and(scoped,eq(presentationJobs.id,id)));if(!r)throw new PublicError(404,'PPT_NOT_FOUND','PPT 任务不存在或配置范围不匹配。');return r;}
   const fingerprint=(input:PresentationInput)=>hash(JSON.stringify({content:input.content,context:context(input)}));
   return {
@@ -48,6 +48,7 @@ export function createPresentationService(database:Database,storage:PrivateStora
     list:async(conversationId?:string)=> (await db.select().from(presentationJobs).where(and(scoped,conversationId?eq(presentationJobs.conversationId,conversationId):undefined)).orderBy(desc(presentationJobs.createdAt)).limit(100)).map(project),
     async detail(id:string){const r=await row(id);return {presentation:project(r),plan:r.plan,sources:r.sources,planningHistory:r.context.planningHistory??[],planningOutput:r.context.planningOutput??null};},
     async retry(id:string,replan=false){configured();const r=await row(id);if(r.status!=='failed'||r.retries>=1)throw new PublicError(409,'PPT_RETRY_NOT_ALLOWED','仅允许对失败任务显式重试一次。');
+      replan=replan||(!r.plan&&Boolean(r.context.planningOutput)&&/^PPT_(?:INVALID|REPEATED|CONTRADICTORY|REQUIRED|SOURCE|INCOMPLETE|META|CONTENT)/.test(r.errorCode??''));
       if(replan&&await storage!.find!(r.objectKey))throw new PublicError(409,'PPT_REPLAN_FILE_EXISTS','已有文件时禁止重新规划或覆盖；可按原计划重试核查。');
       const refreshed=replan?await collect(r,r.sources?.filter(s=>s.kind==='web')):r.sources;
       const replanning=replan?{sources:refreshed,context:{...r.context,planningOutput:undefined,planningHistory:[...(r.context.planningHistory??[]),{sources:r.sources,output:r.context.planningOutput,plan:r.plan,sha256:r.sha256,errorCode:r.errorCode,recordedAt:new Date().toISOString()}]},plan:null,sha256:null,size:null}:{};
@@ -73,9 +74,11 @@ export function createPresentationService(database:Database,storage:PrivateStora
         const sources=job.sources??await collect(job);if(shutdown?.aborted)return false;
         if(!job.sources)await save({sources});
         await assertCurrentPresentationTodos(database,sources);
-        const brief={...parsePresentationRequest(job.request,{maxPages:30}),pageCount:job.pageCount};
-        const plan=job.plan??(job.context.planningOutput?validatePresentationContent(job.context.planningOutput,job.pageCount,sources,brief):await planPresentation(model,job.request,job.pageCount,sources,env.PPT_MAX_TOKENS,async output=>{await save({context:{...job.context,planningOutput:output}});}));if(shutdown?.aborted)return false;
-        verifyPlan(plan,job.pageCount,sources);
+        const resolvedCount=job.plan?job.pageCount:contentPageCount(job.request,sources,env.PPT_MAX_PAGES??20);
+        if(resolvedCount!==job.pageCount)await save({pageCount:resolvedCount});
+        const brief={...parsePresentationRequest(job.request,{maxPages:30}),pageCount:resolvedCount};
+        const plan=job.plan??(job.context.planningOutput?validatePresentationContent(job.context.planningOutput,resolvedCount,sources,brief):await planPresentation(model,job.request,resolvedCount,sources,env.PPT_MAX_TOKENS,async output=>{await save({context:{...job.context,planningOutput:output}});},job.context.planningHistory?.at(-1)?.output?{output:job.context.planningHistory.at(-1)!.output!,errorCode:job.context.planningHistory.at(-1)!.errorCode??'PPT_INVALID_PLAN'}:undefined));if(shutdown?.aborted)return false;
+        verifyPlan(plan,resolvedCount,sources);
         verifyContentQuality(plan,sources,brief);
         await save({plan,status:'rendering'});
         const {bytes}=await renderPresentation(plan,sources,job.topic,job.createdAt);const sha256=hash(bytes);

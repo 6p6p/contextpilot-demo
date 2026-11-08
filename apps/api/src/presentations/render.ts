@@ -9,6 +9,7 @@ import { verifyPlan } from './plan.js';
 export const PPTX_MIME='application/vnd.openxmlformats-officedocument.presentationml.presentation' as const;
 const titles:Record<PptPlan['slides'][number]['kind'],string>={cover:'业务汇报',summary:'执行摘要',background:'背景与目标',progress:'关键进展',risk:'风险与问题',todos:'待办及负责人',next:'建议与下一步',gaps:'资料缺口',references:'参考资料'};
 const W=13.333333,H=7.5,FONT='Microsoft YaHei';
+const todoStatus=(source:PptSource)=>({open:'未开始',in_progress:'进行中',done:'已完成'}[String(source.locator.status)]??'未提供');
 // jsonb reorders object keys. Canonical notes keep output bytes identical after DB reload.
 function canonical(value:unknown):unknown {
   if(Array.isArray(value))return value.map(canonical);
@@ -74,20 +75,25 @@ export async function renderPresentation(plan:PptPlan,sources:PptSource[],topic:
         visible.forEach((source,i)=>text(`[${source.id}] ${source.title.slice(0,64)}`,0.8,1.65+i*0.82,11.4,0.75,18,'reference'));
         if(selected.length>5)text('其余来源与完整定位见各页备注。',0.8,6.0,11,0.5,16,'reference-note');
       } else if(page.kind==='todos'&&page.items.every(i=>i.kind==='quote')&&page.items.every(i=>sources.find(s=>s.id===(i as {sourceId:string}).sourceId)?.kind==='todo')) {
-        const data=page.items.map(i=>{const q=i as {sourceId:string;quote:string};const source=sources.find(s=>s.id===q.sourceId)!;return [`${source.classification==='recommendation'?'建议：':''}${q.quote}`,source.owner??'未提供',source.dueDate??'未提供'];});
-        data.forEach(row=>row.forEach((value,i)=>assertTextFit({text:value,x:0.8,y:2,w:[6.5,2.1,2.9][i]-0.25,h:1.15,fontSize:18,role:'table'})));
-        slide.addTable([['待办（来源陈述/建议）','负责人','截止时间'],...data].map(row=>row.map(value=>({text:value}))),{x:0.8,y:1.7,w:11.5,colW:[6.5,2.1,2.9],rowH:[0.6,...data.map(()=>1.45)],fontFace:FONT,fontSize:18,color:'183C45',fill:{color:'FFFFFF'},border:{pt:1,color:'DBE5E1'},margin:0.12,autoPage:false,verbose:false,bold:false});
+        const data=page.items.map(i=>{const q=i as {sourceId:string;quote:string};const source=sources.find(s=>s.id===q.sourceId)!;return [`${source.classification==='recommendation'?'建议：':''}${q.quote}`,source.owner??'未提供',source.dueDate??'未提供',todoStatus(source)];});
+        data.forEach(row=>row.forEach((value,i)=>assertTextFit({text:value,x:0.8,y:2,w:[5.4,1.6,2.6,1.9][i]-0.25,h:1.15,fontSize:18,role:'table'})));
+        slide.addTable([['待办（来源陈述/建议）','负责人','截止时间','状态'],...data].map(row=>row.map(value=>({text:value}))),{x:0.8,y:1.7,w:11.5,colW:[5.4,1.6,2.6,1.9],rowH:[0.6,...data.map(()=>1.45)],fontFace:FONT,fontSize:18,color:'183C45',fill:{color:'FFFFFF'},border:{pt:1,color:'DBE5E1'},margin:0.12,autoPage:false,verbose:false,bold:false});
       } else {
-        page.items.forEach((item,i)=>{
-          const y=1.65+i*1.5;
+        const rows=page.items.map(item=>{
           let label:string,body:string;
           if(item.kind==='quote') {
             const source=sources.find(s=>s.id===item.sourceId)!;
             label=`${source.locator.discussionCategory==='proposal'?'来源提议（非正式决定）':source.classification==='analysis'?'来源分析':source.classification==='recommendation'?'来源建议':'来源陈述'} [${source.id}]${source.riskLevel?` · 风险评估：${({low:'低',medium:'中',high:'高',critical:'严重'})[source.riskLevel]}`:''}`;
-            body=item.quote+(source.kind==='todo'?`\n负责人：${source.owner??'未提供'} · 截止：${source.dueDate??'未提供'}`:'');
+            body=item.quote+(source.kind==='todo'?`\n负责人：${source.owner??'未提供'} · 截止：${source.dueDate??'未提供'}${source.locator.status?` · 状态：${todoStatus(source)}`:''}`:'');
           } else {label=item.kind==='analysis'?'分析判断':item.kind==='recommendation'?'建议':'资料不足';body=item.text;}
+          return {item,label,body,height:Math.max(1.2,0.5+estimatedLines(body,11.38,20)*20*1.25/72)};
+        });
+        if(rows.reduce((n,r)=>n+r.height,0)>5.2)throw new PublicError(422,'PPT_TEXT_TOO_DENSE','单页内容及待办字段超出可读容量，请使用自动页数或增加页数；未缩小字体或删除事实。');
+        let y=1.65;
+        rows.forEach(({item,label,body,height})=>{
           text(label,0.8,y,11.5,0.34,14,'label',item.kind==='quote'&&sources.find(s=>s.id===item.sourceId)?.riskLevel?'9C4F2B':'2D7369',true);
-          text(body,0.8,y+0.4,11.5,1.08,20,'body');
+          text(body,0.8,y+0.4,11.5,height-0.48,20,'body');
+          y+=height;
         });
       }
       const refs=[...new Set(page.items.flatMap(i=>i.kind==='quote'?[i.sourceId]:'sourceIds' in i?i.sourceIds:[]))].join('、');

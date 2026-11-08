@@ -253,3 +253,11 @@ Production email opt-in still requires RESEND_API_KEY, EMAIL_FROM and nonempty E
 # 最终工程复盘入口（2026-11-07）
 
 当前源码架构与边界见 [ARCHITECTURE_REVIEW](docs/ARCHITECTURE_REVIEW.md)，仓库分类、验证结果与未处理风险见 [REPOSITORY_AUDIT](docs/REPOSITORY_AUDIT.md)。本轮仅文档审计，未改业务、Schema、依赖或部署；既有历史记录按各自日期解释。
+
+## T04/T06 targeted correction (2026-11-08, local only)
+
+Memory recall groups stored evidence by its original source/project context before selecting complementary person/time/place/event facts. Original text can establish context but cannot contribute an unstored fact. Explicit memory-only requests cannot fall back to PDF, web or general model knowledge; missing evidence remains unknown. Same-name people in different projects stay separate. Chat extraction uses bounded JSON/non-thinking output; meeting extraction/analysis is unchanged. Existing meeting analyses without a memory job are not silently backfilled.
+
+PPT defaults to auto planning after source collection and required-fact deduplication. Explicit page counts remain fixed. Existing request/page_count fields express both modes without DDL; ready files retain their saved plan/count. Related facts and current todos may share a page, with saved owner/date/status rendered visibly. Complete-quote, required-content, current-todo, lease, private-storage and download checks remain enforced. Model validation failures may use the existing one explicit retry to replan with diagnostics; there is no unbounded automatic retry. The configured page cap still applies within the 3–30 technical range.
+
+Actual evidence and the distinction between isolated live tests, stub regressions and pending public acceptance are in [T04/T06 verification](docs/t04-t06-verification.md). No Railway variable, migration, email/search flow or stable UI layout changed.

@@ -3,6 +3,7 @@ import type { PresentationService, PresentationInput } from '../presentations/se
 import { needsSearch, type SearchProvider } from '../search/service.js';
 import {answerPublicSearch,explicitPublicClause} from '../search/public.js';
 import type { SearchMode } from '../../../../shared/search.js';
+import { memoryOnlyRequest } from '../memory/recall.js';
 import { answerWithMemory, type MemoryService } from '../memory/service.js';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { conversations, messages, memoryJobs } from '../db/schema.js';
@@ -35,7 +36,10 @@ export function createChatService(database: NonNullable<ReturnType<typeof create
     history,
     async send(id: string, input: PresentationInput & {clientRequestId:string}) {
       const isPpt=isPresentationIntent(input.content);
-      if(isPpt){parsePresentationRequest(input.content);if(!presentations)throw new PublicError(503,'PPT_NOT_CONFIGURED','PPT 服务尚未配置。');presentations.requireConfigured();}
+      const onlyMemory = !isPpt && memoryOnlyRequest(input.content);
+      if(onlyMemory && !memory) throw new PublicError(503,'MEMORY_NOT_CONFIGURED','长期记忆未配置。');
+      if(onlyMemory) input = { ...input, knowledgeMode: false, searchMode: 'off' };
+      if(isPpt){parsePresentationRequest(input.content,{maxPages:30});if(!presentations)throw new PublicError(503,'PPT_NOT_CONFIGURED','PPT 服务尚未配置。');presentations.requireConfigured();}
       if (!model) throw new PublicError(503, 'LLM_NOT_CONFIGURED', '尚未配置模型服务。');
       if (!isPpt && input.knowledgeMode && !knowledge) throw new PublicError(503, 'KNOWLEDGE_NOT_CONFIGURED', '尚未配置 Embedding 知识检索服务。');
       await expire(id);
@@ -57,7 +61,7 @@ export function createChatService(database: NonNullable<ReturnType<typeof create
           { conversationId: id, clientRequestId: input.clientRequestId, ordinal: ordinal + 1, role: 'assistant', content: '', status: 'processing', knowledgeMode: Boolean(input.knowledgeMode), searchMode: input.searchMode ?? 'auto' },
         ]).returning();
         if(isPpt){const assistant=rows.find(m=>m.role==='assistant')!;const taskId=await presentations!.enqueue(tx,assistant.id,id,input);const content=`PPT 任务已排队（${taskId}）。请在 PPT 生成记录中查看进度和下载。`;await tx.update(messages).set({status:'completed',content,model:'ppt-job',updatedAt:new Date()}).where(eq(messages.id,assistant.id));assistant.status='completed';assistant.content=content;assistant.model='ppt-job';}
-        if (!isPpt && memory) await tx.insert(memoryJobs).values({ scope: memory.scope, messageId: rows.find(m => m.role === 'user')!.id }).onConflictDoNothing();
+        if (!isPpt && memory && !onlyMemory) await tx.insert(memoryJobs).values({ scope: memory.scope, messageId: rows.find(m => m.role === 'user')!.id }).onConflictDoNothing();
         await tx.update(conversations).set({ updatedAt: new Date(), ...(ordinal === 0 && conversation.title === '新对话' ? { title: input.content.slice(0, 40) } : {}) }).where(eq(conversations.id, id));
         return { existing: false as const, rows };
       });
@@ -68,11 +72,11 @@ export function createChatService(database: NonNullable<ReturnType<typeof create
         const wantsSearch=needsSearch(input.content,input.searchMode??'auto');
         const publicQuestion=input.knowledgeMode&&wantsSearch?explicitPublicClause(input.content):null;
         const useSearch = wantsSearch&&(!input.knowledgeMode||Boolean(publicQuestion));
-        const web = !input.knowledgeMode&&input.searchMode === 'off' && needsSearch(input.content, 'auto') ? { content: '联网搜索已关闭，无法确认最新信息。请切换自动或必须联网模式。', model: 'web-disabled-gate', webSources: [] } : useSearch ? await answerPublicSearch(publicQuestion??input.content, search ?? null, model) : null;
+        const web = onlyMemory ? null : !input.knowledgeMode&&input.searchMode === 'off' && needsSearch(input.content, 'auto') ? { content: '联网搜索已关闭，无法确认最新信息。请切换自动或必须联网模式。', model: 'web-disabled-gate', webSources: [] } : useSearch ? await answerPublicSearch(publicQuestion??input.content, search ?? null, model) : null;
         const chronological=[...recent].reverse();
         const publicDefinition=/^(?:请)?(?:什么是|解释|介绍|what is|explain)/i.test(input.content)&&! /项目|会议|PDF|记忆|刚才|我们|我司|内部|资料/i.test(input.content);
-        const candidates = !publicDefinition && !web && !input.knowledgeMode && memory && !useCurrentContext(input.content,chronological) ? await memory.retrieve(input.content) : [];
-        const result = input.knowledgeMode ? { ...await knowledge!.answer(input.content, model,input.documentIds), memorySources: [] } : web ? { content: '', model: web.model, sources: [], memorySources: [] } : candidates.length ? await answerWithMemory(input.content, buildContext(recent.reverse()), model, candidates) : { ...await model.complete(buildContext(recent.reverse()),{disableThinking:true}), sources: [], memorySources: [] };
+        const candidates = !publicDefinition && !web && !input.knowledgeMode && memory && (onlyMemory || !useCurrentContext(input.content,chronological)) ? await memory.retrieve(input.content) : [];
+        const result = input.knowledgeMode ? { ...await knowledge!.answer(input.content, model,input.documentIds), memorySources: [] } : web ? { content: '', model: web.model, sources: [], memorySources: [] } : candidates.length || onlyMemory ? await answerWithMemory(input.content, buildContext(recent.reverse()), model, candidates) : { ...await model.complete(buildContext(recent.reverse()),{disableThinking:true}), sources: [], memorySources: [] };
         const content=input.knowledgeMode&&web?`内部资料：\n${result.content}\n\n公开资料：\n${web.content}`:[result.content,web?.content,input.knowledgeMode&&wantsSearch&&!publicQuestion?'公开查询未执行：请用“；联网查询……”明确给出不含内部资料的独立公共问题。':input.knowledgeMode&&input.searchMode==='off'&&needsSearch(input.content,'auto')?'公开查询未执行：联网已关闭。':null].filter(Boolean).join('\n\n');
         await db.update(messages).set({ content, webSources: web?.webSources ?? [], model: result.model, sources: result.sources, memorySources: result.memorySources, status: 'completed', updatedAt: new Date() }).where(and(eq(messages.id, assistant.id), eq(messages.status, 'processing')));
       } catch (error) {

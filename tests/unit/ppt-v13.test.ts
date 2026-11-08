@@ -17,7 +17,7 @@ it('B no attachments ignores an old knowledge toggle and never demands PDF evide
 });
 it('B configurable page budget accepts explicit counts outside 5–10 and chooses a useful default',()=>{
  expect(parsePresentationRequest('生成12页培训PPT').pageCount).toBe(12);
- expect(parsePresentationRequest('生成一份团队沟通培训PPT').pageCount).toBe(5);
+ expect(parsePresentationRequest('生成一份团队沟通培训PPT')).toMatchObject({pageMode:'auto',pageCount:3});
  expect(()=>parsePresentationRequest('生成31页PPT')).toThrow();
 });
 it('B twelve slides render as real PPTX without fabricated business facts or empty filler',async()=>{

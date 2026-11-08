@@ -22,6 +22,6 @@ export const pptPlanSchema = z.object({ slides: z.array(pptSlideSchema).min(3).m
   for (const s of p.slides.slice(1,-1)) if (!s.items.length) c.addIssue({ code: 'custom', message: '内容页不能为空' });
 });
 export type PptPlan = z.infer<typeof pptPlanSchema>;
-export const presentationJobSchema = z.object({ id: z.uuid(), assistantMessageId: z.uuid(), conversationId: z.uuid(), filename: z.string(), pageCount: z.number(), status: z.enum(['queued','planning','rendering','ready','failed']), errorCode: z.string().nullable(), errorMessage: z.string().nullable(), retries: z.number(), size: z.number().nullable(), createdAt: z.string(), updatedAt: z.string() });
+export const presentationJobSchema = z.object({ id: z.uuid(), assistantMessageId: z.uuid(), conversationId: z.uuid(), filename: z.string(), pageCount: z.number(), pageMode:z.enum(['auto','fixed']).optional(), status: z.enum(['queued','planning','rendering','ready','failed']), errorCode: z.string().nullable(), errorMessage: z.string().nullable(), retries: z.number(), size: z.number().nullable(), createdAt: z.string(), updatedAt: z.string() });
 export const presentationListSchema = z.object({ presentations: z.array(presentationJobSchema) });
 export type PresentationJob = z.infer<typeof presentationJobSchema>;

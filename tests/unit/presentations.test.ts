@@ -29,7 +29,7 @@ describe('PPT offline: real PPTX renderer; model/Storage never called',()=>{
  it.each(['什么是PPT？','解释如何生成 PPT','请解释生成PPT的原理','不要生成5页PPT','请总结这次会议','这是一个演示文稿的案例'])('ordinary chat does not trigger: %s',q=>expect(isPresentationIntent(q)).toBe(false));
  it.each(['根据这次会议生成 5 页风险汇报 PPT','请制作十页演示文稿','帮我创建 7 页 PPT'])('explicit request: %s',q=>expect(isPresentationIntent(q)).toBe(true));
  it('honors total count including cover/references and rejects unsupported/ambiguous counts',()=>{
-   expect(parsePresentationRequest('根据这次会议生成5页风险汇报PPT，包含待办').topic).toBe('风险汇报');expect(parsePresentationRequest('生成五页PPT').pageCount).toBe(5);expect(parsePresentationRequest('生成PPT').pageCount).toBe(5);
+   expect(parsePresentationRequest('根据这次会议生成5页风险汇报PPT，包含待办').topic).toBe('风险汇报');expect(parsePresentationRequest('生成五页PPT').pageCount).toBe(5);expect(parsePresentationRequest('生成PPT')).toMatchObject({pageMode:'auto',pageCount:3});
    for(const q of ['生成2页PPT','生成二十五页PPT','生成5.5页PPT','生成-5页PPT','生成负五页PPT','生成5–10页PPT','制作31 pages PPT','生成5-10页PPT','生成5页PPT另加6页'])expect(()=>parsePresentationRequest(q)).toThrow();
  });
  it('rejects wrong page counts, invented quotes/IDs, unbounded text and executable extra keys',()=>{
